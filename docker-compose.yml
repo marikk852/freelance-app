@@ -1,0 +1,48 @@
+# SafeDeal — локальный/серверный запуск с PostgreSQL и Redis
+# Скопируй .env.example → .env и задай BOT_TOKEN, WEBAPP_URL, секреты TON и т.д.
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: safedeal
+      POSTGRES_PASSWORD: safedeal
+      POSTGRES_DB: safedeal
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U safedeal -d safedeal"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://safedeal:safedeal@db:5432/safedeal
+      REDIS_URL: redis://redis:6379
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - safedeal-storage:/app/storage
+
+volumes:
+  pgdata:
+  safedeal-storage:

@@ -1,0 +1,43 @@
+# Секреты — НИКОГДА не коммитить
+.env
+.env.local
+.env.production
+
+# Зависимости
+node_modules/
+*/node_modules/
+
+# Билды
+dist/
+build/
+miniapp/dist/
+contracts/build/
+contracts/temp/
+
+# Хранилище (пользовательские файлы)
+storage/encrypted/
+storage/previews/
+storage/released/
+
+# Логи
+logs/
+*.log
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# TypeScript
+*.tsbuildinfo
+
+# Jest
+coverage/
+
+# Временные файлы
+tmp/
+temp/
+uploads/

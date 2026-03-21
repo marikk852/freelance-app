@@ -1,0 +1,12 @@
+;; Standard library for FunC
+;; Source: https://github.com/ton-blockchain/ton/blob/master/crypto/smartcont/stdlib.fc
+;; Включена в проект для offline-компиляции
+
+;; Базовые операции с ячейками
+{-
+  stdlib.fc включается автоматически через @ton/blueprint.
+  Этот файл — заглушка для IDE автодополнения.
+  При компиляции через blueprint используется официальная stdlib.
+-}
+
+() recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure;

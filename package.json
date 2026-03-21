@@ -1,0 +1,32 @@
+{
+  "name": "safedeal",
+  "version": "1.0.0",
+  "description": "Telegram Mini App для безопасных сделок на TON блокчейне",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "contracts",
+    "miniapp"
+  ],
+  "scripts": {
+    "dev:backend": "cd backend && npm run dev",
+    "dev:bot": "cd backend && npm run dev:bot",
+    "dev:miniapp": "cd miniapp && npm run dev",
+    "dev:contracts": "cd contracts && npm run build",
+    "build:contracts": "npm run build -w safedeal-contracts",
+    "build:miniapp": "npm run build -w safedeal-miniapp",
+    "build:deploy": "npm run build:contracts && npm run build:miniapp",
+    "test": "cd contracts && npm test && cd ../backend && npm test",
+    "test:contracts": "cd contracts && npm test",
+    "test:backend": "cd backend && npm test",
+    "migrate": "cd backend && npm run migrate",
+    "lint": "eslint . --ext .js,.ts,.tsx"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}

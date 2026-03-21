@@ -1,0 +1,229 @@
+#include "imports/stdlib.fc";
+
+;; ============================================================
+;; SafeDeal Escrow Smart Contract
+;; Язык: FunC (TON блокчейн)
+;;
+;; Логика:
+;;   Клиент замораживает средства → фрилансер выполняет работу
+;;   → арбитр вызывает release/refund/split
+;;
+;; ПРАВИЛО: release/refund/split ТОЛЬКО от ARBITRATOR_ADDRESS
+;; ============================================================
+
+;; ---------- Константы статусов ----------
+const int STATUS_WAITING   = 0;  ;; ожидание депозита
+const int STATUS_FROZEN    = 1;  ;; средства заморожены
+const int STATUS_RELEASED  = 2;  ;; выплачено фрилансеру
+const int STATUS_REFUNDED  = 3;  ;; возврат клиенту
+
+;; ---------- Операционные коды ----------
+const int OP_DEPOSIT = 1;   ;; клиент отправляет деньги
+const int OP_RELEASE = 2;   ;; арбитр: выплатить фрилансеру
+const int OP_REFUND  = 3;   ;; арбитр: вернуть клиенту
+const int OP_SPLIT   = 4;   ;; арбитр: разделить при споре
+
+;; ---------- Ошибки ----------
+const int ERR_NOT_ARBITRATOR   = 401;  ;; вызывающий не арбитр
+const int ERR_WRONG_STATUS     = 402;  ;; неверный статус для операции
+const int ERR_WRONG_AMOUNT     = 403;  ;; сумма не совпадает
+const int ERR_DEADLINE_NOT_MET = 404;  ;; дедлайн ещё не прошёл
+const int ERR_EXPIRED          = 405;  ;; контракт просрочен
+const int ERR_INVALID_SPLIT    = 406;  ;; неверный процент split (0-100)
+
+;; ============================================================
+;; Загрузка данных из постоянного хранилища
+;; Структура: status(8) | client(addr) | freelancer(addr) |
+;;            arbitrator(addr) | amount(coins) | fee_percent(8) | deadline(32)
+;; ============================================================
+(int, slice, slice, slice, int, int, int) load_data() inline {
+    slice ds = get_data().begin_parse();
+    return (
+        ds~load_uint(8),     ;; status
+        ds~load_msg_addr(),  ;; client_addr
+        ds~load_msg_addr(),  ;; freelancer_addr
+        ds~load_msg_addr(),  ;; arbitrator_addr
+        ds~load_coins(),     ;; amount_nanoton (ожидаемый депозит)
+        ds~load_uint(8),     ;; fee_percent (напр. 2)
+        ds~load_uint(32)     ;; deadline (unix timestamp)
+    );
+}
+
+;; ============================================================
+;; Сохранение данных в постоянное хранилище
+;; ============================================================
+() save_data(int status, slice client_addr, slice freelancer_addr,
+             slice arbitrator_addr, int amount, int fee_percent, int deadline) impure inline {
+    set_data(
+        begin_cell()
+            .store_uint(status, 8)
+            .store_slice(client_addr)
+            .store_slice(freelancer_addr)
+            .store_slice(arbitrator_addr)
+            .store_coins(amount)
+            .store_uint(fee_percent, 8)
+            .store_uint(deadline, 32)
+        .end_cell()
+    );
+}
+
+;; ============================================================
+;; Отправка TON на адрес
+;; mode 1 = sender pays fees, mode 128 = весь баланс контракта
+;; ============================================================
+() send_ton(slice to_addr, int amount, int mode) impure inline {
+    var msg = begin_cell()
+        .store_uint(0x10, 6)      ;; non-bounceable
+        .store_slice(to_addr)
+        .store_coins(amount)
+        .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+    .end_cell();
+    send_raw_message(msg, mode);
+}
+
+;; ============================================================
+;; Проверка: является ли отправитель арбитром
+;; ============================================================
+int is_arbitrator(slice sender, slice arbitrator_addr) inline {
+    return equal_slices(sender, arbitrator_addr);
+}
+
+;; ============================================================
+;; Основной обработчик входящих сообщений
+;; ============================================================
+() recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
+    ;; Пропускаем пустые сообщения (пополнение газа)
+    if (in_msg_body.slice_empty?()) {
+        return ();
+    }
+
+    ;; Читаем заголовок сообщения для получения адреса отправителя
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_uint(4);
+    if (flags & 1) { return (); }  ;; bounced — игнорируем
+    slice sender_addr = cs~load_msg_addr();
+
+    ;; Читаем op code из тела сообщения
+    int op = in_msg_body~load_uint(32);
+
+    ;; Загружаем состояние контракта
+    (int status, slice client_addr, slice freelancer_addr,
+     slice arbitrator_addr, int expected_amount, int fee_percent, int deadline) = load_data();
+
+    ;; ========== OP_DEPOSIT: клиент замораживает средства ==========
+    if (op == OP_DEPOSIT) {
+        ;; Контракт должен ждать депозита
+        throw_unless(ERR_WRONG_STATUS, status == STATUS_WAITING);
+
+        ;; Дедлайн не должен быть просрочен
+        throw_if(ERR_EXPIRED, now() > deadline);
+
+        ;; Принимаем любую сумму >= ожидаемой (газ учтён отдельно)
+        ;; Фиксируем статус FROZEN
+        save_data(STATUS_FROZEN, client_addr, freelancer_addr,
+                  arbitrator_addr, msg_value, fee_percent, deadline);
+        return ();
+    }
+
+    ;; ========== OP_RELEASE: арбитр выплачивает фрилансеру ==========
+    if (op == OP_RELEASE) {
+        ;; Только арбитр может вызвать release
+        throw_unless(ERR_NOT_ARBITRATOR, is_arbitrator(sender_addr, arbitrator_addr));
+
+        ;; Средства должны быть заморожены
+        throw_unless(ERR_WRONG_STATUS, status == STATUS_FROZEN);
+
+        ;; Вычисляем комиссию платформы
+        int total     = my_balance - 50000000;  ;; оставляем 0.05 TON на газ
+        int fee       = (total * fee_percent) / 100;
+        int to_freelancer = total - fee;
+
+        ;; Отправляем фрилансеру
+        send_ton(freelancer_addr, to_freelancer, 1);
+
+        ;; Отправляем комиссию арбитру (= кошельку платформы)
+        send_ton(arbitrator_addr, fee, 1);
+
+        ;; Уничтожаем контракт — остатки газа вернутся отправителю
+        save_data(STATUS_RELEASED, client_addr, freelancer_addr,
+                  arbitrator_addr, total, fee_percent, deadline);
+        return ();
+    }
+
+    ;; ========== OP_REFUND: арбитр возвращает клиенту ==========
+    if (op == OP_REFUND) {
+        ;; Только арбитр
+        throw_unless(ERR_NOT_ARBITRATOR, is_arbitrator(sender_addr, arbitrator_addr));
+
+        ;; Можно вернуть если: FROZEN или просрочен WAITING
+        int can_refund = (status == STATUS_FROZEN) |
+                         ((status == STATUS_WAITING) & (now() > deadline));
+        throw_unless(ERR_WRONG_STATUS, can_refund);
+
+        ;; Возвращаем весь баланс клиенту (за вычетом газа)
+        int total = my_balance - 50000000;
+        send_ton(client_addr, total, 1);
+
+        save_data(STATUS_REFUNDED, client_addr, freelancer_addr,
+                  arbitrator_addr, total, fee_percent, deadline);
+        return ();
+    }
+
+    ;; ========== OP_SPLIT: арбитр делит при споре ==========
+    if (op == OP_SPLIT) {
+        ;; Только арбитр
+        throw_unless(ERR_NOT_ARBITRATOR, is_arbitrator(sender_addr, arbitrator_addr));
+
+        ;; Средства должны быть заморожены
+        throw_unless(ERR_WRONG_STATUS, status == STATUS_FROZEN);
+
+        ;; Читаем процент для фрилансера (0-100)
+        int freelancer_percent = in_msg_body~load_uint(8);
+        throw_unless(ERR_INVALID_SPLIT, (freelancer_percent >= 0) & (freelancer_percent <= 100));
+
+        int total           = my_balance - 50000000;
+        int fee             = (total * fee_percent) / 100;
+        int distributable   = total - fee;
+        int to_freelancer   = (distributable * freelancer_percent) / 100;
+        int to_client       = distributable - to_freelancer;
+
+        ;; Выплачиваем обе стороны
+        if (to_freelancer > 0) {
+            send_ton(freelancer_addr, to_freelancer, 1);
+        }
+        if (to_client > 0) {
+            send_ton(client_addr, to_client, 1);
+        }
+
+        ;; Комиссия платформе
+        send_ton(arbitrator_addr, fee, 1);
+
+        save_data(STATUS_REFUNDED, client_addr, freelancer_addr,
+                  arbitrator_addr, total, fee_percent, deadline);
+        return ();
+    }
+
+    ;; Неизвестный op code — выбрасываем исключение
+    throw(0xffff);
+}
+
+;; ============================================================
+;; GET-методы (read-only, не тратят газ)
+;; ============================================================
+
+;; Получить текущий статус контракта
+int get_status() method_id {
+    (int status, _, _, _, _, _, _) = load_data();
+    return status;
+}
+
+;; Получить полное состояние
+(int, slice, slice, slice, int, int, int) get_state() method_id {
+    return load_data();
+}
+
+;; Проверить просрочен ли контракт
+int is_expired() method_id {
+    (int status, _, _, _, _, _, int deadline) = load_data();
+    return (status == STATUS_WAITING) & (now() > deadline);
+}

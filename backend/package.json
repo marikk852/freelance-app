@@ -1,0 +1,60 @@
+{
+  "name": "safedeal-backend",
+  "version": "1.0.0",
+  "description": "SafeDeal Backend — Express API + Telegram Bot",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "dev:bot": "nodemon ../bot/bot.js",
+    "test": "jest --testPathPattern=tests/",
+    "migrate": "node ../database/migrate.js",
+    "migrate:rollback": "node ../database/migrate.js rollback"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.1.5",
+    "dotenv": "^16.3.1",
+    "pg": "^8.11.3",
+    "pg-pool": "^3.6.1",
+    "redis": "^4.6.11",
+    "ioredis": "^5.3.2",
+    "telegraf": "^4.15.6",
+    "uuid": "^9.0.0",
+    "axios": "^1.6.2",
+    "sharp": "^0.33.1",
+    "fluent-ffmpeg": "^2.1.2",
+    "pdf-lib": "^1.17.1",
+    "xlsx": "^0.18.5",
+    "multer": "^1.4.5-lts.1",
+    "crypto": "^1.0.1",
+    "node-cron": "^3.0.3",
+    "winston": "^3.11.0",
+    "joi": "^17.11.0",
+    "jsonwebtoken": "^9.0.2",
+    "@ton/ton": "^13.9.0",
+    "@ton/core": "^0.56.3",
+    "@ton/crypto": "^3.2.0",
+    "tonweb": "^0.0.66"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": ["**/tests/**/*.test.js"],
+    "collectCoverageFrom": [
+      "services/**/*.js",
+      "routes/**/*.js",
+      "middleware/**/*.js"
+    ],
+    "coverageThresholds": {
+      "global": { "branches": 60, "functions": 70, "lines": 70 }
+    },
+    "testTimeout": 15000
+  }
+}

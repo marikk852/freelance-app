@@ -1,0 +1,34 @@
+# Git и окружение
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+
+# Зависимости (пересобираем в образе)
+**/node_modules
+
+# Сборки (пересобираем)
+miniapp/dist
+contracts/build
+contracts/temp
+
+# Хранилище пользовательских данных
+storage/encrypted
+storage/previews
+storage/released
+
+# Логи и тесты
+coverage
+**/*.log
+backend/tests
+
+# IDE
+.vscode
+.idea
+.DS_Store
+
+# Документация и лишнее для рантайма
+agents
+*.md
+!README.md

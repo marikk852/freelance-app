@@ -1,0 +1,34 @@
+{
+  "name": "safedeal-miniapp",
+  "version": "1.0.0",
+  "description": "SafeDeal Telegram Mini App — React Frontend",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext ts,tsx"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.21.0",
+    "@twa-dev/sdk": "^7.10.0",
+    "axios": "^1.6.2",
+    "zustand": "^4.4.7",
+    "@tanstack/react-query": "^5.14.2",
+    "framer-motion": "^10.17.9",
+    "react-hot-toast": "^2.4.1",
+    "clsx": "^2.0.0",
+    "date-fns": "^3.0.6"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@vitejs/plugin-react": "^4.2.1",
+    "vite": "^5.0.8",
+    "typescript": "^5.3.2",
+    "eslint": "^8.55.0",
+    "@typescript-eslint/eslint-plugin": "^6.14.0",
+    "@typescript-eslint/parser": "^6.14.0"
+  }
+}
