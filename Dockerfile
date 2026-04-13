@@ -42,7 +42,7 @@ COPY --from=builder /app/miniapp/dist ./miniapp/dist
 
 RUN mkdir -p storage/encrypted storage/previews storage/released
 
-EXPOSE 3000
+EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
   CMD node -e "require('http').get('http://127.0.0.1:'+(process.env.PORT||3000)+'/health',(r)=>{let b='';r.on('data',d=>b+=d);r.on('end',()=>process.exit(r.statusCode===200?0:1));}).on('error',()=>process.exit(1))"
