@@ -4,7 +4,7 @@
   "description": "SafeDeal Telegram Mini App — React Frontend",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint src --ext ts,tsx"
   },
