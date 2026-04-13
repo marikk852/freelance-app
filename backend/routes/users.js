@@ -30,6 +30,12 @@ router.patch('/me/wallet', async (req, res) => {
     const { walletAddress } = req.body;
     if (!walletAddress) return res.status(400).json({ error: 'walletAddress обязателен' });
 
+    // Validate TON address format
+    const TON_ADDRESS_RE = /^(UQ|EQ)[A-Za-z0-9_-]{46}$/;
+    if (!TON_ADDRESS_RE.test(walletAddress)) {
+      return res.status(400).json({ error: 'Неверный формат TON адреса (ожидается UQ... или EQ...)' });
+    }
+
     const user = await User.setWallet(req.user.telegramId, walletAddress);
     res.json(user);
   } catch (err) {

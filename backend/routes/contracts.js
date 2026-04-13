@@ -10,6 +10,9 @@ const notificationService = require('../services/notificationService');
 // Routes: /api/contracts — управление сделками
 // ============================================================
 
+// TON address validation (UQ.../EQ... format)
+const TON_ADDRESS_RE = /^(UQ|EQ)[A-Za-z0-9_-]{46}$/;
+
 // Схема валидации нового контракта
 const createContractSchema = Joi.object({
   title      : Joi.string().min(3).max(256).required(),
@@ -31,9 +34,8 @@ router.post('/', async (req, res) => {
     const { error, value } = createContractSchema.validate(req.body);
     if (error) return res.status(400).json({ error: error.details[0].message });
 
-    const { telegramId } = req.user; // из auth middleware
+    const { telegramId } = req.user;
 
-    // Получить user.id по telegram_id
     const { rows: users } = await query(
       'SELECT id FROM users WHERE telegram_id = $1',
       [telegramId]
@@ -53,9 +55,8 @@ router.post('/', async (req, res) => {
     });
 
     // +50 XP за создание сделки
-    await query('SELECT add_xp($1, 50)', [users[0].id]);
+    await query('SELECT add_xp($1, 50)', [users[0].id]).catch(() => {});
 
-    // Логируем
     await AuditLog.log({
       contract_id : contract.id,
       action      : 'contract_created',
@@ -78,22 +79,34 @@ router.post('/', async (req, res) => {
 /**
  * GET /api/contracts/:id
  * Получить контракт с деталями.
+ * Только участники сделки могут просматривать.
  */
 router.get('/:id', async (req, res) => {
   try {
+    const { telegramId } = req.user;
     const { rows } = await query(
       `SELECT c.*,
               e.status AS escrow_status,
               e.tx_hash_in, e.frozen_at,
-              r.invite_link, r.status AS room_status
+              r.invite_link, r.status AS room_status,
+              uc.telegram_id AS client_tg_id,
+              uf.telegram_id AS freelancer_tg_id
        FROM contracts c
        LEFT JOIN escrow e ON e.contract_id = c.id
        JOIN rooms r ON r.id = c.room_id
+       JOIN users uc ON uc.id = r.client_id
+       LEFT JOIN users uf ON uf.id = r.freelancer_id
        WHERE c.id = $1`,
       [req.params.id]
     );
     if (!rows[0]) return res.status(404).json({ error: 'Контракт не найден' });
-    res.json(rows[0]);
+
+    const row = rows[0];
+    const isParticipant = [row.client_tg_id, row.freelancer_tg_id]
+      .map(Number).includes(Number(telegramId));
+    if (!isParticipant) return res.status(403).json({ error: 'Доступ запрещён' });
+
+    res.json(row);
   } catch (err) {
     console.error('[API] GET /contracts/:id error:', err.message);
     res.status(500).json({ error: 'Внутренняя ошибка сервера' });
@@ -140,6 +153,11 @@ router.post('/:id/deploy', async (req, res) => {
       return res.status(400).json({ error: 'Необходимы адреса TON кошельков' });
     }
 
+    // Validate TON address format
+    if (!TON_ADDRESS_RE.test(clientWallet) || !TON_ADDRESS_RE.test(freelancerWallet)) {
+      return res.status(400).json({ error: 'Неверный формат TON адреса' });
+    }
+
     const result = await escrowService.deployContract({
       contractId       : contract.id,
       clientAddress    : clientWallet,
@@ -159,30 +177,42 @@ router.post('/:id/deploy', async (req, res) => {
 /**
  * POST /api/contracts/:id/approve
  * Клиент принимает работу → триггерит release().
+ * SECURITY: только клиент контракта может вызвать approve.
  */
 router.post('/:id/approve', async (req, res) => {
   try {
     const { telegramId } = req.user;
+    const contractId = req.params.id;
 
-    const txHash = await escrowService.releaseEscrow(req.params.id, telegramId);
-
-    // Получить данные для уведомлений
-    const { rows } = await query(
-      `SELECT c.title, c.currency, c.crypto_amount,
+    // Verify caller is the contract's client
+    const { rows: contractRows } = await query(
+      `SELECT c.id, c.title, c.currency, c.crypto_amount,
+              uc.telegram_id AS client_tg_id,
               uf.telegram_id AS freelancer_tg_id
        FROM contracts c
        JOIN rooms r ON r.id = c.room_id
-       JOIN users uf ON uf.id = r.freelancer_id
+       JOIN users uc ON uc.id = r.client_id
+       LEFT JOIN users uf ON uf.id = r.freelancer_id
        WHERE c.id = $1`,
-      [req.params.id]
+      [contractId]
     );
 
-    if (rows[0]) {
+    if (!contractRows[0]) {
+      return res.status(404).json({ error: 'Контракт не найден' });
+    }
+
+    if (Number(contractRows[0].client_tg_id) !== Number(telegramId)) {
+      return res.status(403).json({ error: 'Только клиент может принять работу' });
+    }
+
+    const txHash = await escrowService.releaseEscrow(contractId, telegramId);
+
+    if (contractRows[0].freelancer_tg_id) {
       await notificationService.notifyWorkApproved({
-        freelancerTgId: rows[0].freelancer_tg_id,
-        contractTitle : rows[0].title,
-        amount        : rows[0].crypto_amount,
-        currency      : rows[0].currency,
+        freelancerTgId: contractRows[0].freelancer_tg_id,
+        contractTitle : contractRows[0].title,
+        amount        : contractRows[0].crypto_amount,
+        currency      : contractRows[0].currency,
       });
     }
 

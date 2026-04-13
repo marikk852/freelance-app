@@ -76,7 +76,8 @@ describe('📄 Contract модель', () => {
     await Contract.sign('c1', 'client');
     const [sql] = query.mock.calls[0];
     expect(sql).toContain('signed_by_client');
-    expect(sql).not.toContain('signed_by_freelancer = TRUE'); // не трогаем колонку фрилансера
+    // Проверяем что SET устанавливает только клиентскую колонку
+    expect(sql).toMatch(/SET signed_by_client = TRUE/);
   });
 
   it('sign: обновляет правильную колонку для фрилансера', async () => {

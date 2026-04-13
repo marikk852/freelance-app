@@ -81,7 +81,7 @@ export class EscrowContract implements Contract {
    * Деплоит контракт в блокчейн.
    * Вызывается бэкендом при создании новой сделки.
    */
-  async deploy(provider: ContractProvider, via: Sender, value: bigint): Promise<void> {
+  async sendDeploy(provider: ContractProvider, via: Sender, value: bigint): Promise<void> {
     await provider.internal(via, {
       value,
       sendMode: SendMode.PAY_GAS_SEPARATELY,
@@ -204,7 +204,7 @@ export class EscrowContract implements Contract {
   /**
    * Проверить, просрочен ли контракт.
    */
-  async isExpired(provider: ContractProvider): Promise<boolean> {
+  async getIsExpired(provider: ContractProvider): Promise<boolean> {
     const result = await provider.get('is_expired', []);
     return result.stack.readBoolean();
   }

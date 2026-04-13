@@ -511,6 +511,7 @@ async function cleanupFiles(fileIds) {
 }
 
 module.exports = {
+  createPreview,
   processFile,
   encryptFile,
   decryptFile,

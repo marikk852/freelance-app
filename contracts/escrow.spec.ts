@@ -1,5 +1,6 @@
-import { Blockchain, SandboxContract, TreasuryWallet } from '@ton/sandbox';
-import { Cell, toNano, Address } from '@ton/core';
+import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
+import '@ton/test-utils';
+import { Cell, toNano } from '@ton/core';
 import { compile } from '@ton/blueprint';
 import { EscrowContract, EscrowStatus, EscrowConfig } from './wrappers/EscrowContract';
 
@@ -16,10 +17,10 @@ describe('SafeDeal Escrow Contract', () => {
   });
 
   let blockchain  : Blockchain;
-  let client      : SandboxContract<TreasuryWallet>;
-  let freelancer  : SandboxContract<TreasuryWallet>;
-  let arbitrator  : SandboxContract<TreasuryWallet>;
-  let attacker    : SandboxContract<TreasuryWallet>;
+  let client      : SandboxContract<TreasuryContract>;
+  let freelancer  : SandboxContract<TreasuryContract>;
+  let arbitrator  : SandboxContract<TreasuryContract>;
+  let attacker    : SandboxContract<TreasuryContract>;
   let escrow      : SandboxContract<EscrowContract>;
 
   const DEAL_AMOUNT    = toNano('10');   // 10 TON
@@ -49,7 +50,7 @@ describe('SafeDeal Escrow Contract', () => {
     );
 
     // Деплоим контракт
-    const deployResult = await escrow.deploy(client.getSender(), toNano('0.05'));
+    const deployResult = await escrow.sendDeploy(client.getSender(), toNano('0.05'));
     expect(deployResult.transactions).toHaveTransaction({
       from   : client.address,
       to     : escrow.address,
@@ -106,7 +107,7 @@ describe('SafeDeal Escrow Contract', () => {
       blockchain.now = FUTURE_DEADLINE + 1;
 
       // Контракт должен считаться просроченным
-      expect(await escrow.isExpired()).toBe(true);
+      expect(await escrow.getIsExpired()).toBe(true);
 
       // Арбитр делает refund
       const clientBalanceBefore = await client.getBalance();

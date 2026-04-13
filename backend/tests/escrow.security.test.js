@@ -179,7 +179,7 @@ describe('💰 Лимит суммы сделки', () => {
         currency         : 'USDT',
         deadlineDate     : new Date(Date.now() + 86400000),
       });
-    } catch (e: any) {
+    } catch (e) {
       // Ожидаем ошибку НЕ про лимит — значит лимит прошёл
       expect(e.message).not.toContain('превышает лимит');
     }

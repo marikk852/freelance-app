@@ -20,9 +20,19 @@ const PORT = process.env.PORT || 3000;
 
 // ---------- Middleware безопасности ----------
 app.use(helmet());
+const allowedOrigins = process.env.WEBAPP_URL
+  ? [process.env.WEBAPP_URL]
+  : (process.env.NODE_ENV === 'production' ? [] : ['http://localhost:5173', 'http://localhost:3000']);
+
 app.use(cors({
-  origin: process.env.WEBAPP_URL || '*',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (bot, server-to-server)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error('Не разрешён политикой CORS'));
+  },
   methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+  credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
 
@@ -63,6 +73,7 @@ app.use('/api/deliveries', require('./routes/deliveries'));
 app.use('/api/disputes',   require('./routes/disputes'));
 app.use('/api/users',      require('./routes/users'));
 app.use('/api/jobs',       require('./routes/jobs'));
+app.use('/api/marketing',  require('./routes/marketing'));
 
 // ---------- Webhook для бота (production) ----------
 if (process.env.NODE_ENV === 'production') {
