@@ -19,7 +19,18 @@ const app  = express();
 const PORT = process.env.PORT || 3000;
 
 // ---------- Middleware безопасности ----------
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", 'https://telegram.org', 'https://*.telegram.org'],
+      styleSrc:  ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc:   ["'self'", 'https://fonts.gstatic.com'],
+      imgSrc:    ["'self'", 'data:', 'https:'],
+      connectSrc:["'self'", 'https:'],
+    },
+  },
+}));
 const allowedOrigins = process.env.WEBAPP_URL
   ? [process.env.WEBAPP_URL]
   : (process.env.NODE_ENV === 'production' ? [] : ['http://localhost:5173', 'http://localhost:3000']);
@@ -99,7 +110,9 @@ if (process.env.NODE_ENV === 'production' && fs.existsSync(miniappDist)) {
     ) {
       return next();
     }
-    res.sendFile(path.join(miniappDist, 'index.html'));
+    res.sendFile(path.join(miniappDist, 'index.html'), err => {
+      if (err) res.status(404).json({ error: 'Mini App not built' });
+    });
   });
 }
 
