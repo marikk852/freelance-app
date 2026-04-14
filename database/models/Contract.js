@@ -55,10 +55,10 @@ const Contract = {
       `UPDATE contracts
        SET ${column} = TRUE,
            status = CASE
-             WHEN signed_by_client = TRUE AND signed_by_freelancer = TRUE THEN 'signed'
-             WHEN $2 = 'client' AND signed_by_freelancer = TRUE THEN 'signed'
-             WHEN $2 = 'freelancer' AND signed_by_client = TRUE THEN 'signed'
-             ELSE 'pending_signature'
+             WHEN signed_by_client = TRUE AND signed_by_freelancer = TRUE THEN 'signed'::contract_status
+             WHEN $2 = 'client' AND signed_by_freelancer = TRUE THEN 'signed'::contract_status
+             WHEN $2 = 'freelancer' AND signed_by_client = TRUE THEN 'signed'::contract_status
+             ELSE 'pending_signature'::contract_status
            END,
            updated_at = NOW()
        WHERE id = $1 RETURNING *`,

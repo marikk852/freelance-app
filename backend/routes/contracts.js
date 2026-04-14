@@ -151,7 +151,7 @@ router.post('/:id/sign', async (req, res) => {
     res.json({ status: contract.status, contract });
   } catch (err) {
     console.error('[API] POST /contracts/:id/sign error:', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
   }
 });
 
