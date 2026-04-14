@@ -1,333 +1,252 @@
 import { useEffect, useRef } from 'react';
 
-// ============================================================
-// PixelScene — Canvas API пиксельные сцены для каждого экрана
-// ============================================================
+type SceneName = 'home'|'new_deal'|'deal_room'|'payment'|'review'|'dispute'|'live_deals'|'profile'|'job_board';
 
-interface PixelSceneProps {
-  scene: 'home' | 'new_deal' | 'deal_room' | 'payment' | 'review' | 'dispute' | 'live_deals' | 'profile' | 'job_board';
-  width?: number;
-  height?: number;
+const PS = 4;
+function px(ctx: CanvasRenderingContext2D, x: number, y: number, c: string) {
+  ctx.fillStyle = c; ctx.fillRect(x*PS, y*PS, PS, PS);
+}
+function row(ctx: CanvasRenderingContext2D, y: number, xs: number[], c: string) {
+  xs.forEach(x => px(ctx, x, y, c));
+}
+function rect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, c: string) {
+  ctx.fillStyle = c; ctx.fillRect(x*PS, y*PS, w*PS, h*PS);
 }
 
-export function PixelScene({ scene, width = 320, height = 120 }: PixelSceneProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const frameRef  = useRef(0);
+function drawHome(cv: HTMLCanvasElement) {
+  const ctx = cv.getContext('2d')!; ctx.clearRect(0,0,cv.width,cv.height);
+  [[2,0],[8,1],[18,0],[26,1],[34,0],[40,1],[50,0],[56,1],[60,0]].forEach(([x,y])=>px(ctx,x,y,'#ffffff33'));
+  rect(ctx,0,12,63,2,'#1a1a3a');
+  rect(ctx,2,6,12,6,'#2233aa');
+  row(ctx,6,[2,13],'#3344cc'); row(ctx,11,[2,3,4,5,6,7,8,9,10,11,12,13],'#3344cc');
+  [[7,2],[6,3],[5,4],[4,5],[3,5],[8,3],[9,4],[10,5],[11,5],[12,5],[13,5]].forEach(([x,y])=>px(ctx,x,y,'#cc4422'));
+  px(ctx,7,1,'#cc4422');
+  rect(ctx,6,9,3,3,'#884400'); px(ctx,8,10,'#ffaa00');
+  rect(ctx,3,7,2,2,'#aaddff'); rect(ctx,11,7,2,2,'#aaddff');
+  px(ctx,3,7,'#ffffff88'); px(ctx,11,7,'#ffffff88');
+  rect(ctx,10,3,2,3,'#884433'); px(ctx,10,2,'#aaaaaa88'); px(ctx,11,1,'#aaaaaa55');
+  rect(ctx,17,2,10,11,'#2a1a00'); rect(ctx,18,3,8,9,'#3a2800');
+  [4,6,8,10].forEach(y=>row(ctx,y,[19,20,21,22,23,24,25],'#ffaa0055'));
+  row(ctx,2,[17,18,19,20,21,22,23,24,25,26],'#8b5e2a');
+  row(ctx,12,[17,18,19,20,21,22,23,24,25,26],'#8b5e2a');
+  px(ctx,19,4,'#00ff88');
+  rect(ctx,29,3,10,11,'#1a2a1a'); rect(ctx,30,4,8,9,'#1e3a1e');
+  [5,7,9,11].forEach(y=>row(ctx,y,[31,32,33,34,35,36,37],'#00ff8844'));
+  row(ctx,3,[29,30,31,32,33,34,35,36,37,38],'#2a5a2a');
+  row(ctx,13,[29,30,31,32,33,34,35,36,37,38],'#2a5a2a');
+  px(ctx,31,5,'#00ff88'); px(ctx,31,7,'#00ff88');
+  row(ctx,8,[15,16,17],'#ffffff22'); row(ctx,8,[27,28,29],'#ffffff22');
+  ctx.fillStyle='rgba(255,255,255,0.15)'; ctx.font='4px monospace'; ctx.textAlign='center';
+  ctx.fillText('QUESTS',22*PS+2,14*PS+2);
+  ctx.fillText('ACHIEVEMENTS',33*PS+2,14*PS+2);
+}
+
+function drawDeal(cv: HTMLCanvasElement) {
+  const ctx = cv.getContext('2d')!; ctx.clearRect(0,0,cv.width,cv.height);
+  [[1,0],[12,1],[28,0],[40,1],[55,0],[60,1]].forEach(([x,y])=>px(ctx,x,y,'#ffffff33'));
+  rect(ctx,3,1,13,13,'#f5f0e8');
+  [3,5,7,9,11].forEach(y=>[4,5,6,7,8,9,10,11,12,13,14,15].forEach(x=>px(ctx,x,y,'#ccbbaa66')));
+  row(ctx,3,[4,5,6,7,8,9],'#4466ff88');
+  row(ctx,5,[4,5,6,7,8,9,10,11],'#4466ff66');
+  row(ctx,7,[4,5,6,7,8],'#4466ff55');
+  row(ctx,11,[4,5,6,7,8,9,10,11,12,13,14,15],'#33333344');
+  [4,5,6,7,8,9].forEach((x,i)=>px(ctx,x,12+((i%2)),'#ffaa00'));
+  const quill:Array<[number,number,string]>=[[20,2,'#ff8866'],[21,3,'#ff6644'],[22,4,'#ff4422'],[23,3,'#ff6644'],[24,2,'#ff8866'],[25,1,'#ffaaaa'],[22,5,'#aaaaaa'],[21,6,'#999999'],[20,7,'#777777'],[19,8,'#555555'],[18,9,'#333333']];
+  quill.forEach(([x,y,c])=>px(ctx,x,y,c));
+  px(ctx,17,10,'#4466ffaa'); px(ctx,16,10,'#4466ff55');
+  px(ctx,16,9,'#ffaa00'); px(ctx,15,8,'#ffaa0077'); px(ctx,17,8,'#ffaa0077');
+  rect(ctx,29,2,13,12,'#f5f0e8');
+  [4,6,8,10].forEach(y=>[30,31,32,33,34,35,36,37,38,39].forEach(x=>px(ctx,x,y,'#ccbbaa55')));
+  row(ctx,3,[30,31,32,33,34,35,36],'#0055ff77');
+  row(ctx,5,[30,31,32,33,34,35],'#0055ff66');
+  row(ctx,7,[30,31,32,33,34,35,36],'#0055ff55');
+  row(ctx,10,[30,31,32,33,34,35,36,37,38,39],'#33333344');
+  [30,31,32,33,34].forEach((x,i)=>px(ctx,x,11+((i%2)),'#ffaa0088'));
+  rect(ctx,43,3,8,9,'#1a3a1a'); rect(ctx,44,4,6,7,'#1e4a1e');
+  [5,7,9].forEach(y=>row(ctx,y,[45,46,47,48,49],'#00ff8844'));
+  row(ctx,3,[43,44,45,46,47,48,49,50,51],'#2a5a2a'); row(ctx,11,[43,44,45,46,47,48,49,50,51],'#2a5a2a');
+  px(ctx,45,5,'#00ff88'); px(ctx,45,7,'#00ff88');
+  ctx.fillStyle='rgba(255,255,255,0.15)'; ctx.font='4px monospace'; ctx.textAlign='center';
+  ctx.fillText('SIGN',47*PS+2,13*PS+2);
+}
+
+function drawRoom(cv: HTMLCanvasElement) {
+  const ctx = cv.getContext('2d')!; ctx.clearRect(0,0,cv.width,cv.height);
+  rect(ctx,0,12,63,2,'#1a1a2a');
+  for(let i=0;i<63;i+=2) px(ctx,i,12,i%4===0?'#2a2a3a':'#1a1a2a');
+  [[3,0],[14,1],[25,0],[38,1],[50,0],[60,1]].forEach(([x,y])=>px(ctx,x,y,'#ffffff44'));
+  const char=[[0,1,1,0],[1,2,2,1],[0,1,1,0],[0,1,1,0],[1,0,0,1]];
+  char.forEach((r,y)=>r.forEach((v,x)=>{if(v===1)px(ctx,1+x,7+y,'#2255cc');if(v===2)px(ctx,1+x,7+y,'#4488ff');}));
+  ctx.fillStyle='#4488ff88'; ctx.font='3px monospace'; ctx.textAlign='center'; ctx.fillText('CLIENT',3*PS+2,6*PS-2);
+  char.forEach((r,y)=>r.forEach((v,x)=>{if(v===1)px(ctx,57+x,7+y,'#229944');if(v===2)px(ctx,57+x,7+y,'#44cc66');}));
+  ctx.fillStyle='#44cc6688'; ctx.fillText('FL',59*PS+2,6*PS-2);
+  rect(ctx,26,4,11,8,'#004422'); rect(ctx,27,5,9,6,'#005533');
+  row(ctx,4,[26,27,28,29,30,31,32,33,34,35,36],'#00ff8866');
+  row(ctx,11,[26,27,28,29,30,31,32,33,34,35,36],'#00ff8866');
+  [26,36].forEach(x=>[4,5,6,7,8,9,10,11].forEach(y=>px(ctx,x,y,'#00ff8866')));
+  rect(ctx,29,7,4,2,'#ffaa00'); px(ctx,30,7,'#ffdd44'); px(ctx,31,7,'#ffdd44');
+  [[28,5],[34,5],[28,10],[34,10]].forEach(([x,y])=>px(ctx,x,y,'#00aa55'));
+  px(ctx,31,8,'#00ff88');
+  row(ctx,8,[8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25],'#ffaa0033');
+  row(ctx,8,[37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56],'#ffaa0033');
+  px(ctx,25,7,'#ffaa0055'); px(ctx,25,9,'#ffaa0055');
+  px(ctx,37,7,'#ffaa0055'); px(ctx,37,9,'#ffaa0055');
+  ctx.fillStyle='#00ff8866'; ctx.font='3px monospace'; ctx.textAlign='center';
+  ctx.fillText('LOCKED',31*PS+2,3*PS-1);
+}
+
+function drawPayment(cv: HTMLCanvasElement) {
+  const ctx = cv.getContext('2d')!; ctx.clearRect(0,0,cv.width,cv.height);
+  [[2,0],[12,1],[30,0],[45,1],[58,0]].forEach(([x,y])=>px(ctx,x,y,'#ffffff33'));
+  rect(ctx,44,3,15,10,'#004422'); rect(ctx,45,4,13,8,'#005533');
+  row(ctx,3,[44,45,46,47,48,49,50,51,52,53,54,55,56,57,58],'#00ff8855');
+  row(ctx,12,[44,45,46,47,48,49,50,51,52,53,54,55,56,57,58],'#00ff8855');
+  [44,58].forEach(x=>[3,4,5,6,7,8,9,10,11,12].forEach(y=>px(ctx,x,y,'#00ff8855')));
+  rect(ctx,49,7,4,2,'#ffaa00'); px(ctx,50,7,'#ffdd44');
+  [[46,4],[54,4],[46,10],[54,10]].forEach(([x,y])=>px(ctx,x,y,'#00aa55'));
+  rect(ctx,50,3,2,1,'#000000');
+  [[0,1,1,0],[1,2,2,1],[0,1,1,0]].forEach((r,y)=>r.forEach((v,x)=>{if(v===1)px(ctx,0+x,9+y,'#cc8800');if(v===2)px(ctx,0+x,9+y,'#ffaa00');}));
+  [[0,1,1,0],[1,2,2,1],[0,1,1,0]].forEach((r,y)=>r.forEach((v,x)=>{if(v===1)px(ctx,1+x,7+y,'#dd9900');if(v===2)px(ctx,1+x,7+y,'#ffbb00');}));
+  [[0,1,1,0],[1,2,2,1],[0,1,1,0]].forEach((r,y)=>r.forEach((v,x)=>{if(v===1)px(ctx,0+x,5+y,'#ee9900');if(v===2)px(ctx,0+x,5+y,'#ffcc00');}));
+  ([[8,7,'#ffaa00','ff'],[17,5,'#ffbb00','cc'],[27,3,'#ffcc00','99'],[37,2,'#ffdd44','77']] as Array<[number,number,string,string]>).forEach(([x,y,c,a])=>{
+    [[0,1,0],[1,2,1],[0,1,0]].forEach((r,ry)=>r.forEach((v,rx)=>{
+      if(v===1){ctx.fillStyle=c+a;ctx.fillRect((x+rx)*PS,y*PS,PS,PS);}
+      if(v===2){ctx.fillStyle='#ffee88'+a;ctx.fillRect((x+rx)*PS,y*PS,PS,PS);}
+    }));
+    for(let t=1;t<=2;t++){ctx.fillStyle=`rgba(255,170,0,${0.15/t})`;ctx.fillRect((x-t)*PS,y*PS,PS,PS);}
+  });
+  ctx.strokeStyle='rgba(255,170,0,0.2)'; ctx.lineWidth=2; ctx.setLineDash([3,3]);
+  ctx.beginPath(); ctx.moveTo(3*PS,8*PS); ctx.bezierCurveTo(10*PS,0,35*PS,0,51*PS,3*PS); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle='rgba(255,170,0,0.35)'; ctx.font='4px monospace'; ctx.textAlign='center';
+  ctx.fillText('SEND TO ESCROW',31*PS+2,14*PS+2);
+}
+
+function drawReview(cv: HTMLCanvasElement) {
+  const ctx = cv.getContext('2d')!; ctx.clearRect(0,0,cv.width,cv.height);
+  [[1,0],[15,1],[30,0],[45,1],[58,0]].forEach(([x,y])=>px(ctx,x,y,'#ffffff33'));
+  rect(ctx,1,1,16,12,'#f5f0e8');
+  [2,4,6,8,10].forEach(y=>[2,3,4,5,6,7,8,9,10,11,12,13,14,15].forEach(x=>px(ctx,x,y,'#ccbbaa55')));
+  ([[2,2,'#00ff88',true],[2,4,'#00ff88',true],[2,6,'#ff4466',false],[2,8,'#888',false],[2,10,'#888',false]] as Array<[number,number,string,boolean]>).forEach(([x,y,c,done])=>{
+    rect(ctx,x,y,1,1,done?c:'#ccbbaa88');
+    [x+2,x+3,x+4,x+5,x+6,x+7,x+8,x+9,x+10,x+11,x+12].forEach(lx=>px(ctx,lx,y,done?'#333333aa':'#ccbbaa55'));
+  });
+  [[0,1,1,0],[1,0,0,1],[1,0,0,1],[0,1,1,0]].forEach((r,y)=>r.forEach((v,x)=>{if(v)px(ctx,22+x,5+y,'#00ff8899');}));
+  rect(ctx,23,6,2,2,'#00ff8822'); px(ctx,23,6,'#aaffcc44');
+  px(ctx,25,9,'#00aa55'); px(ctx,26,10,'#009944'); px(ctx,27,11,'#008833'); px(ctx,28,12,'#007722');
+  const check=[[0,0,0,0,0,1],[0,0,0,0,1,1],[0,0,0,1,1,0],[1,0,0,1,0,0],[1,1,0,1,0,0],[0,1,1,0,0,0]];
+  check.forEach((r,y)=>r.forEach((v,x)=>{if(v){ctx.fillStyle='#00ff88';ctx.fillRect((38+x)*PS,(4+y)*PS,PS+1,PS+1);}}));
+  ctx.fillStyle='rgba(0,255,136,0.07)'; ctx.fillRect(37*PS,3*PS,8*PS,9*PS);
+  ctx.fillStyle='rgba(0,255,136,0.35)'; ctx.font='4px monospace'; ctx.textAlign='center';
+  ctx.fillText('VERIFY QUALITY',31*PS+2,14*PS+2);
+  const xmark=[[1,0,1],[0,1,0],[1,0,1]];
+  xmark.forEach((r,y)=>r.forEach((v,x)=>{if(v)px(ctx,50+x,5+y,'#ff4466aa');}));
+}
+
+function drawDispute(cv: HTMLCanvasElement) {
+  const ctx = cv.getContext('2d')!; ctx.clearRect(0,0,cv.width,cv.height);
+  [[2,0],[18,1],[35,0],[50,1],[60,0]].forEach(([x,y])=>px(ctx,x,y,'#ff446633'));
+  for(let y=1;y<=11;y++) row(ctx,y,[28,29],'#886644');
+  row(ctx,11,[26,27,28,29,30,31,32],'#886644');
+  row(ctx,1,[8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50],'#aa8855');
+  [8,7,6].forEach((x,i)=>px(ctx,x,4+i,'#886644'));
+  row(ctx,7,[6,7,8,9,10,11,12,13,14],'#4466cc'); row(ctx,8,[7,8,9,10,11,12,13],'#3355aa');
+  px(ctx,9,6,'#ffaa00'); px(ctx,10,6,'#ffcc44'); px(ctx,11,6,'#ffaa00');
+  [50,51,52].forEach((x,i)=>px(ctx,x,4+i,'#886644'));
+  row(ctx,7,[48,49,50,51,52,53,54,55,56],'#4466cc'); row(ctx,8,[49,50,51,52,53,54,55],'#3355aa');
+  px(ctx,51,6,'#ff4466'); px(ctx,52,6,'#ff6688'); px(ctx,53,6,'#ff4466');
+  px(ctx,28,3,'#ffaa00'); px(ctx,29,2,'#ffcc44'); px(ctx,30,3,'#ffaa00');
+  ctx.fillStyle='rgba(255,68,102,0.35)'; ctx.font='4px monospace'; ctx.textAlign='center';
+  ctx.fillText('ARBITER DECIDES',31*PS+2,14*PS+2);
+}
+
+function drawLive(cv: HTMLCanvasElement) {
+  const ctx = cv.getContext('2d')!; ctx.clearRect(0,0,cv.width,cv.height);
+  [[3,0],[18,1],[35,0],[50,1],[60,0]].forEach(([x,y])=>px(ctx,x,y,'#00ff8833'));
+  for(let y=2;y<=12;y++) px(ctx,31,y,'#886644');
+  row(ctx,2,[29,30,31,32,33],'#886644');
+  px(ctx,31,1,'#ffaa00');
+  [
+    [24,3,6,4,'#0088ff'],[35,3,6,4,'#00ff88'],[24,9,6,4,'#cc44ff'],[35,9,6,4,'#ffaa00']
+  ].forEach(([x,y,w,h,c])=>{
+    rect(ctx,x as number,y as number,w as number,h as number,'rgba(255,255,255,0.03)');
+    row(ctx,y as number,Array.from({length:w as number},(_, i)=>( x as number)+i),c as string+'66');
+    row(ctx,(y as number)+(h as number)-1,Array.from({length:w as number},(_, i)=>( x as number)+i),c as string+'66');
+  });
+  for(let i=0;i<4;i++){
+    const cardY=2+i*3;
+    ctx.fillStyle=`rgba(0,255,136,${0.6-i*0.12})`;
+    ctx.fillRect(17*PS,cardY*PS,5*PS,2*PS);
+  }
+  for(let r=1;r<=3;r++){
+    ctx.strokeStyle=`rgba(0,255,136,${0.15/r})`;
+    ctx.lineWidth=1; ctx.beginPath();
+    ctx.arc(31*PS+2,2*PS,r*10,0,Math.PI*2); ctx.stroke();
+  }
+  ctx.fillStyle='rgba(255,68,68,0.9)'; ctx.beginPath();
+  ctx.arc(31*PS+2,1*PS,PS/2,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(0,255,136,0.3)'; ctx.font='4px monospace'; ctx.textAlign='center';
+  ctx.fillText('LIVE FEED',31*PS+2,14*PS+2);
+}
+
+function drawProfile(cv: HTMLCanvasElement) {
+  const ctx = cv.getContext('2d')!; ctx.clearRect(0,0,cv.width,cv.height);
+  rect(ctx,26,1,11,11,'#1a2a3a');
+  [[27,2],[28,2],[29,2],[30,2],[31,2],[32,2],[33,2],[34,2],[35,2],[36,2]].forEach(([x,y])=>px(ctx,x,y,'#2244aa'));
+  rect(ctx,28,3,7,6,'#4488ff');
+  rect(ctx,29,4,5,3,'#ffcc88');
+  px(ctx,29,5,'#cc8844'); px(ctx,33,5,'#cc8844');
+  rect(ctx,29,7,5,2,'#ffcc88');
+  row(ctx,9,[27,28,29,30,31,32,33,34,35,36],'#2266cc');
+  for(let i=0;i<3;i++){
+    const tx=4+i*18;
+    rect(ctx,tx,3,14,10,'rgba(255,255,255,0.03)');
+    row(ctx,3,Array.from({length:14},(_,j)=>tx+j),'rgba(255,170,0,0.3)');
+    ctx.fillStyle='#ffaa00'; ctx.font='6px monospace'; ctx.textAlign='center';
+    ctx.fillText(['🏆','⭐','🔥'][i],(tx+7)*PS,10*PS);
+  }
+  ctx.fillStyle='rgba(255,255,255,0.15)'; ctx.font='4px monospace'; ctx.textAlign='center';
+  ctx.fillText('PROFILE',31*PS+2,14*PS+2);
+}
+
+function drawJobBoard(cv: HTMLCanvasElement) {
+  const ctx = cv.getContext('2d')!; ctx.clearRect(0,0,cv.width,cv.height);
+  rect(ctx,2,1,40,12,'#1a1a1a');
+  row(ctx,1,Array.from({length:40},(_,i)=>2+i),'#333');
+  row(ctx,12,Array.from({length:40},(_,i)=>2+i),'#333');
+  [2,41].forEach(x=>[1,2,3,4,5,6,7,8,9,10,11,12].forEach(y=>px(ctx,x,y,'#333')));
+  [5,7,9,11].forEach(y=>row(ctx,y,[4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19],'rgba(255,255,255,0.06)'));
+  row(ctx,3,[4,5,6,7,8,9,10,11,12],'#0088ff55');
+  row(ctx,5,[4,5,6,7,8,9,10,11,12,13,14],'#ffffff22');
+  row(ctx,7,[4,5,6,7,8,9,10],'#ffffff22');
+  px(ctx,39,3,'#00ff88'); px(ctx,39,5,'#ffaa00'); px(ctx,39,7,'#ff4466');
+  rect(ctx,45,3,14,10,'#111');
+  row(ctx,3,Array.from({length:14},(_,i)=>45+i),'#222');
+  [[46,5,'#0088ff'],[46,7,'#00ff88'],[46,9,'#ffaa00']].forEach(([x,y,c])=>{
+    row(ctx,y as number,[x as number,(x as number)+1,(x as number)+2],(c as string)+'88');
+    row(ctx,y as number,Array.from({length:9},(_,i)=>(x as number)+4+i),'rgba(255,255,255,0.15)');
+  });
+  ctx.fillStyle='rgba(255,255,255,0.15)'; ctx.font='4px monospace'; ctx.textAlign='center';
+  ctx.fillText('JOB BOARD',31*PS+2,14*PS+2);
+}
+
+const drawFns: Record<SceneName, (cv: HTMLCanvasElement) => void> = {
+  home      : drawHome,
+  new_deal  : drawDeal,
+  deal_room : drawRoom,
+  payment   : drawPayment,
+  review    : drawReview,
+  dispute   : drawDispute,
+  live_deals: drawLive,
+  profile   : drawProfile,
+  job_board : drawJobBoard,
+};
+
+export function PixelScene({ scene, width = 252, height = 56 }: { scene: SceneName; width?: number; height?: number }) {
+  const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d')!;
-    let raf: number;
-    let tick = 0;
+    if (ref.current) drawFns[scene]?.(ref.current);
+  }, [scene]);
 
-    const draw = () => {
-      ctx.clearRect(0, 0, width, height);
-      tick++;
-
-      switch (scene) {
-        case 'home':      drawHome(ctx, width, height, tick); break;
-        case 'new_deal':  drawNewDeal(ctx, width, height, tick); break;
-        case 'deal_room': drawDealRoom(ctx, width, height, tick); break;
-        case 'payment':   drawPayment(ctx, width, height, tick); break;
-        case 'review':    drawReview(ctx, width, height, tick); break;
-        case 'dispute':   drawDispute(ctx, width, height, tick); break;
-        case 'live_deals':drawLiveDeals(ctx, width, height, tick); break;
-        case 'profile':   drawProfile(ctx, width, height, tick); break;
-        case 'job_board': drawJobBoard(ctx, width, height, tick); break;
-      }
-
-      raf = requestAnimationFrame(draw);
-    };
-
-    raf = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(raf);
-  }, [scene, width, height]);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      width={width}
-      height={height}
-      style={{ display: 'block', margin: '0 auto', imageRendering: 'pixelated' }}
-    />
-  );
-}
-
-// ---- Вспомогательные функции рисования ----
-
-function px(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string) {
-  ctx.fillStyle = color;
-  ctx.fillRect(x, y, size, size);
-}
-
-function text(ctx: CanvasRenderingContext2D, str: string, x: number, y: number, color: string, size = 8) {
-  ctx.fillStyle = color;
-  ctx.font      = `${size}px "Press Start 2P", monospace`;
-  ctx.fillText(str, x, y);
-}
-
-// HOME: дом + свиток квестов
-function drawHome(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
-  // Дом (пиксельный)
-  const hx = w / 2 - 30;
-  ctx.fillStyle = '#00FF88';
-  // Крыша
-  for (let i = 0; i < 5; i++) {
-    ctx.fillRect(hx + 20 - i * 4, 20 + i * 4, (i + 1) * 8, 4);
-  }
-  // Стены
-  ctx.fillStyle = 'rgba(0,255,136,0.3)';
-  ctx.fillRect(hx + 8, 40, 44, 32);
-  // Дверь
-  ctx.fillStyle = '#FFAA00';
-  ctx.fillRect(hx + 24, 55, 12, 17);
-  // Окна
-  ctx.fillStyle = '#0088FF';
-  ctx.fillRect(hx + 12, 45, 8, 8);
-  ctx.fillRect(hx + 40, 45, 8, 8);
-
-  // Свиток квестов (пульсирует)
-  const sx = hx + 80;
-  const sy = 28 + Math.sin(t * 0.05) * 4;
-  ctx.fillStyle = '#FFAA00';
-  ctx.fillRect(sx, sy, 28, 36);
-  ctx.fillStyle = '#000';
-  for (let i = 0; i < 4; i++) ctx.fillRect(sx + 4, sy + 8 + i * 6, 20, 2);
-  // Звёздочки вокруг
-  if (t % 30 < 15) {
-    ctx.fillStyle = '#FFAA00';
-    [[sx - 8, sy - 4], [sx + 32, sy + 8], [sx + 28, sy + 36]].forEach(([x, y]) => {
-      ctx.fillRect(x, y, 4, 4);
-    });
-  }
-}
-
-// NEW DEAL: перо пишет контракт
-function drawNewDeal(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
-  const cx = w / 2;
-  // Лист бумаги
-  ctx.fillStyle = 'rgba(255,255,255,0.08)';
-  ctx.fillRect(cx - 50, 10, 100, 80);
-  ctx.strokeStyle = '#FFAA00';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(cx - 50, 10, 100, 80);
-  // Строчки текста (рисуются постепенно)
-  const lines = Math.min(6, Math.floor(t / 10));
-  ctx.fillStyle = '#00FF88';
-  for (let i = 0; i < lines; i++) ctx.fillRect(cx - 38, 22 + i * 10, 76 - (i === lines - 1 ? 76 - (t % 10) * 8 : 0), 2);
-  // Перо (движется)
-  const penX = cx - 38 + (t % 10) * 8;
-  const penY = 22 + (lines - 1) * 10 - 12;
-  ctx.fillStyle = '#FFAA00';
-  ctx.fillRect(penX, penY, 4, 16);
-  ctx.fillRect(penX - 2, penY + 12, 8, 4);
-}
-
-// DEAL ROOM: два персонажа + сейф
-function drawDealRoom(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
-  const float = Math.sin(t * 0.06) * 3;
-  // Клиент (синий)
-  drawPixelPerson(ctx, w / 2 - 70, 20 + float, '#0088FF');
-  // Фрилансер (зелёный)
-  drawPixelPerson(ctx, w / 2 + 30, 20 - float, '#00FF88');
-  // Сейф посередине
-  const sx = w / 2 - 18;
-  ctx.fillStyle = '#FFAA00';
-  ctx.fillRect(sx, 30, 36, 50);
-  ctx.fillStyle = '#000';
-  ctx.fillRect(sx + 4, 34, 28, 36);
-  // Замок пульсирует
-  ctx.fillStyle = t % 40 < 20 ? '#00FF88' : '#FFAA00';
-  ctx.beginPath();
-  ctx.arc(sx + 18, 56, 6, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#000';
-  ctx.fillRect(sx + 15, 56, 6, 8);
-}
-
-function drawPixelPerson(ctx: CanvasRenderingContext2D, x: number, y: number, color: string) {
-  ctx.fillStyle = color;
-  ctx.fillRect(x + 6, y, 12, 12);      // голова
-  ctx.fillRect(x + 2, y + 14, 20, 18); // тело
-  ctx.fillRect(x - 2, y + 14, 8, 14);  // рука лев
-  ctx.fillRect(x + 18, y + 14, 8, 14); // рука прав
-  ctx.fillRect(x + 2, y + 34, 8, 12);  // нога лев
-  ctx.fillRect(x + 14, y + 34, 8, 12); // нога прав
-}
-
-// PAYMENT: монеты летят по дуге в сейф
-function drawPayment(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
-  // Сейф справа
-  ctx.fillStyle = '#FFAA00';
-  ctx.fillRect(w - 70, 20, 50, 70);
-  ctx.fillStyle = '#000';
-  ctx.fillRect(w - 64, 26, 38, 48);
-  ctx.fillStyle = '#00FF88';
-  ctx.beginPath(); ctx.arc(w - 45, 50, 8, 0, Math.PI * 2); ctx.fill();
-
-  // Летящие монеты
-  for (let i = 0; i < 5; i++) {
-    const progress = ((t + i * 15) % 80) / 80;
-    const cx = 40 + (w - 110) * progress;
-    const cy = h / 2 - Math.sin(progress * Math.PI) * 40;
-    const scale = 1 - progress * 0.4;
-    ctx.fillStyle = '#FFAA00';
-    ctx.beginPath();
-    ctx.arc(cx, cy, 7 * scale, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#000';
-    ctx.font = `${Math.floor(7 * scale)}px monospace`;
-    ctx.fillText('$', cx - 3 * scale, cy + 3 * scale);
-  }
-
-  // Кошелёк слева
-  ctx.fillStyle = '#0088FF';
-  ctx.fillRect(20, h / 2 - 20, 40, 30);
-  ctx.fillStyle = '#fff';
-  text(ctx, 'PAY', 24, h / 2 - 2, '#fff', 7);
-}
-
-// REVIEW: лупа + чеклист + галочка
-function drawReview(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
-  const cx = w / 2;
-  // Чеклист
-  for (let i = 0; i < 4; i++) {
-    const checked = i < 3;
-    ctx.fillStyle = checked ? '#00FF88' : 'rgba(255,255,255,0.2)';
-    ctx.fillRect(cx - 50, 20 + i * 18, 12, 12);
-    if (checked) {
-      ctx.fillStyle = '#000';
-      ctx.fillRect(cx - 48, 24 + i * 18, 8, 4);
-    }
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    ctx.fillRect(cx - 32, 24 + i * 18, 60, 4);
-  }
-  // Большая галочка (появляется)
-  if (t > 40) {
-    const alpha = Math.min(1, (t - 40) / 20);
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = '#00FF88';
-    ctx.fillRect(cx + 30, 30, 8, 40);
-    ctx.fillRect(cx + 14, 50, 16, 8);
-    ctx.globalAlpha = 1;
-  }
-  // Лупа
-  const lx = cx - 60, ly = 10 + Math.sin(t * 0.04) * 5;
-  ctx.strokeStyle = '#FFAA00'; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.arc(lx + 14, ly + 14, 12, 0, Math.PI * 2); ctx.stroke();
-  ctx.strokeStyle = '#FFAA00'; ctx.lineWidth = 4;
-  ctx.beginPath(); ctx.moveTo(lx + 22, ly + 22); ctx.lineTo(lx + 32, ly + 32); ctx.stroke();
-}
-
-// DISPUTE: весы + молоток
-function drawDispute(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
-  const cx = w / 2;
-  const lean = Math.sin(t * 0.03) * 8;
-  // Стойка весов
-  ctx.fillStyle = '#CC44FF';
-  ctx.fillRect(cx - 2, 20, 4, 60);
-  ctx.fillRect(cx - 30, 20, 60, 4);
-  // Чаши
-  ctx.fillStyle = 'rgba(204,68,255,0.4)';
-  ctx.fillRect(cx - 38, 28 + lean, 24, 12);
-  ctx.fillRect(cx + 14, 28 - lean, 24, 12);
-  // Нити
-  ctx.strokeStyle = '#CC44FF'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(cx - 26, 24); ctx.lineTo(cx - 26, 28 + lean); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(cx + 26, 24); ctx.lineTo(cx + 26, 28 - lean); ctx.stroke();
-  // Молоток (бьёт)
-  const hammerY = 65 + Math.abs(Math.sin(t * 0.08)) * (-15);
-  ctx.fillStyle = '#FF4466';
-  ctx.fillRect(cx + 50, hammerY, 20, 12);
-  ctx.fillRect(cx + 57, hammerY + 12, 6, 20);
-}
-
-// LIVE DEALS: антенна + волны + карточки
-function drawLiveDeals(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
-  const cx = w / 2;
-  // Антенна
-  ctx.fillStyle = '#00FF88';
-  ctx.fillRect(cx - 2, 10, 4, 50);
-  ctx.fillRect(cx - 20, 10, 40, 4);
-  // Волны
-  for (let i = 1; i <= 3; i++) {
-    const r = 20 + i * 16;
-    const alpha = Math.max(0, Math.sin((t * 0.05) - i * 0.8));
-    ctx.strokeStyle = `rgba(0,255,136,${alpha * 0.6})`;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(cx, 12, r, Math.PI, Math.PI * 2);
-    ctx.stroke();
-  }
-  // Карточки летят вверх
-  for (let i = 0; i < 3; i++) {
-    const cardY = h - ((t * 1.2 + i * 35) % (h + 20));
-    ctx.fillStyle = `rgba(0,136,255,${0.3 + i * 0.15})`;
-    ctx.fillRect(cx - 55 + i * 38, cardY, 34, 22);
-    ctx.fillStyle = '#00FF88';
-    ctx.fillRect(cx - 49 + i * 38, cardY + 4, 22, 2);
-    ctx.fillRect(cx - 49 + i * 38, cardY + 10, 16, 2);
-  }
-}
-
-// PROFILE: персонаж + трофеи + звёзды
-function drawProfile(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
-  const cx = w / 2;
-  // Персонаж (пиксельный рыцарь)
-  const float = Math.sin(t * 0.05) * 3;
-  ctx.fillStyle = '#00FF88';
-  ctx.fillRect(cx - 12, 8 + float, 24, 20); // голова
-  ctx.fillStyle = '#FFAA00';
-  ctx.fillRect(cx - 10, 10 + float, 20, 6); // шлем
-  ctx.fillStyle = '#00FF88';
-  ctx.fillRect(cx - 16, 30 + float, 32, 28); // тело (броня)
-  ctx.fillStyle = '#FFAA00';
-  ctx.fillRect(cx - 16, 30 + float, 6, 20);  // щит
-  ctx.fillRect(cx + 10, 30 + float, 6, 28);  // меч
-  // Трофеи
-  [['#FFAA00', cx - 60, 25], ['#CCCCCC', cx - 60, 55], ['#FF8800', cx - 60, 75]] .forEach(([c, x, y]) => {
-    ctx.fillStyle = c as string;
-    ctx.fillRect(x as number, y as number, 14, 16);
-    ctx.fillRect((x as number) + 3, (y as number) + 16, 8, 4);
-    ctx.fillRect((x as number) - 2, (y as number) + 20, 18, 4);
-  });
-  // Звёзды рейтинга
-  for (let i = 0; i < 5; i++) {
-    const lit = i < 4;
-    ctx.fillStyle = lit ? '#FFAA00' : 'rgba(255,255,255,0.2)';
-    const sx = cx + 22 + i * 12, sy = 30;
-    ctx.fillRect(sx + 2, sy, 6, 6);
-    ctx.fillRect(sx, sy + 4, 10, 4);
-    ctx.fillRect(sx + 2, sy + 8, 6, 6);
-  }
-}
-
-// JOB BOARD: доска объявлений + лупа + карточки
-function drawJobBoard(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
-  const cx = w / 2;
-  // Доска
-  ctx.fillStyle = '#1a0a00';
-  ctx.fillRect(cx - 70, 5, 140, 85);
-  ctx.strokeStyle = '#FF8800'; ctx.lineWidth = 2;
-  ctx.strokeRect(cx - 70, 5, 140, 85);
-  // Заголовок
-  ctx.fillStyle = '#FF8800';
-  ctx.fillRect(cx - 70, 5, 140, 16);
-  text(ctx, 'JOB BOARD', cx - 42, 17, '#000', 7);
-  // Карточки заказов
-  for (let i = 0; i < 3; i++) {
-    const slideX = ((t * 0.5 + i * 50) % 160) - 20;
-    ctx.fillStyle = `rgba(255,136,0,${0.15 + i * 0.05})`;
-    ctx.fillRect(cx - 62 + slideX, 28 + i * 18, 55, 14);
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.fillRect(cx - 56 + slideX, 32 + i * 18, 30, 3);
-    ctx.fillRect(cx - 56 + slideX, 37 + i * 18, 20, 2);
-  }
-  // Лупа
-  const mx = cx + 50 + Math.sin(t * 0.04) * 8;
-  const my = 65;
-  ctx.strokeStyle = '#FFAA00'; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.arc(mx, my, 10, 0, Math.PI * 2); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(mx + 7, my + 7); ctx.lineTo(mx + 16, my + 16); ctx.stroke();
+  return <canvas ref={ref} width={width} height={height} style={{ display:'block', margin:'0 auto 8px', imageRendering:'pixelated' }} />;
 }

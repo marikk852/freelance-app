@@ -1,215 +1,276 @@
-/* ============================================================
-   SafeDeal Design System — Pixel Art + Liquid Glass
-   Фон: #000000 | Шрифт: Press Start 2P
-   ============================================================ */
-
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
-:root {
-  --green:   #00FF88;
-  --gold:    #FFAA00;
-  --blue:    #0088FF;
-  --purple:  #CC44FF;
-  --red:     #FF4466;
-  --orange:  #FF8800;
-  --bg:      #000000;
-  --glass-bg:     rgba(255,255,255,0.045);
-  --glass-border: rgba(255,255,255,0.13);
-  --text:    #FFFFFF;
-  --text-dim: rgba(255,255,255,0.55);
-  --radius-lg: 20px;
-  --radius-md: 14px;
-  --radius-pill: 100px;
+*{box-sizing:border-box;margin:0;padding:0;}
+
+html,body,#root{
+  width:100%;min-height:100vh;
+  background:#000;
+  font-family:'Press Start 2P',monospace;
+  color:#fff;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
 }
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ---- ANIMATIONS ---- */
+@keyframes shimmer{0%{transform:translateX(-150%)}100%{transform:translateX(250%)}}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes glow-g{0%,100%{text-shadow:0 0 8px #00ff88}50%{text-shadow:0 0 20px #00ff88,0 0 40px #00ff88}}
+@keyframes xpfill{from{width:0}to{width:var(--xp)}}
+@keyframes coin{0%,100%{transform:scaleX(1)}45%{transform:scaleX(0.08)}}
+@keyframes star-t{0%,100%{opacity:1}50%{opacity:0.1}}
+@keyframes slide-up{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes border-glow{0%,100%{border-color:rgba(0,255,136,0.2)}50%{border-color:rgba(0,255,136,0.5)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
 
-html, body, #root {
-  width: 100%; min-height: 100vh;
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Press Start 2P', monospace;
-  font-size: 10px;
-  line-height: 1.8;
-  -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
+/* ---- GLASS ---- */
+.gl{
+  background:rgba(255,255,255,0.045);
+  border:1px solid rgba(255,255,255,0.13);
+  border-radius:20px;
+  position:relative;overflow:hidden;
+  margin-bottom:6px;
+}
+.gl::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:45%;
+  background:linear-gradient(180deg,rgba(255,255,255,0.09),transparent);
+  border-radius:20px 20px 0 0;pointer-events:none;z-index:1;
+}
+.gl-sm{
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:14px;
+  position:relative;overflow:hidden;
+  margin-bottom:6px;
+}
+.gl-sm::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:40%;
+  background:linear-gradient(180deg,rgba(255,255,255,0.07),transparent);
+  border-radius:14px 14px 0 0;pointer-events:none;z-index:1;
+}
+.gl-pill{
+  background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.15);
+  border-radius:100px;
+  position:relative;overflow:hidden;
 }
 
-/* Pixel grid overlay на весь экран */
-body::before {
-  content: '';
-  position: fixed; inset: 0;
+/* Pixel grid overlay — div inside card */
+.pxgrid{
+  position:absolute;top:0;left:0;right:0;bottom:0;
   background-image:
-    linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
-  background-size: 5px 5px;
-  pointer-events: none;
-  z-index: 0;
+    linear-gradient(rgba(255,255,255,0.018) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,0.018) 1px,transparent 1px);
+  background-size:5px 5px;
+  pointer-events:none;z-index:0;border-radius:inherit;
 }
 
-/* ---- Glass Card ---- */
-.glass {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  position: relative;
-  overflow: hidden;
+/* Shimmer div inside card */
+.sh{
+  position:absolute;top:0;left:0;width:40%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.06),transparent);
+  animation:shimmer 4s ease-in-out infinite;
+  z-index:2;pointer-events:none;
 }
 
-/* Shimmer animation */
-.glass::after {
-  content: '';
-  position: absolute;
-  top: -100%; left: -60%;
-  width: 40%; height: 300%;
-  background: linear-gradient(
-    105deg,
-    transparent 40%,
-    rgba(255,255,255,0.06) 50%,
-    transparent 60%
-  );
-  animation: shimmer 4s infinite;
-  pointer-events: none;
+/* ---- PAGE ---- */
+.page{
+  position:relative;z-index:1;
+  min-height:100vh;
+  padding:10px 10px 80px;
+  max-width:390px;
+  margin:0 auto;
+  animation:slide-up 0.4s ease-out;
 }
 
-@keyframes shimmer {
-  0%   { transform: translateX(-100%) rotate(15deg); }
-  100% { transform: translateX(400%) rotate(15deg); }
+/* ---- HUD ---- */
+.hud{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 10px;margin-bottom:7px;
+}
+.logo{font-size:8px;color:#00ff88;animation:glow-g 2s infinite;}
+.lvl{font-size:6px;color:#ffaa00;padding:3px 8px;}
+.coins{font-size:6px;color:#ffaa00;display:flex;align-items:center;gap:3px;}
+.pcoin{
+  display:inline-block;width:8px;height:8px;border-radius:50%;border:1px solid;
+  animation:coin 1.5s linear infinite;vertical-align:middle;margin-right:2px;
 }
 
-/* ---- Buttons ---- */
-.btn {
-  font-family: 'Press Start 2P', monospace;
-  font-size: 9px;
-  border: none;
-  border-radius: var(--radius-pill);
-  padding: 12px 20px;
-  cursor: pointer;
-  transition: transform 0.1s, box-shadow 0.1s;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
+/* ---- XP BAR ---- */
+.xp-w{padding:8px 10px;margin-bottom:7px;}
+.xp-top{display:flex;justify-content:space-between;margin-bottom:3px;}
+.xp-lbl{font-size:5px;color:rgba(255,255,255,0.25);}
+.xp-track{
+  height:8px;border-radius:100px;
+  background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.08);
+  overflow:hidden;position:relative;
 }
-.btn:active { transform: scale(0.96); }
-
-.btn-green  { background: var(--green);  color: #000; box-shadow: 0 0 16px rgba(0,255,136,0.4); }
-.btn-gold   { background: var(--gold);   color: #000; box-shadow: 0 0 16px rgba(255,170,0,0.4); }
-.btn-blue   { background: var(--blue);   color: #fff; box-shadow: 0 0 16px rgba(0,136,255,0.4); }
-.btn-red    { background: var(--red);    color: #fff; box-shadow: 0 0 16px rgba(255,68,102,0.4); }
-.btn-purple { background: var(--purple); color: #fff; box-shadow: 0 0 16px rgba(204,68,255,0.4); }
-.btn-ghost  {
-  background: transparent;
-  color: var(--text-dim);
-  border: 1px solid var(--glass-border);
+.xp-fill{
+  height:100%;border-radius:100px;
+  animation:xpfill 1.5s ease-out forwards;
 }
-.btn-full { width: 100%; }
-
-/* ---- Tags / Pills ---- */
-.pill {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: var(--radius-pill);
-  font-size: 7px;
-  font-family: 'Press Start 2P', monospace;
-}
-.pill-green  { background: rgba(0,255,136,0.15);  color: var(--green);  border: 1px solid rgba(0,255,136,0.3); }
-.pill-gold   { background: rgba(255,170,0,0.15);  color: var(--gold);   border: 1px solid rgba(255,170,0,0.3); }
-.pill-blue   { background: rgba(0,136,255,0.15);  color: var(--blue);   border: 1px solid rgba(0,136,255,0.3); }
-.pill-purple { background: rgba(204,68,255,0.15); color: var(--purple); border: 1px solid rgba(204,68,255,0.3); }
-.pill-red    { background: rgba(255,68,102,0.15); color: var(--red);    border: 1px solid rgba(255,68,102,0.3); }
-.pill-orange { background: rgba(255,136,0,0.15);  color: var(--orange); border: 1px solid rgba(255,136,0,0.3); }
-
-/* ---- Progress Bar ---- */
-.progress-bar {
-  height: 6px;
-  background: rgba(255,255,255,0.1);
-  border-radius: 3px;
-  overflow: hidden;
-}
-.progress-fill {
-  height: 100%;
-  border-radius: 3px;
-  background: linear-gradient(90deg, var(--green), var(--gold));
-  transition: width 0.4s ease;
+.xp-shine{
+  position:absolute;top:0;left:0;right:0;height:50%;
+  background:rgba(255,255,255,0.18);border-radius:100px;
 }
 
-/* ---- Scrollbar ---- */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 2px; }
+/* ---- STATS ---- */
+.stats{display:flex;gap:5px;margin-bottom:8px;}
+.stat{flex:1;padding:7px 3px;text-align:center;position:relative;}
+.stat-n{font-size:13px;display:block;margin-bottom:3px;}
+.stat-l{font-size:4px;color:rgba(255,255,255,0.25);}
 
-/* ---- Page wrapper ---- */
-.page {
-  position: relative;
-  z-index: 1;
-  min-height: 100vh;
-  padding: 16px 12px 80px;
-  max-width: 480px;
-  margin: 0 auto;
+/* ---- DEAL CARD ---- */
+.dc{padding:8px 10px;margin-bottom:6px;position:relative;}
+.dc-top{display:flex;justify-content:space-between;margin-bottom:3px;position:relative;z-index:2;}
+.dc-title{font-size:7px;color:#fff;}
+.dc-amt{font-size:6px;}
+.dc-desc{font-size:5px;color:rgba(255,255,255,0.22);margin-bottom:5px;line-height:2;position:relative;z-index:2;}
+.badge{display:inline-block;font-size:5px;padding:2px 7px;border-radius:100px;margin-bottom:4px;position:relative;z-index:2;}
+.hp-t{height:4px;border-radius:100px;background:rgba(255,255,255,0.05);overflow:hidden;position:relative;z-index:2;}
+.hp-b{height:100%;border-radius:100px;animation:xpfill 1.2s ease-out forwards;}
+
+/* ---- SECTION LABEL ---- */
+.sec{font-size:5px;color:rgba(255,255,255,0.18);letter-spacing:2px;margin:8px 0 5px;padding:0 1px;}
+
+/* ---- DIVIDER ---- */
+.div{height:1px;background:rgba(255,255,255,0.06);margin:7px 0;position:relative;}
+.div::after{
+  content:'';position:absolute;top:-1px;left:0;right:0;height:3px;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,0.07) 0,rgba(255,255,255,0.07) 3px,transparent 3px,transparent 8px);
 }
 
-/* ---- Bottom Nav ---- */
-.bottom-nav {
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-  z-index: 100;
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  padding: 10px 4px;
-  background: rgba(0,0,0,0.85);
-  border-top: 1px solid var(--glass-border);
-  backdrop-filter: blur(16px);
+/* ---- BUTTONS ---- */
+.btn{
+  width:100%;font-size:7px;padding:10px;border:none;cursor:pointer;
+  margin-bottom:5px;border-radius:16px;position:relative;overflow:hidden;
+  font-family:'Press Start 2P',monospace;transition:transform 0.1s;
 }
-.nav-item {
-  display: flex; flex-direction: column; align-items: center;
-  gap: 4px; cursor: pointer; opacity: 0.45;
-  transition: opacity 0.15s;
-  font-size: 7px; color: var(--text);
-  text-decoration: none;
-  padding: 4px 8px;
+.btn::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:50%;
+  background:rgba(255,255,255,0.13);border-radius:16px 16px 0 0;pointer-events:none;
 }
-.nav-item.active { opacity: 1; color: var(--green); }
-.nav-item svg { width: 20px; height: 20px; }
+.btn:active{transform:scale(0.97);}
+.btn-g{background:linear-gradient(175deg,#00dd66,#009944);color:#000;}
+.btn-b{background:linear-gradient(175deg,#2266ff,#0033cc);color:#fff;}
+.btn-r{background:linear-gradient(175deg,#cc2244,#880022);color:#ffaaaa;}
+.btn-y{background:linear-gradient(175deg,#ffbb00,#dd8800);color:#000;}
+.btn-gr{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);color:rgba(255,255,255,0.35);}
 
-/* ---- Glow text ---- */
-.glow-green  { text-shadow: 0 0 12px rgba(0,255,136,0.7); color: var(--green); }
-.glow-gold   { text-shadow: 0 0 12px rgba(255,170,0,0.7); color: var(--gold); }
-.glow-blue   { text-shadow: 0 0 12px rgba(0,136,255,0.7); color: var(--blue); }
+/* ---- VAULT ---- */
+.vault{padding:12px 10px;text-align:center;margin-bottom:8px;position:relative;}
+.vault-amt{font-size:18px;display:block;margin-bottom:4px;}
+.vault-lbl{font-size:6px;animation:blink 1.2s infinite;}
+.vault-sub{font-size:5px;color:rgba(255,255,255,0.18);margin-top:4px;}
 
-/* ---- Input ---- */
-.input {
-  width: 100%;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
-  padding: 12px 14px;
-  color: var(--text);
-  font-family: 'Press Start 2P', monospace;
-  font-size: 9px;
-  outline: none;
-  transition: border-color 0.2s;
+/* ---- TIMELINE ---- */
+.tl-item{display:flex;gap:7px;align-items:flex-start;margin-bottom:6px;position:relative;z-index:2;}
+.tl-dot{width:7px;height:7px;flex-shrink:0;margin-top:2px;border-radius:2px;}
+.tl-txt{font-size:5px;line-height:2.2;}
+
+/* ---- CURRENCY ---- */
+.cur-row{display:flex;gap:5px;margin-bottom:8px;}
+.cur-btn{flex:1;font-size:7px;padding:8px 3px;text-align:center;border-radius:12px;font-family:'Press Start 2P',monospace;cursor:pointer;}
+.cur-on{border:1px solid rgba(255,170,0,0.5);color:#ffaa00;background:rgba(255,170,0,0.07);}
+.cur-off{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.3);}
+
+/* ---- ADDRESS ---- */
+.addr{padding:8px 10px;margin-bottom:7px;font-size:5px;color:rgba(100,170,255,0.8);word-break:break-all;line-height:2.4;text-align:center;position:relative;z-index:2;}
+
+/* ---- CHECKLIST ---- */
+.chk{padding:7px 9px;margin-bottom:4px;display:flex;align-items:center;gap:7px;}
+.chk-box{width:13px;height:13px;border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:8px;}
+.chk-done{background:#00dd66;border:2px solid #00dd66;color:#000;}
+.chk-empty{border:2px solid rgba(255,255,255,0.15);}
+.chk-lbl{font-size:5px;line-height:2;}
+
+/* ---- FEE ROW ---- */
+.fee{display:flex;justify-content:space-between;margin-bottom:5px;font-size:5px;position:relative;z-index:2;}
+
+/* ---- INFO ---- */
+.info{padding:8px 10px;margin-bottom:7px;font-size:5px;line-height:2.5;position:relative;z-index:1;}
+
+/* ---- TICKER ---- */
+.ticker-w{overflow:hidden;background:rgba(0,255,136,0.05);border:1px solid rgba(0,255,136,0.15);border-radius:100px;padding:4px 10px;margin-bottom:7px;}
+.ticker-t{font-size:5px;color:rgba(0,255,136,0.7);white-space:nowrap;}
+
+/* ---- LIVE DOT ---- */
+.live-dot{width:5px;height:5px;border-radius:50%;background:#ff4444;display:inline-block;margin-right:4px;vertical-align:middle;}
+
+/* ---- AD BANNER ---- */
+.ad{margin-bottom:8px;border:1px solid rgba(255,170,0,0.35);border-radius:14px;overflow:hidden;position:relative;background:rgba(255,170,0,0.04);animation:border-glow 2s infinite;}
+.ad::before{content:'';position:absolute;top:0;left:0;right:0;height:40%;background:linear-gradient(180deg,rgba(255,255,255,0.06),transparent);border-radius:14px 14px 0 0;pointer-events:none;}
+.ad-tag{position:absolute;top:5px;right:6px;font-size:4px;color:rgba(255,170,0,0.7);background:rgba(0,0,0,0.6);padding:2px 5px;border-radius:4px;z-index:10;border:1px solid rgba(255,170,0,0.3);}
+
+/* ---- DEAL ROW (FEED) ---- */
+.dr{display:flex;align-items:center;gap:7px;padding:8px 9px;margin-bottom:5px;}
+.dr-info{flex:1;min-width:0;}
+.dr-names{display:flex;align-items:center;gap:4px;margin-bottom:3px;}
+.dr-n{font-size:6px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55px;}
+.dr-arr{font-size:5px;color:rgba(255,255,255,0.3);}
+.dr-meta{display:flex;align-items:center;gap:4px;margin-bottom:3px;}
+.dr-stars{font-size:5px;color:#ffaa00;}
+.dr-time{font-size:4px;color:rgba(255,255,255,0.2);margin-left:auto;}
+.dr-status{display:inline-block;font-size:4px;padding:2px 5px;border-radius:100px;}
+.dr-amt{text-align:right;flex-shrink:0;}
+.dr-val{font-size:7px;display:block;margin-bottom:2px;}
+.dr-cur{font-size:4px;color:rgba(255,255,255,0.3);}
+
+/* ---- FILTER ---- */
+.filter-row{display:flex;gap:4px;margin-bottom:7px;}
+.fb{font-size:5px;padding:4px 7px;border-radius:100px;font-family:'Press Start 2P',monospace;cursor:pointer;}
+.fb-on{background:rgba(0,255,136,0.1);border:1px solid rgba(0,255,136,0.4);color:#00ff88;}
+.fb-off{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);color:rgba(255,255,255,0.25);}
+
+/* ---- BOTTOM NAV ---- */
+.bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;z-index:100;
+  display:flex;justify-content:space-around;align-items:center;
+  padding:10px 4px;
+  background:rgba(0,0,0,0.9);
+  border-top:1px solid rgba(255,255,255,0.07);
+  backdrop-filter:blur(16px);
 }
-.input:focus { border-color: var(--green); }
-.input::placeholder { color: var(--text-dim); }
-
-/* ---- Step indicator ---- */
-.steps {
-  display: flex; gap: 6px; justify-content: center; margin-bottom: 16px;
+.nav-item{
+  display:flex;flex-direction:column;align-items:center;
+  gap:4px;cursor:pointer;opacity:0.35;
+  transition:opacity 0.15s;
+  font-size:5px;color:#fff;
+  text-decoration:none;padding:4px 8px;
 }
-.step-dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: rgba(255,255,255,0.15);
-  transition: background 0.2s;
+.nav-item.active{opacity:1;color:#00ff88;}
+.nav-item svg{width:18px;height:18px;}
+
+/* ---- INPUT ---- */
+.input{
+  width:100%;
+  background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:14px;
+  padding:9px 10px;
+  color:#fff;
+  font-family:'Press Start 2P',monospace;
+  font-size:7px;
+  outline:none;
+  transition:border-color 0.2s;
+  position:relative;z-index:2;
 }
-.step-dot.active { background: var(--green); box-shadow: 0 0 8px var(--green); }
-.step-dot.done   { background: var(--green); opacity: 0.5; }
+.input:focus{border-color:rgba(0,136,255,0.5);}
+.input::placeholder{color:rgba(255,255,255,0.2);}
 
-/* ---- Animations ---- */
-@keyframes fadeIn   { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-@keyframes pulse    { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
-@keyframes float    { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+/* ---- SCROLLBAR ---- */
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px;}
 
-.fade-in  { animation: fadeIn 0.3s ease forwards; }
-.floating { animation: float 3s ease-in-out infinite; }
+/* ---- GLOW TEXT ---- */
+.glow-green{text-shadow:0 0 12px rgba(0,255,136,0.7);color:#00ff88;}
+.glow-gold{text-shadow:0 0 12px rgba(255,170,0,0.7);color:#ffaa00;}
+.glow-blue{text-shadow:0 0 12px rgba(0,136,255,0.7);color:#0088ff;}
+.glow-red{text-shadow:0 0 12px rgba(255,68,102,0.7);color:#ff4466;}
+
+canvas{image-rendering:pixelated;}
+.fade-in{animation:fadeIn 0.3s ease forwards;}
+.floating{animation:float 3s ease-in-out infinite;}
