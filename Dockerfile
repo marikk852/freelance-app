@@ -30,7 +30,7 @@ RUN npm run build -w safedeal-contracts \
 FROM node:20-bookworm-slim AS runner
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  openssl ca-certificates \
+  openssl ca-certificates ffmpeg \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
