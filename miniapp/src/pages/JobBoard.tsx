@@ -85,11 +85,11 @@ export function JobBoard() {
             style={{ marginBottom: '10px' }} />
 
           {/* Фильтры по категориям */}
-          <div style={{ display: 'flex', gap: '6px', marginBottom: '12px', overflowX: 'auto', paddingBottom: '4px' }}>
+          <div className="filter-row" style={{ overflowX: 'auto', paddingBottom: '4px', flexWrap: 'nowrap' }}>
             {CATEGORIES.map(c => (
               <button key={c} onClick={() => setCategory(c)}
-                className={`btn ${category === c ? 'btn-gold' : 'btn-ghost'}`}
-                style={{ fontSize: '7px', padding: '6px 10px', whiteSpace: 'nowrap' }}>
+                className={`fb ${category === c ? 'fb-on' : 'fb-off'}`}
+                style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
                 {c}
               </button>
             ))}
