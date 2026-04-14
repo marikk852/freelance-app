@@ -18,6 +18,10 @@ const { authMiddleware } = require('./middleware/auth');
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
+// Railway / Render / любой reverse-proxy ставит X-Forwarded-For
+// Без trust proxy express-rate-limit бросает ValidationError
+app.set('trust proxy', 1);
+
 // ---------- Middleware безопасности ----------
 app.use(helmet({
   contentSecurityPolicy: {
