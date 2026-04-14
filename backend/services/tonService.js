@@ -17,7 +17,7 @@ let _keyPair = null;
  */
 async function init() {
   _client = new TonClient({
-    endpoint : process.env.TON_ENDPOINT || 'https://toncenter.com/api/v2/',
+    endpoint : process.env.TON_ENDPOINT || 'https://toncenter.com/api/v2/jsonRPC',
     apiKey   : process.env.TON_API_KEY,
   });
 
