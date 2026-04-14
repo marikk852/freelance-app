@@ -15,6 +15,10 @@ COPY miniapp/package.json miniapp/
 
 RUN npm ci
 
+# Bust cache on every new commit — Railway passes this automatically
+ARG RAILWAY_GIT_COMMIT_SHA=unknown
+RUN echo "Build commit: $RAILWAY_GIT_COMMIT_SHA"
+
 COPY . .
 
 ARG VITE_API_URL=
