@@ -274,3 +274,78 @@ html,body,#root{
 canvas{image-rendering:pixelated;}
 .fade-in{animation:fadeIn 0.3s ease forwards;}
 .floating{animation:float 3s ease-in-out infinite;}
+
+/* ---- NEW ANIMATIONS ---- */
+
+/* Button glow pulse on press */
+@keyframes btn-flash{0%{opacity:1}50%{opacity:0.7}100%{opacity:1}}
+@keyframes glow-pulse-green{0%,100%{box-shadow:0 0 8px rgba(0,255,136,0.4)}50%{box-shadow:0 0 24px rgba(0,255,136,0.9),0 0 48px rgba(0,255,136,0.4)}}
+@keyframes glow-pulse-gold{0%,100%{box-shadow:0 0 8px rgba(255,170,0,0.4)}50%{box-shadow:0 0 24px rgba(255,170,0,0.9),0 0 48px rgba(255,170,0,0.4)}}
+@keyframes glow-pulse-blue{0%,100%{box-shadow:0 0 8px rgba(0,136,255,0.4)}50%{box-shadow:0 0 24px rgba(0,136,255,0.9),0 0 48px rgba(0,136,255,0.4)}}
+@keyframes glow-pulse-red{0%,100%{box-shadow:0 0 8px rgba(255,68,102,0.4)}50%{box-shadow:0 0 24px rgba(255,68,102,0.9),0 0 48px rgba(255,68,102,0.4)}}
+@keyframes glow-pulse-purple{0%,100%{box-shadow:0 0 8px rgba(204,68,255,0.4)}50%{box-shadow:0 0 24px rgba(204,68,255,0.9),0 0 48px rgba(204,68,255,0.4)}}
+
+/* Status breathing */
+@keyframes breathe-blue{0%,100%{box-shadow:0 0 6px rgba(0,136,255,0.3),inset 0 0 6px rgba(0,136,255,0.1)}50%{box-shadow:0 0 18px rgba(0,136,255,0.7),inset 0 0 12px rgba(0,136,255,0.2)}}
+@keyframes breathe-purple{0%,100%{box-shadow:0 0 6px rgba(204,68,255,0.3),inset 0 0 6px rgba(204,68,255,0.1)}50%{box-shadow:0 0 18px rgba(204,68,255,0.7),inset 0 0 12px rgba(204,68,255,0.2)}}
+@keyframes alarm-red{0%,100%{box-shadow:0 0 6px rgba(255,68,102,0.3)}33%{box-shadow:0 0 22px rgba(255,68,102,0.9),inset 0 0 10px rgba(255,68,102,0.15)}66%{box-shadow:0 0 10px rgba(255,68,102,0.5)}}
+
+/* Card entrance stagger */
+@keyframes card-in{from{opacity:0;transform:translateY(20px) scale(0.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+/* Particle coin */
+@keyframes coin-fly{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(0);opacity:0}}
+
+/* Nav badge bounce */
+@keyframes nav-bounce{0%,100%{transform:scale(1)}40%{transform:scale(1.4)}70%{transform:scale(0.9)}}
+
+/* Screen slide in */
+@keyframes slide-in-right{from{opacity:0;transform:translateX(32px)}to{opacity:1;transform:translateX(0)}}
+@keyframes slide-in-left{from{opacity:0;transform:translateX(-32px)}to{opacity:1;transform:translateX(0)}}
+@keyframes slide-in-up{from{opacity:0;transform:translateY(32px)}to{opacity:1;transform:translateY(0)}}
+
+/* Pixel glitch */
+@keyframes glitch{0%,100%{clip-path:inset(0 0 100% 0)}10%{clip-path:inset(20% 0 60% 0);transform:translateX(-3px)}20%{clip-path:inset(50% 0 30% 0);transform:translateX(3px)}30%{clip-path:inset(0 0 80% 0);transform:translateX(0)}40%,90%{clip-path:inset(0 0 100% 0)}}
+
+/* Vault lock pulse */
+@keyframes vault-pulse{0%,100%{text-shadow:0 0 8px currentColor}50%{text-shadow:0 0 24px currentColor,0 0 48px currentColor}}
+
+/* Ticker scroll */
+@keyframes ticker-scroll{from{transform:translateX(100%)}to{transform:translateX(-100%)}}
+
+/* Floating particles */
+@keyframes particle-float{0%{transform:translateY(0) translateX(0);opacity:0.6}50%{transform:translateY(-20px) translateX(10px);opacity:1}100%{transform:translateY(-40px) translateX(-5px);opacity:0}}
+
+/* Button sizes fix */
+.btn{font-size:8px !important;}
+.fb{font-size:7px !important;}
+.nav-item span:last-child{font-size:6px !important;}
+
+/* Card hover */
+.gl,.gl-sm{transition:transform 0.18s ease,border-color 0.18s ease,box-shadow 0.18s ease;}
+.gl:active,.gl-sm:active{transform:scale(0.985);}
+
+/* Status card animations */
+.status-frozen{animation:breathe-blue 2s ease-in-out infinite;}
+.status-review{animation:breathe-purple 2s ease-in-out infinite;}
+.status-dispute{animation:alarm-red 1.5s ease-in-out infinite;}
+.status-done{animation:glow-pulse-green 3s ease-in-out infinite;}
+
+/* Card stagger */
+.card-stagger-1{animation:card-in 0.35s ease-out both;animation-delay:0.05s}
+.card-stagger-2{animation:card-in 0.35s ease-out both;animation-delay:0.1s}
+.card-stagger-3{animation:card-in 0.35s ease-out both;animation-delay:0.15s}
+.card-stagger-4{animation:card-in 0.35s ease-out both;animation-delay:0.2s}
+.card-stagger-5{animation:card-in 0.35s ease-out both;animation-delay:0.25s}
+
+/* Vault amount */
+.vault-amt{animation:vault-pulse 2s ease-in-out infinite;}
+
+/* Button active glow */
+.btn-g:active{animation:btn-flash 0.15s;}
+.btn-y:active{animation:btn-flash 0.15s;}
+.btn-b:active{animation:btn-flash 0.15s;}
+.btn-r:active{animation:btn-flash 0.15s;}
+
+/* Nav active dot */
+.nav-item.active::after{content:'';display:block;width:4px;height:4px;border-radius:50%;background:#00ff88;margin:0 auto;animation:glow-pulse-green 1.5s infinite;}
