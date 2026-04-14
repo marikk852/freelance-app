@@ -13,8 +13,14 @@ const { User } = require('../../database/models');
  */
 router.get('/me', async (req, res) => {
   try {
+    // Upsert — авторегистрация при первом открытии Mini App
+    await User.upsert({
+      telegram_id: req.user.telegramId,
+      username   : req.user.username,
+      first_name : req.user.firstName,
+      last_name  : req.user.lastName,
+    });
     const profile = await User.getProfile(req.user.telegramId);
-    if (!profile) return res.status(404).json({ error: 'Пользователь не найден' });
     res.json(profile);
   } catch (err) {
     res.status(500).json({ error: 'Внутренняя ошибка сервера' });
