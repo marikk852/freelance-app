@@ -145,8 +145,8 @@ async function simulate() {
     ],
   }, clientAuth), 'Создание контракта');
 
-  const contractId = contractRes.contract?.id || contractRes.id;
-  const inviteLink = contractRes.invite_link;
+  const contractId = contractRes.contractId;
+  const inviteLink = contractRes.inviteLink;
   log('✅', `Контракт создан: ${contractId}`);
   log('🔗', `Invite link: ${inviteLink}`);
 

@@ -124,6 +124,27 @@ router.post('/:id/sign', async (req, res) => {
       return res.status(400).json({ error: 'role должен быть client или freelancer' });
     }
 
+    const { telegramId } = req.user;
+
+    // Если фрилансер — привязываем его к комнате
+    if (role === 'freelancer') {
+      const { rows: userRows } = await query(
+        'SELECT id FROM users WHERE telegram_id = $1', [telegramId]
+      );
+      if (!userRows[0]) return res.status(404).json({ error: 'Пользователь не найден' });
+
+      const { rows: contractRows } = await query(
+        'SELECT room_id FROM contracts WHERE id = $1', [req.params.id]
+      );
+      if (!contractRows[0]) return res.status(404).json({ error: 'Контракт не найден' });
+
+      await query(
+        `UPDATE rooms SET freelancer_id = $1, status = 'active'
+         WHERE id = $2 AND freelancer_id IS NULL`,
+        [userRows[0].id, contractRows[0].room_id]
+      );
+    }
+
     const contract = await Contract.sign(req.params.id, role);
     if (!contract) return res.status(404).json({ error: 'Контракт не найден' });
 
