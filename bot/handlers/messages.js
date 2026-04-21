@@ -2,12 +2,12 @@ const { query } = require('../../database/db');
 const notificationService = require('../../backend/services/notificationService');
 
 // ============================================================
-// Handler: Текстовые сообщения (ответы на force_reply)
+// Handler: Text messages (force_reply responses)
 // ============================================================
 
 /**
- * Обработчик входящих текстовых сообщений.
- * Используется для multi-step флоу (reject комментарий, спор).
+ * Incoming text message handler.
+ * Used for multi-step flows (reject comment, dispute).
  */
 async function handleMessage(ctx) {
   const session = ctx.session || {};
@@ -15,7 +15,7 @@ async function handleMessage(ctx) {
 
   if (!text) return;
 
-  // ---- Ответ с комментарием для reject delivery ----
+  // ---- Reply with comment for reject delivery ----
   if (session.pendingReject) {
     const deliveryId = session.pendingReject;
     delete ctx.session.pendingReject;
@@ -31,7 +31,7 @@ async function handleMessage(ctx) {
          WHERE d.id = $1`,
         [deliveryId]
       );
-      if (!rows[0]) return ctx.reply('❌ Delivery не найден');
+      if (!rows[0]) return ctx.reply('❌ Delivery not found');
 
       await query(
         `UPDATE deliveries
@@ -52,16 +52,16 @@ async function handleMessage(ctx) {
       });
 
       return ctx.reply(
-        '✅ Комментарий отправлен фрилансеру. Ожидай исправлений.',
+        '✅ Comment sent to the freelancer. Waiting for revisions.',
         { reply_markup: { remove_keyboard: true } }
       );
     } catch (err) {
       console.error('[Bot] handleMessage reject error:', err.message);
-      return ctx.reply('Ошибка отклонения работы.');
+      return ctx.reply('Error rejecting work.');
     }
   }
 
-  // ---- Причина спора ----
+  // ---- Dispute reason ----
   if (session.pendingDispute) {
     const contractId = session.pendingDispute;
     delete ctx.session.pendingDispute;
@@ -70,7 +70,7 @@ async function handleMessage(ctx) {
       const { rows: userRows } = await query(
         'SELECT id FROM users WHERE telegram_id = $1', [ctx.from.id]
       );
-      if (!userRows[0]) return ctx.reply('Ошибка: пользователь не найден.');
+      if (!userRows[0]) return ctx.reply('Error: user not found.');
 
       await query(
         `INSERT INTO disputes (contract_id, opened_by, reason)
@@ -83,7 +83,7 @@ async function handleMessage(ctx) {
         [contractId]
       );
 
-      // Уведомляем обе стороны
+      // Notify both parties
       const { rows } = await query(
         `SELECT c.title,
                 uc.telegram_id AS client_tg_id,
@@ -105,13 +105,13 @@ async function handleMessage(ctx) {
       }
 
       return ctx.reply(
-        '⚖️ Спор открыт. Арбитр рассмотрит его в течение 24 часов.\n\n' +
-        'До принятия решения средства остаются заморожены.',
+        '⚖️ Dispute opened. The arbitrator will review it within 24 hours.\n\n' +
+        'Funds remain frozen until a decision is made.',
         { reply_markup: { remove_keyboard: true } }
       );
     } catch (err) {
       console.error('[Bot] handleMessage dispute error:', err.message);
-      return ctx.reply('Ошибка открытия спора.');
+      return ctx.reply('Error opening dispute.');
     }
   }
 }

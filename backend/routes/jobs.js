@@ -4,7 +4,7 @@ const Joi     = require('joi');
 const { query } = require('../../database/db');
 
 // ============================================================
-// Routes: /api/jobs — биржа заказов
+// Routes: /api/jobs — job board
 // ============================================================
 
 const createJobSchema = Joi.object({
@@ -13,14 +13,14 @@ const createJobSchema = Joi.object({
   budget_min     : Joi.number().min(0).optional(),
   budget_max     : Joi.number().max(500).optional(),
   currency       : Joi.string().valid('TON', 'USDT').default('USDT'),
-  deadline       : Joi.number().integer().min(1).optional(), // дней
+  deadline       : Joi.number().integer().min(1).optional(), // days
   category       : Joi.string().max(64).optional(),
   skills_required: Joi.array().items(Joi.string()).default([]),
 });
 
 /**
  * GET /api/jobs
- * Список открытых заказов с фильтрами.
+ * List of open jobs with filters.
  */
 router.get('/', async (req, res) => {
   try {
@@ -39,7 +39,7 @@ router.get('/', async (req, res) => {
       params.push(currency);
     }
     if (search) {
-      whereClause += ` AND to_tsvector('russian', jp.title || ' ' || jp.description) @@ plainto_tsquery('russian', $${paramIdx++})`;
+      whereClause += ` AND to_tsvector('english', jp.title || ' ' || jp.description) @@ plainto_tsquery('english', $${paramIdx++})`;
       params.push(search);
     }
 
@@ -61,13 +61,13 @@ router.get('/', async (req, res) => {
     res.json(rows);
   } catch (err) {
     console.error('[API] GET /jobs error:', err.message);
-    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 /**
  * POST /api/jobs
- * Опубликовать заказ.
+ * Post a job.
  */
 router.post('/', async (req, res) => {
   try {
@@ -78,7 +78,7 @@ router.post('/', async (req, res) => {
       'SELECT id FROM users WHERE telegram_id = $1',
       [req.user.telegramId]
     );
-    if (!users[0]) return res.status(404).json({ error: 'Пользователь не найден' });
+    if (!users[0]) return res.status(404).json({ error: 'User not found' });
 
     const { rows } = await query(
       `INSERT INTO job_posts
@@ -96,13 +96,86 @@ router.post('/', async (req, res) => {
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('[API] POST /jobs error:', err.message);
-    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/jobs/my
+ * Current user's jobs (as client) with application counts.
+ */
+router.get('/my', async (req, res) => {
+  try {
+    const { rows: users } = await query(
+      'SELECT id FROM users WHERE telegram_id = $1', [req.user.telegramId]
+    );
+    if (!users[0]) return res.status(404).json({ error: 'User not found' });
+
+    const { rows } = await query(
+      `SELECT jp.*,
+              COUNT(ja.id) AS applications_count
+       FROM job_posts jp
+       LEFT JOIN job_applications ja ON ja.job_post_id = jp.id
+       WHERE jp.client_id = $1
+       GROUP BY jp.id
+       ORDER BY jp.created_at DESC`,
+      [users[0].id]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('[API] GET /jobs/my error:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/jobs/:id/applications
+ * List of applications for a job (job owner only).
+ */
+router.get('/:id/applications', async (req, res) => {
+  try {
+    const { rows: users } = await query(
+      'SELECT id FROM users WHERE telegram_id = $1', [req.user.telegramId]
+    );
+    if (!users[0]) return res.status(404).json({ error: 'User not found' });
+
+    // Check the requester is the job owner
+    const { rows: jobRows } = await query(
+      'SELECT client_id FROM job_posts WHERE id = $1', [req.params.id]
+    );
+    if (!jobRows[0]) return res.status(404).json({ error: 'Job not found' });
+    if (jobRows[0].client_id !== users[0].id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const { rows } = await query(
+      `SELECT ja.*,
+              u.telegram_id  AS freelancer_telegram_id,
+              u.username     AS freelancer_username,
+              u.first_name   AS freelancer_name,
+              u.bio          AS freelancer_bio,
+              u.skills       AS freelancer_skills,
+              u.experience   AS freelancer_experience,
+              u.category     AS freelancer_category,
+              u.rating       AS freelancer_rating,
+              u.deals_count  AS freelancer_deals_completed,
+              u.level        AS freelancer_level
+       FROM job_applications ja
+       JOIN users u ON u.id = ja.freelancer_id
+       WHERE ja.job_post_id = $1
+       ORDER BY ja.created_at ASC`,
+      [req.params.id]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('[API] GET /jobs/:id/applications error:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 /**
  * POST /api/jobs/:id/apply
- * Фрилансер откликается на заказ.
+ * Freelancer applies to a job.
  */
 router.post('/:id/apply', async (req, res) => {
   try {
@@ -112,24 +185,29 @@ router.post('/:id/apply', async (req, res) => {
       'SELECT id FROM users WHERE telegram_id = $1',
       [req.user.telegramId]
     );
-    if (!users[0]) return res.status(404).json({ error: 'Пользователь не найден' });
+    if (!users[0]) return res.status(404).json({ error: 'User not found' });
 
     const { rows } = await query(
       `INSERT INTO job_applications (job_post_id, freelancer_id, cover_letter, proposed_amount)
        VALUES ($1, $2, $3, $4)
        ON CONFLICT (job_post_id, freelancer_id) DO NOTHING
        RETURNING *`,
-      [req.params.id, users[0].id, cover_letter, proposed_amount]
+      [
+        req.params.id,
+        users[0].id,
+        cover_letter ?? null,
+        proposed_amount != null ? Number(proposed_amount) : null,
+      ]
     );
 
     if (!rows[0]) {
-      return res.status(409).json({ error: 'Вы уже откликались на этот заказ' });
+      return res.status(409).json({ error: 'You have already applied to this job' });
     }
 
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('[API] POST /jobs/:id/apply error:', err.message);
-    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

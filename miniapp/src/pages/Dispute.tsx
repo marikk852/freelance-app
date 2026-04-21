@@ -6,7 +6,7 @@ import { useTelegram } from '../hooks/useTelegram';
 import toast from 'react-hot-toast';
 
 // ============================================================
-// Экран 06: DISPUTE — открытие спора, доказательства
+// Screen 06: DISPUTE — opening a dispute, evidence
 // ============================================================
 
 export function Dispute() {
@@ -19,7 +19,7 @@ export function Dispute() {
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = async () => {
-    if (!reason.trim()) return toast.error('Опиши причину спора');
+    if (!reason.trim()) return toast.error('Describe the reason for the dispute');
     tg?.HapticFeedback?.impactOccurred('heavy');
     setLoading(true);
     try {
@@ -30,10 +30,10 @@ export function Dispute() {
       });
       setSubmitted(true);
       tg?.HapticFeedback?.notificationOccurred('warning');
-      toast.success('Спор открыт. Арбитр рассмотрит в течение 24 часов.');
+      toast.success('Dispute opened. Arbitrator will review within 24 hours.');
     } catch (e: any) {
       tg?.HapticFeedback?.notificationOccurred('error');
-      toast.error(e.response?.data?.error || 'Ошибка');
+      toast.error(e.response?.data?.error || 'Error');
     } finally { setLoading(false); }
   };
 
@@ -43,7 +43,7 @@ export function Dispute() {
 
       <div className="gl hud card-stagger-1" style={{ borderColor: 'rgba(255,68,102,0.3)' }}>
         <div className="pxgrid" /><div className="sh" />
-        <div className="logo" style={{ color: '#ff4466' }}>⚖️ СПОР</div>
+        <div className="logo" style={{ color: '#ff4466' }}>⚖️ DISPUTE</div>
       </div>
 
       {submitted ? (
@@ -53,53 +53,53 @@ export function Dispute() {
         }}>
           <div className="pxgrid" /><div className="sh" />
           <div style={{ fontSize: '36px', marginBottom: '14px', animation: 'float 3s ease-in-out infinite' }}>⚖️</div>
-          <div style={{ fontSize: '10px', color: '#cc44ff', marginBottom: '10px' }}>СПОР ОТКРЫТ</div>
+          <div style={{ fontSize: '10px', color: '#cc44ff', marginBottom: '10px' }}>DISPUTE OPENED</div>
           <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.45)', lineHeight: '2.2' }}>
-            Арбитр рассмотрит ситуацию<br/>в течение 24 часов.<br/>
-            Средства заморожены до решения.
+            The arbitrator will review the situation<br/>within 24 hours.<br/>
+            Funds are frozen until a decision is made.
           </div>
           <button className="btn btn-gr btn-full" style={{ marginTop: '20px' }}
             onClick={() => navigate(`/deal/${id}`)}>
-            [ ◀ К СДЕЛКЕ ]
+            [ ◀ BACK TO DEAL ]
           </button>
         </div>
       ) : (
         <>
-          {/* Предупреждение */}
+          {/* Warning */}
           <div className="gl card-stagger-2" style={{ borderColor: 'rgba(255,68,102,0.25)', background: 'rgba(255,68,102,0.04)' }}>
             <div className="pxgrid" />
-            <div style={{ fontSize: '8px', color: '#ff4466', marginBottom: '6px' }}>⚠️ ВАЖНО</div>
+            <div style={{ fontSize: '8px', color: '#ff4466', marginBottom: '6px' }}>⚠️ IMPORTANT</div>
             <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.45)', lineHeight: '2.2' }}>
-              Средства остаются заморожены до решения арбитра.<br/>
-              Арбитр изучит доказательства обеих сторон.
+              Funds remain frozen until the arbitrator's decision.<br/>
+              The arbitrator will review evidence from both parties.
             </div>
           </div>
 
-          {/* Форма */}
+          {/* Form */}
           <div className="gl card-stagger-3">
             <div className="pxgrid" /><div className="sh" />
             <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>
-              ПРИЧИНА СПОРА *
+              DISPUTE REASON *
             </div>
             <textarea className="input" value={reason} onChange={e => setReason(e.target.value)}
-              placeholder="Опиши ситуацию подробно..."
+              placeholder="Describe the situation in detail..."
               style={{ minHeight: '90px', resize: 'vertical', marginBottom: '14px' }} />
 
             <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>
-              ДОКАЗАТЕЛЬСТВА (НЕОБЯЗАТЕЛЬНО)
+              EVIDENCE (OPTIONAL)
             </div>
             <textarea className="input" value={evidence} onChange={e => setEvidence(e.target.value)}
-              placeholder="Ссылки, описание, скриншоты..."
+              placeholder="Links, description, screenshots..."
               style={{ minHeight: '60px', resize: 'vertical' }} />
           </div>
 
           <div className="card-stagger-4" style={{ display: 'flex', gap: '8px' }}>
             <button className="btn btn-gr" style={{ flex: 1 }} onClick={() => navigate(-1)}>
-              ◀ НАЗАД
+              ◀ BACK
             </button>
             <button className="btn btn-r" style={{ flex: 2 }}
               onClick={handleSubmit} disabled={loading || !reason.trim()}>
-              {loading ? '[ ⏳ ]' : '[ ⚖️ ОТКРЫТЬ СПОР ]'}
+              {loading ? '[ ⏳ ]' : '[ ⚖️ OPEN DISPUTE ]'}
             </button>
           </div>
         </>

@@ -7,18 +7,18 @@ import { useTelegram } from '../hooks/useTelegram';
 import toast from 'react-hot-toast';
 
 // ============================================================
-// Экран 03: DEAL ROOM — комната сделки, квест-лог
+// Screen 03: DEAL ROOM — deal room, quest log
 // ============================================================
 
 const QUEST_LOG: Record<string, string[]> = {
-  draft              : ['📜 Контракт создан'],
-  pending_signature  : ['📜 Контракт создан', '✍️ Ожидаем подпись фрилансера'],
-  signed             : ['📜 Создан', '✍️ Подписан', '⏳ Ожидаем оплату'],
-  awaiting_payment   : ['📜 Создан', '✍️ Подписан', '💳 Ожидаем оплату'],
-  in_progress        : ['📜 Создан', '✍️ Подписан', '🔒 Деньги заморожены', '🔄 Работа идёт'],
-  under_review       : ['📜 Создан', '✍️ Подписан', '🔒 Заморожено', '📦 Работа сдана', '🔍 На проверке'],
-  completed          : ['📜 Создан', '✍️ Подписан', '🔒 Заморожено', '📦 Сдано', '✅ Завершено!'],
-  disputed           : ['📜 Создан', '✍️ Подписан', '🔒 Заморожено', '⚖️ Спор открыт'],
+  draft              : ['📜 Contract created'],
+  pending_signature  : ['📜 Contract created', '✍️ Awaiting freelancer signature'],
+  signed             : ['📜 Created', '✍️ Signed', '⏳ Awaiting payment'],
+  awaiting_payment   : ['📜 Created', '✍️ Signed', '💳 Awaiting payment'],
+  in_progress        : ['📜 Created', '✍️ Signed', '🔒 Funds frozen', '🔄 Work in progress'],
+  under_review       : ['📜 Created', '✍️ Signed', '🔒 Frozen', '📦 Work submitted', '🔍 Under review'],
+  completed          : ['📜 Created', '✍️ Signed', '🔒 Frozen', '📦 Submitted', '✅ Completed!'],
+  disputed           : ['📜 Created', '✍️ Signed', '🔒 Frozen', '⚖️ Dispute opened'],
 };
 
 export function DealRoom() {
@@ -28,7 +28,13 @@ export function DealRoom() {
   const { user, tg } = useTelegram();
   const [deal, setDeal]   = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const inviteUrl = (location.state as any)?.inviteUrl;
+  const [signing, setSigning] = useState(false);
+  const inviteUrlFromState = (location.state as any)?.inviteUrl;
+  // Restore inviteUrl from contract data if state was lost (refresh)
+  const inviteUrl = inviteUrlFromState
+    || (deal?.invite_link
+      ? `${window.location.origin}?room=${deal.invite_link}`
+      : null);
 
   useEffect(() => {
     if (!id) return;
@@ -42,7 +48,7 @@ export function DealRoom() {
   if (loading) return (
     <div className="page" style={{ textAlign: 'center', paddingTop: '60px' }}>
       <div style={{ fontSize: '28px', animation: 'float 2s ease-in-out infinite' }}>🏰</div>
-      <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.3)', marginTop: '12px' }}>ЗАГРУЖАЕМ КВЕСТ...</div>
+      <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.3)', marginTop: '12px' }}>LOADING QUEST...</div>
     </div>
   );
 
@@ -51,13 +57,29 @@ export function DealRoom() {
       <div className="gl" style={{ textAlign: 'center', padding: '32px' }}>
         <div className="pxgrid" />
         <div style={{ fontSize: '24px' }}>❓</div>
-        <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>Сделка не найдена</div>
+        <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>Deal not found</div>
       </div>
     </div>
   );
 
-  const log      = QUEST_LOG[deal.status] || ['Загрузка...'];
-  const deadline = new Date(deal.deadline).toLocaleDateString('ru-RU');
+  const log      = QUEST_LOG[deal.status] || ['Loading...'];
+  const deadline = new Date(deal.deadline).toLocaleDateString('en-US');
+
+  // Determine the current user's role
+  const isClient     = user && Number(deal.client_tg_id)     === Number(user.id);
+  const isFreelancer = user && Number(deal.freelancer_tg_id) === Number(user.id);
+
+  const handleSign = async () => {
+    tg?.HapticFeedback?.impactOccurred('medium');
+    setSigning(true);
+    try {
+      await contractsApi.sign(id!, 'freelancer');
+      tg?.HapticFeedback?.notificationOccurred('success');
+      const r = await contractsApi.get(id!);
+      setDeal(r.data);
+    } catch { tg?.HapticFeedback?.notificationOccurred('error'); }
+    finally { setSigning(false); }
+  };
 
   const go = (path: string) => {
     tg?.HapticFeedback?.impactOccurred('medium');
@@ -81,36 +103,36 @@ export function DealRoom() {
       {inviteUrl && (
         <div className="gl card-stagger-2" style={{ borderColor: 'rgba(0,255,136,0.3)', background: 'rgba(0,255,136,0.05)' }}>
           <div className="pxgrid" /><div className="sh" />
-          <div style={{ fontSize: '8px', color: '#00ff88', marginBottom: '6px' }}>🔗 ССЫЛКА ДЛЯ ФРИЛАНСЕРА</div>
+          <div style={{ fontSize: '8px', color: '#00ff88', marginBottom: '6px' }}>🔗 LINK FOR FREELANCER</div>
           <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.45)', wordBreak: 'break-all', marginBottom: '10px' }}>
             {inviteUrl}
           </div>
           <button className="btn btn-g btn-full"
-            onClick={() => { navigator.clipboard.writeText(inviteUrl); tg?.HapticFeedback?.notificationOccurred('success'); toast.success('Скопировано!'); }}>
-            [ 📋 СКОПИРОВАТЬ ]
+            onClick={() => { navigator.clipboard.writeText(inviteUrl); tg?.HapticFeedback?.notificationOccurred('success'); toast.success('Copied!'); }}>
+            [ 📋 COPY ]
           </button>
         </div>
       )}
 
-      {/* Детали */}
+      {/* Details */}
       <div className="gl card-stagger-2" style={{ borderColor: 'rgba(255,170,0,0.2)' }}>
         <div className="pxgrid" /><div className="sh" />
         <div className="sec" style={{ margin: '0 0 10px', padding: 0, border: 'none', color: 'rgba(255,255,255,0.3)' }}>
-          -- ДЕТАЛИ КВЕСТА --
+          -- QUEST DETAILS --
         </div>
-        <DataRow label="Сумма"    value={`$${deal.amount_usd} ${deal.currency}`} color="#ffaa00" />
-        <DataRow label="Дедлайн" value={deadline} />
-        <DataRow label="Эскроу"  value={deal.escrow_status || '—'} color="#0088ff" />
+        <DataRow label="Amount"   value={`$${deal.amount_usd} ${deal.currency}`} color="#ffaa00" />
+        <DataRow label="Deadline" value={deadline} />
+        <DataRow label="Escrow"   value={deal.escrow_status || '—'} color="#0088ff" />
         {deal.ton_contract_address && (
-          <DataRow label="Контракт" value={`${deal.ton_contract_address.slice(0, 12)}...`} color="#cc44ff" />
+          <DataRow label="Contract" value={`${deal.ton_contract_address.slice(0, 12)}...`} color="#cc44ff" />
         )}
       </div>
 
-      {/* Квест-лог */}
+      {/* Quest log */}
       <div className="gl card-stagger-3">
         <div className="pxgrid" /><div className="sh" />
         <div className="sec" style={{ margin: '0 0 10px', padding: 0, border: 'none', color: 'rgba(255,255,255,0.3)' }}>
-          -- КВЕСТ ЛОГ --
+          -- QUEST LOG --
         </div>
         {log.map((entry, i) => (
           <div key={i} style={{
@@ -133,7 +155,7 @@ export function DealRoom() {
       <div className="gl card-stagger-4" style={{ padding: '10px 14px' }}>
         <div className="pxgrid" />
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-          <span style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)' }}>ПРОГРЕСС КВЕСТА</span>
+          <span style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)' }}>QUEST PROGRESS</span>
           <span style={{ fontSize: '7px', color: '#ffaa00' }}>{Math.round((log.length / 5) * 100)}%</span>
         </div>
         <div className="hp-t">
@@ -144,26 +166,67 @@ export function DealRoom() {
         </div>
       </div>
 
-      {/* Действия */}
+      {/* Actions — different for client and freelancer */}
       <div className="card-stagger-5" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        {deal.status === 'signed' && (
+
+        {/* === CLIENT === */}
+        {isClient && deal.status === 'pending_signature' && (
+          <div className="gl" style={{ textAlign: 'center', padding: '14px', borderColor: 'rgba(255,170,0,0.3)' }}>
+            <div className="pxgrid" />
+            <div style={{ fontSize: '8px', color: '#ffaa00', marginBottom: '6px' }}>⏳ WAITING FOR FREELANCER</div>
+            <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.35)', lineHeight: 2 }}>
+              Send the invite link to the freelancer
+            </div>
+          </div>
+        )}
+        {isClient && deal.status === 'signed' && (
           <button className="btn btn-y btn-full" onClick={() => go(`/payment/${id}`)}>
-            [ 💳 ОПЛАТИТЬ ]
+            [ 💳 PAY ]
           </button>
         )}
-        {deal.status === 'under_review' && (
+        {isClient && deal.status === 'in_progress' && (
+          <div className="gl" style={{ textAlign: 'center', padding: '14px', borderColor: 'rgba(0,136,255,0.3)' }}>
+            <div className="pxgrid" />
+            <div style={{ fontSize: '8px', color: '#0088ff' }}>🔄 FREELANCER IS WORKING</div>
+          </div>
+        )}
+        {isClient && deal.status === 'under_review' && (
           <button className="btn btn-g btn-full" onClick={() => go(`/review/${id}`)}>
-            [ 🔍 ПРОВЕРИТЬ РАБОТУ ]
+            [ 🔍 REVIEW WORK ]
           </button>
         )}
-        {deal.status === 'in_progress' && (
+
+        {/* === FREELANCER === */}
+        {isFreelancer && deal.status === 'pending_signature' && (
+          <button className="btn btn-g btn-full" onClick={handleSign} disabled={signing}>
+            {signing ? '[ ⏳ SIGNING... ]' : '[ ✍️ SIGN CONTRACT ]'}
+          </button>
+        )}
+        {isFreelancer && deal.status === 'signed' && (
+          <div className="gl" style={{ textAlign: 'center', padding: '14px', borderColor: 'rgba(255,170,0,0.3)' }}>
+            <div className="pxgrid" />
+            <div style={{ fontSize: '8px', color: '#ffaa00', marginBottom: '4px' }}>⏳ AWAITING PAYMENT</div>
+            <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.35)', lineHeight: 2 }}>
+              The client must pay for the deal
+            </div>
+          </div>
+        )}
+        {isFreelancer && deal.status === 'in_progress' && (
           <button className="btn btn-b btn-full" onClick={() => go(`/review/${id}`)}>
-            [ 📦 СДАТЬ РАБОТУ ]
+            [ 📦 SUBMIT WORK ]
           </button>
         )}
-        {['in_progress','under_review','frozen'].includes(deal.status) && (
+        {isFreelancer && deal.status === 'under_review' && (
+          <div className="gl" style={{ textAlign: 'center', padding: '14px', borderColor: 'rgba(204,68,255,0.3)' }}>
+            <div className="pxgrid" />
+            <div style={{ fontSize: '8px', color: '#cc44ff' }}>🔍 WORK UNDER REVIEW</div>
+          </div>
+        )}
+
+        {/* Dispute — for both */}
+        {['in_progress','under_review'].includes(deal.status) && (
           <button className="btn btn-gr btn-full" onClick={() => go(`/dispute/${id}`)}>
-            [ ⚖️ ОТКРЫТЬ СПОР ]
+            [ ⚖️ OPEN DISPUTE ]
           </button>
         )}
       </div>

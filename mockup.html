@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>SafeDeal — UI Mockup for Stitch AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:#000;
+  font-family:'Press Start 2P',monospace;
+  color:#fff;
+  padding:32px 24px;
+  min-width:1800px;
+}
+h1{font-size:10px;color:#00ff88;letter-spacing:2px;margin-bottom:8px;text-align:center}
+.subtitle{font-size:7px;color:rgba(255,255,255,0.3);text-align:center;margin-bottom:32px;letter-spacing:1px}
+
+/* LAYOUT */
+.screens{display:flex;gap:24px;align-items:flex-start;flex-wrap:nowrap}
+.screen{
+  width:320px;flex-shrink:0;
+  background:#000;
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:28px;
+  padding:16px 12px 24px;
+  position:relative;
+  overflow:hidden;
+}
+.screen-label{
+  font-size:6px;color:rgba(255,255,255,0.25);letter-spacing:2px;
+  text-align:center;margin-bottom:14px;
+}
+
+/* GLASS CARD */
+.gl{
+  background:rgba(255,255,255,0.045);
+  border:1px solid rgba(255,255,255,0.13);
+  border-radius:16px;
+  padding:14px 12px;
+  position:relative;
+  overflow:hidden;
+  margin-bottom:8px;
+}
+.gl::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.18),transparent);
+}
+.gl-sm{
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:12px;
+  padding:10px 8px;
+  position:relative;
+  overflow:hidden;
+}
+.gl-sm::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);
+}
+
+/* PIXEL SCENE */
+.scene{
+  width:100%;height:56px;
+  background:rgba(0,255,136,0.04);
+  border:1px solid rgba(0,255,136,0.12);
+  border-radius:12px;
+  margin-bottom:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;letter-spacing:4px;
+  position:relative;overflow:hidden;
+}
+.scene::after{
+  content:'';position:absolute;inset:0;
+  background-image:repeating-linear-gradient(0deg,transparent,transparent 4px,rgba(255,255,255,0.015) 4px,rgba(255,255,255,0.015) 5px),
+    repeating-linear-gradient(90deg,transparent,transparent 4px,rgba(255,255,255,0.015) 4px,rgba(255,255,255,0.015) 5px);
+}
+
+/* TYPOGRAPHY */
+.logo{font-size:11px;color:#00ff88;text-align:center;margin-bottom:4px;letter-spacing:1px}
+.sub{font-size:6px;color:rgba(255,255,255,0.3);text-align:center;letter-spacing:1px;margin-bottom:12px}
+.section-label{font-size:7px;color:rgba(255,255,255,0.3);letter-spacing:1px;margin-bottom:8px}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:5px;margin-bottom:8px}
+.stats-2{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px}
+.stat{text-align:center}
+.stat-n{display:block;font-size:14px;margin-bottom:4px}
+.stat-l{display:block;font-size:5px;color:rgba(255,255,255,0.35);letter-spacing:1px}
+
+/* XP BAR */
+.xpbar{background:rgba(255,255,255,0.08);border-radius:4px;height:5px;margin-bottom:8px;overflow:hidden}
+.xpbar-fill{height:100%;background:#00ff88;border-radius:4px}
+
+/* BADGE / PILL */
+.badge{
+  display:inline-block;font-size:6px;padding:4px 10px;
+  border-radius:100px;letter-spacing:0.5px;
+}
+.badge-green{color:#00ff88;border:1px solid rgba(0,255,136,0.4);background:rgba(0,255,136,0.08)}
+.badge-blue{color:#0088ff;border:1px solid rgba(0,136,255,0.4);background:rgba(0,136,255,0.08)}
+.badge-gold{color:#ffaa00;border:1px solid rgba(255,170,0,0.4);background:rgba(255,170,0,0.08)}
+.badge-purple{color:#cc44ff;border:1px solid rgba(204,68,255,0.4);background:rgba(204,68,255,0.08)}
+.badge-red{color:#ff4466;border:1px solid rgba(255,68,102,0.4);background:rgba(255,68,102,0.08)}
+.badge-orange{color:#ff8800;border:1px solid rgba(255,136,0,0.4);background:rgba(255,136,0,0.08)}
+
+/* BUTTON */
+.btn{
+  display:block;width:100%;padding:11px 8px;
+  font-family:'Press Start 2P',monospace;font-size:8px;
+  border-radius:8px;cursor:pointer;text-align:center;
+  letter-spacing:0.5px;border:none;
+}
+.btn-green{background:#00ff88;color:#000}
+.btn-outline{background:transparent;border:1px solid rgba(255,255,255,0.2);color:#fff}
+.btn-red{background:transparent;border:1px solid rgba(255,68,102,0.5);color:#ff4466}
+.btn-gold{background:transparent;border:1px solid rgba(255,170,0,0.5);color:#ffaa00}
+.btn-sm{font-size:6px;padding:7px 10px;border-radius:6px;display:inline-block;width:auto}
+
+/* INPUT */
+.inp{
+  width:100%;background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.15);border-radius:10px;
+  padding:10px 10px;color:#fff;font-family:'Press Start 2P',monospace;
+  font-size:7px;outline:none;margin-bottom:6px;
+}
+textarea.inp{resize:none;height:60px}
+
+/* FILTER ROW */
+.filters{display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap}
+.fb{
+  font-family:'Press Start 2P',monospace;font-size:6px;
+  padding:5px 10px;border-radius:100px;cursor:pointer;
+}
+.fb-on{background:rgba(0,255,136,0.18);border:1px solid rgba(0,255,136,0.5);color:#00ff88}
+.fb-off{background:transparent;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.35)}
+
+/* DEAL CARD */
+.dc{margin-bottom:8px}
+.dc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.dc-title{font-size:7px;color:#fff;line-height:1.6}
+.dc-amt{font-size:8px;color:#00ff88;white-space:nowrap}
+.dc-row{display:flex;justify-content:space-between;align-items:center}
+
+/* NAV CARD */
+.nav-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:8px}
+.nav-card{
+  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);
+  border-radius:14px;padding:14px 10px;text-align:center;cursor:pointer;
+  position:relative;overflow:hidden;
+}
+.nav-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent)}
+.nav-icon{font-size:18px;margin-bottom:6px;display:block}
+.nav-label{font-size:6px;color:rgba(255,255,255,0.6);letter-spacing:0.5px}
+
+/* BOTTOM NAV */
+.bottom-nav{
+  display:flex;justify-content:space-around;align-items:center;
+  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);
+  border-radius:16px;padding:10px 6px;margin-top:10px;
+}
+.nav-tab{text-align:center;font-size:5px;color:rgba(255,255,255,0.3);cursor:pointer}
+.nav-tab.active{color:#00ff88}
+.nav-tab span{display:block;font-size:14px;margin-bottom:3px}
+
+/* TIMELINE */
+.timeline{list-style:none}
+.timeline li{
+  display:flex;gap:8px;align-items:flex-start;
+  margin-bottom:10px;font-size:6px;line-height:1.8;
+  color:rgba(255,255,255,0.6);
+}
+.timeline li::before{
+  content:'●';font-size:8px;flex-shrink:0;margin-top:1px;
+}
+.t-green::before{color:#00ff88}
+.t-blue::before{color:#0088ff}
+.t-gold::before{color:#ffaa00}
+.t-purple::before{color:#cc44ff}
+
+/* CHECKLIST */
+.checklist{list-style:none}
+.checklist li{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);
+  font-size:6px;color:rgba(255,255,255,0.7);line-height:1.8;
+}
+.check{width:14px;height:14px;border-radius:3px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:8px}
+.check.done{background:rgba(0,255,136,0.2);border:1px solid #00ff88;color:#00ff88}
+.check.todo{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.2)}
+
+/* TABS */
+.tabs{display:flex;gap:4px;margin-bottom:10px}
+.tab{
+  flex:1;text-align:center;font-family:'Press Start 2P',monospace;
+  font-size:5px;padding:7px 4px;border-radius:8px;cursor:pointer;
+}
+.tab.on{background:rgba(0,255,136,0.15);border:1px solid rgba(0,255,136,0.4);color:#00ff88}
+.tab.off{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.35)}
+
+/* AVATAR */
+.avatar-circle{
+  width:64px;height:64px;border-radius:50%;
+  border:2px solid rgba(0,255,136,0.4);
+  background:rgba(0,255,136,0.08);
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;margin:0 auto 8px;
+}
+.banner{
+  width:100%;height:72px;border-radius:12px;
+  background:linear-gradient(135deg,rgba(0,255,136,0.15),rgba(0,136,255,0.12),rgba(204,68,255,0.1));
+  border:1px solid rgba(255,255,255,0.08);margin-bottom:-24px;
+}
+
+/* QUEST ROW */
+.quest{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);
+}
+.quest-icon{font-size:12px;flex-shrink:0}
+.quest-info{flex:1}
+.quest-name{font-size:6px;color:rgba(255,255,255,0.7);margin-bottom:4px;line-height:1.6}
+.quest-bar{height:3px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden}
+.quest-bar-fill{height:100%;border-radius:2px;background:#cc44ff}
+.quest-reward{font-size:6px;color:#cc44ff;white-space:nowrap;flex-shrink:0}
+.quest-done{font-size:8px;flex-shrink:0}
+
+/* COINS */
+.coins-balance{
+  text-align:center;padding:16px;
+  background:rgba(204,68,255,0.08);border:1px solid rgba(204,68,255,0.25);
+  border-radius:16px;margin-bottom:8px;
+}
+.coins-num{font-size:28px;color:#cc44ff;display:block;margin-bottom:4px}
+.coins-label{font-size:7px;color:rgba(204,68,255,0.6);letter-spacing:1px}
+
+/* SHOP CARD */
+.shop-card{
+  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);
+  border-radius:12px;padding:12px;margin-bottom:6px;
+  display:flex;align-items:center;gap:10px;
+}
+.shop-icon{font-size:18px;flex-shrink:0}
+.shop-info{flex:1}
+.shop-name{font-size:7px;color:#fff;margin-bottom:4px}
+.shop-price{font-size:6px;color:#cc44ff}
+.shop-price span{color:rgba(255,255,255,0.3)}
+
+/* FREELANCER CARD */
+.fl-card{
+  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);
+  border-radius:14px;padding:12px;margin-bottom:7px;
+  position:relative;overflow:hidden;
+}
+.fl-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.12),transparent)}
+
+/* SEPARATOR */
+.div{height:1px;background:rgba(255,255,255,0.05);margin:10px 0}
+
+/* LIVE DOT */
+.live-dot{
+  display:inline-block;width:7px;height:7px;border-radius:50%;
+  background:#00ff88;margin-right:5px;
+  box-shadow:0 0 6px #00ff88;
+}
+
+/* STEP PROGRESS */
+.steps{display:flex;gap:5px;justify-content:center;margin-bottom:14px}
+.step-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.12)}
+.step-dot.done{background:#00ff88}
+.step-dot.current{background:#00ff88;box-shadow:0 0 8px #00ff88}
+
+/* FILE PREVIEW */
+.file-row{display:flex;gap:6px;overflow:hidden;margin-bottom:8px}
+.file-card{
+  width:70px;height:60px;flex-shrink:0;border-radius:8px;
+  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);
+  display:flex;align-items:center;justify-content:center;font-size:18px;
+}
+
+/* ESCROW CARD */
+.escrow{
+  background:rgba(0,136,255,0.08);border:1px solid rgba(0,136,255,0.3);
+  border-radius:14px;padding:12px;margin-bottom:8px;text-align:center;
+}
+
+/* PUBLIC PROFILE */
+.pub-skills{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+
+/* ROLE PILL */
+.role-pill-g{color:#00ff88;border:1px solid rgba(0,255,136,0.4);background:rgba(0,255,136,0.08)}
+.role-pill-b{color:#0088ff;border:1px solid rgba(0,136,255,0.4);background:rgba(0,136,255,0.08)}
+.role-pill-gold{color:#ffaa00;border:1px solid rgba(255,170,0,0.4);background:rgba(255,170,0,0.08)}
+
+/* SLIDER DOTS */
+.slider-dots{display:flex;justify-content:center;gap:5px;margin-top:6px}
+.slider-dot{height:5px;border-radius:3px;background:rgba(255,255,255,0.2)}
+.slider-dot.on{width:14px;background:#00ff88}
+.slider-dot.off{width:5px}
+</style>
+</head>
+<body>
+
+<h1>SAFEDEAL — UI MOCKUP</h1>
+<div class="subtitle">Telegram Mini App · TON Blockchain Escrow · Pixel Art + Liquid Glass Design System</div>
+
+<div class="screens">
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- SCREEN 01 · HOME                           -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="screen">
+    <div class="screen-label">01 · HOME</div>
+
+    <div class="scene">🏠 📜</div>
+
+    <div class="gl" style="text-align:center;padding:16px 12px">
+      <div class="logo">⚔ SAFEDEAL</div>
+      <div class="sub">SECURE DEALS ON TON</div>
+      <div style="font-size:6px;color:rgba(255,255,255,0.25)">LVL 3 · KNIGHT</div>
+    </div>
+
+    <div class="stats">
+      <div class="gl-sm stat">
+        <span class="stat-n" style="color:#00ff88;font-size:16px">12</span>
+        <span class="stat-l">DEALS</span>
+      </div>
+      <div class="gl-sm stat">
+        <span class="stat-n" style="color:#ffaa00;font-size:10px">$1.4K</span>
+        <span class="stat-l">VOLUME</span>
+      </div>
+      <div class="gl-sm stat">
+        <span class="stat-n" style="color:#cc44ff;font-size:14px">⚔3</span>
+        <span class="stat-l">LEVEL</span>
+      </div>
+      <div class="gl-sm stat">
+        <span class="stat-n" style="color:#0088ff;font-size:12px">640</span>
+        <span class="stat-l">XP</span>
+      </div>
+    </div>
+
+    <div style="padding:0 2px;margin-bottom:8px">
+      <div style="font-size:6px;color:rgba(255,255,255,0.3);margin-bottom:4px">XP TO NEXT LEVEL · 64%</div>
+      <div class="xpbar"><div class="xpbar-fill" style="width:64%"></div></div>
+    </div>
+
+    <div class="nav-grid">
+      <div class="nav-card">
+        <span class="nav-icon">📜</span>
+        <div class="nav-label">NEW DEAL</div>
+      </div>
+      <div class="nav-card">
+        <span class="nav-icon">🏰</span>
+        <div class="nav-label">MY DEALS</div>
+      </div>
+      <div class="nav-card">
+        <span class="nav-icon">⚡</span>
+        <div class="nav-label">LIVE FEED</div>
+      </div>
+      <div class="nav-card">
+        <span class="nav-icon">📋</span>
+        <div class="nav-label">JOB BOARD</div>
+      </div>
+      <div class="nav-card" style="grid-column:1/-1">
+        <span class="nav-icon">👥</span>
+        <div class="nav-label">FREELANCERS</div>
+      </div>
+    </div>
+
+    <div class="section-label">-- ACTIVE DEALS --</div>
+    <div class="gl dc" style="border-color:rgba(0,136,255,0.3)">
+      <div class="dc-top">
+        <div class="dc-title">BOT DEVELOPMENT</div>
+        <div class="dc-amt" style="color:#0088ff">$350 TON</div>
+      </div>
+      <div class="dc-row">
+        <span class="badge badge-blue">🔒 FROZEN</span>
+        <span style="font-size:6px;color:rgba(255,255,255,0.25)">3d left</span>
+      </div>
+    </div>
+    <div class="gl dc" style="border-color:rgba(204,68,255,0.3)">
+      <div class="dc-top">
+        <div class="dc-title">LOGO DESIGN</div>
+        <div class="dc-amt" style="color:#cc44ff">$120 USDT</div>
+      </div>
+      <div class="dc-row">
+        <span class="badge badge-purple">🔍 REVIEW</span>
+        <span style="font-size:6px;color:rgba(255,255,255,0.25)">1d left</span>
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+      <div class="nav-tab active"><span>🏠</span>HOME</div>
+      <div class="nav-tab"><span>🏰</span>DEALS</div>
+      <div class="nav-tab"><span>⚡</span>LIVE</div>
+      <div class="nav-tab"><span>📋</span>JOBS</div>
+      <div class="nav-tab"><span>👤</span>PROFILE</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- SCREEN 02 · NEW DEAL                       -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="screen">
+    <div class="screen-label">02 · NEW DEAL</div>
+
+    <div class="scene">✍️ 📜</div>
+
+    <div class="gl" style="text-align:center">
+      <div class="logo" style="font-size:9px">CREATE DEAL</div>
+      <div class="sub">STEP 2 OF 5 · REWARD</div>
+    </div>
+
+    <div class="steps">
+      <div class="step-dot done"></div>
+      <div class="step-dot current"></div>
+      <div class="step-dot"></div>
+      <div class="step-dot"></div>
+      <div class="step-dot"></div>
+    </div>
+
+    <div class="gl">
+      <div class="section-label">DEAL AMOUNT</div>
+      <input class="inp" value="350" style="font-size:14px;text-align:center;border-color:rgba(0,255,136,0.4)" readonly/>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button class="btn btn-green btn-sm" style="flex:1">TON</button>
+        <button class="btn btn-outline btn-sm" style="flex:1">USDT</button>
+      </div>
+      <div class="section-label">DEADLINE</div>
+      <input class="inp" value="7 days" readonly/>
+    </div>
+
+    <div class="gl" style="background:rgba(255,170,0,0.05);border-color:rgba(255,170,0,0.2)">
+      <div style="font-size:6px;color:rgba(255,255,255,0.4);margin-bottom:6px">PAYMENT BREAKDOWN</div>
+      <div style="display:flex;justify-content:space-between;font-size:6px;margin-bottom:4px">
+        <span style="color:rgba(255,255,255,0.5)">Deal amount</span>
+        <span style="color:#fff">350 TON</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:6px;margin-bottom:4px">
+        <span style="color:rgba(255,255,255,0.5)">Platform fee (2%)</span>
+        <span style="color:#ff8800">7 TON</span>
+      </div>
+      <div class="div"></div>
+      <div style="display:flex;justify-content:space-between;font-size:7px">
+        <span style="color:rgba(255,255,255,0.5)">Total</span>
+        <span style="color:#ffaa00">357 TON</span>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:6px">
+      <button class="btn btn-outline" style="flex:1;font-size:7px">← BACK</button>
+      <button class="btn btn-green" style="flex:2">NEXT →</button>
+    </div>
+
+    <div class="bottom-nav">
+      <div class="nav-tab"><span>🏠</span>HOME</div>
+      <div class="nav-tab active"><span>🏰</span>DEALS</div>
+      <div class="nav-tab"><span>⚡</span>LIVE</div>
+      <div class="nav-tab"><span>📋</span>JOBS</div>
+      <div class="nav-tab"><span>👤</span>PROFILE</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- SCREEN 03 · DEAL ROOM                      -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="screen">
+    <div class="screen-label">03 · DEAL ROOM</div>
+
+    <div class="scene">⚔️ 🔒 ⚔️</div>
+
+    <div class="gl" style="text-align:center">
+      <span class="badge badge-blue" style="margin-bottom:8px;display:inline-block">🔒 FROZEN</span>
+      <div class="logo" style="font-size:9px;margin-bottom:4px">BOT DEVELOPMENT</div>
+      <div style="font-size:7px;color:#0088ff;margin-bottom:6px">350 TON · $847</div>
+      <div style="font-size:6px;color:rgba(255,255,255,0.3)">@alexfreelancer · 3 days left</div>
+    </div>
+
+    <div class="escrow">
+      <div style="font-size:8px;color:#0088ff;margin-bottom:4px">🔒 FUNDS FROZEN</div>
+      <div style="font-size:6px;color:rgba(0,136,255,0.6)">Escrow secured on TON blockchain</div>
+    </div>
+
+    <div class="gl">
+      <div class="section-label">-- QUEST LOG --</div>
+      <ul class="timeline">
+        <li class="t-green">Deal created by client <span style="color:rgba(255,255,255,0.3);margin-left:4px">2d ago</span></li>
+        <li class="t-green">Freelancer accepted <span style="color:rgba(255,255,255,0.3);margin-left:4px">2d ago</span></li>
+        <li class="t-blue">Payment frozen in escrow <span style="color:rgba(255,255,255,0.3);margin-left:4px">1d ago</span></li>
+        <li class="t-gold">Work submitted for review <span style="color:rgba(255,255,255,0.3);margin-left:4px">3h ago</span></li>
+        <li class="t-purple" style="color:rgba(255,255,255,0.4)">Awaiting client review...</li>
+      </ul>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <button class="btn btn-green">✅ APPROVE WORK</button>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-gold btn-sm" style="flex:1;font-size:6px">🔄 REVISIONS</button>
+        <button class="btn btn-red btn-sm" style="flex:1;font-size:6px">⚖ DISPUTE</button>
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+      <div class="nav-tab"><span>🏠</span>HOME</div>
+      <div class="nav-tab active"><span>🏰</span>DEALS</div>
+      <div class="nav-tab"><span>⚡</span>LIVE</div>
+      <div class="nav-tab"><span>📋</span>JOBS</div>
+      <div class="nav-tab"><span>👤</span>PROFILE</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- SCREEN 04 · REVIEW                         -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="screen">
+    <div class="screen-label">04 · REVIEW WORK</div>
+
+    <div class="scene">🔍 ✅</div>
+
+    <div class="gl" style="text-align:center">
+      <div class="logo" style="font-size:9px;margin-bottom:4px">REVIEW DELIVERY</div>
+      <div style="font-size:6px;color:rgba(255,255,255,0.35)">BOT DEVELOPMENT · Submitted 3h ago</div>
+    </div>
+
+    <div class="gl">
+      <div class="section-label">FILE PREVIEWS</div>
+      <div class="file-row">
+        <div class="file-card">🖼</div>
+        <div class="file-card">📄</div>
+        <div class="file-card">🎥</div>
+        <div class="file-card" style="background:rgba(255,255,255,0.02);border-style:dashed;font-size:10px;color:rgba(255,255,255,0.2)">+2</div>
+      </div>
+    </div>
+
+    <div class="gl">
+      <div class="section-label">CRITERIA CHECKLIST</div>
+      <ul class="checklist">
+        <li><div class="check done">✓</div>Bot responds to all commands</li>
+        <li><div class="check done">✓</div>Payment integration works</li>
+        <li><div class="check done">✓</div>Source code provided</li>
+        <li><div class="check todo"></div>Documentation included</li>
+        <li><div class="check todo"></div>Deployed to server</li>
+      </ul>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
+      <button class="btn btn-green">✅ APPROVE · RELEASE FUNDS</button>
+      <button class="btn btn-gold">🔄 REQUEST CHANGES</button>
+      <button class="btn btn-red">⚖ OPEN DISPUTE</button>
+    </div>
+
+    <div class="bottom-nav">
+      <div class="nav-tab"><span>🏠</span>HOME</div>
+      <div class="nav-tab active"><span>🏰</span>DEALS</div>
+      <div class="nav-tab"><span>⚡</span>LIVE</div>
+      <div class="nav-tab"><span>📋</span>JOBS</div>
+      <div class="nav-tab"><span>👤</span>PROFILE</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- SCREEN 05 · LIVE FEED                      -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="screen">
+    <div class="screen-label">05 · LIVE FEED</div>
+
+    <div class="scene">📡 ⚡</div>
+
+    <div class="gl" style="text-align:center">
+      <div class="logo" style="color:#00ff88">
+        <span class="live-dot"></span>LIVE FEED
+      </div>
+      <div class="sub">Deals in real time</div>
+    </div>
+
+    <div class="stats">
+      <div class="gl-sm stat">
+        <span class="stat-n" style="color:#00ff88">248</span>
+        <span class="stat-l">DEALS</span>
+      </div>
+      <div class="gl-sm stat">
+        <span class="stat-n" style="color:#ffaa00;font-size:9px">$84K</span>
+        <span class="stat-l">VOLUME</span>
+      </div>
+      <div class="gl-sm stat">
+        <span class="stat-n" style="color:#0088ff">18</span>
+        <span class="stat-l">ACTIVE</span>
+      </div>
+      <div class="gl-sm stat">
+        <span class="stat-n" style="color:#ff4466">3</span>
+        <span class="stat-l">DISPUTES</span>
+      </div>
+    </div>
+
+    <div class="filters">
+      <button class="fb fb-on">ALL</button>
+      <button class="fb fb-off">DONE</button>
+      <button class="fb fb-off">ACTIVE</button>
+      <button class="fb fb-off">DISPUTES</button>
+    </div>
+
+    <div class="gl dc" style="border-color:rgba(0,255,136,0.25)">
+      <div style="position:absolute;top:8px;right:10px;font-size:5px;color:#00ff88">● LIVE</div>
+      <div class="dc-top">
+        <div class="dc-title">MOBILE APP UI</div>
+        <div class="dc-amt">$200 USDT</div>
+      </div>
+      <div class="dc-row">
+        <span class="badge badge-green">✅ DONE</span>
+        <span style="font-size:6px;color:rgba(255,255,255,0.25)">just now</span>
+      </div>
+    </div>
+
+    <div class="gl dc" style="border-color:rgba(0,136,255,0.25)">
+      <div class="dc-top">
+        <div class="dc-title">BOT DEVELOPMENT</div>
+        <div class="dc-amt" style="color:#0088ff">$350 TON</div>
+      </div>
+      <div class="dc-row">
+        <span class="badge badge-blue">🔒 FROZEN</span>
+        <span style="font-size:6px;color:rgba(255,255,255,0.25)">5m ago</span>
+      </div>
+    </div>
+
+    <div class="gl dc" style="border-color:rgba(255,136,0,0.25)">
+      <div class="dc-top">
+        <div class="dc-title">SMART CONTRACT</div>
+        <div class="dc-amt" style="color:#ff8800">$500 USDT</div>
+      </div>
+      <div class="dc-row">
+        <span class="badge badge-orange">⚔ NEW</span>
+        <span style="font-size:6px;color:rgba(255,255,255,0.25)">12m ago</span>
+      </div>
+    </div>
+
+    <div class="gl dc" style="border-color:rgba(255,68,102,0.25)">
+      <div class="dc-top">
+        <div class="dc-title">NFT ARTWORK</div>
+        <div class="dc-amt" style="color:#ff4466">$150 TON</div>
+      </div>
+      <div class="dc-row">
+        <span class="badge badge-red">⚖ DISPUTE</span>
+        <span style="font-size:6px;color:rgba(255,255,255,0.25)">22m ago</span>
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+      <div class="nav-tab"><span>🏠</span>HOME</div>
+      <div class="nav-tab"><span>🏰</span>DEALS</div>
+      <div class="nav-tab active"><span>⚡</span>LIVE</div>
+      <div class="nav-tab"><span>📋</span>JOBS</div>
+      <div class="nav-tab"><span>👤</span>PROFILE</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- SCREEN 06 · JOB BOARD                      -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="screen">
+    <div class="screen-label">06 · JOB BOARD</div>
+
+    <div class="scene">📋 🔍</div>
+
+    <div class="gl" style="text-align:center">
+      <div class="logo" style="font-size:9px">JOB BOARD</div>
+      <div class="sub">Find your next quest</div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab on">BROWSE</div>
+      <div class="tab off">MY JOBS</div>
+      <div class="tab off">POST</div>
+    </div>
+
+    <input class="inp" value="🔍  Search jobs..." readonly/>
+
+    <div class="filters" style="margin-bottom:8px">
+      <button class="fb fb-on">ALL</button>
+      <button class="fb fb-off">DEV</button>
+      <button class="fb fb-off">DESIGN</button>
+      <button class="fb fb-off">WRITING</button>
+    </div>
+
+    <div class="fl-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <div style="font-size:7px;color:#fff;line-height:1.6;flex:1">TELEGRAM BOT DEVELOPMENT</div>
+        <div style="font-size:8px;color:#00ff88;white-space:nowrap;margin-left:8px">$200-500</div>
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">
+        <span class="badge badge-blue" style="font-size:5px">⏰ 7 DAYS</span>
+        <span class="badge badge-purple" style="font-size:5px">Node.js</span>
+        <span class="badge badge-purple" style="font-size:5px">Telegraf</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:5px;color:rgba(255,255,255,0.3)">Posted 2h ago · 4 applicants</span>
+        <button class="btn btn-green btn-sm" style="font-size:5px">APPLY →</button>
+      </div>
+    </div>
+
+    <div class="fl-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <div style="font-size:7px;color:#fff;line-height:1.6;flex:1">UI/UX DESIGN FOR MOBILE APP</div>
+        <div style="font-size:8px;color:#00ff88;white-space:nowrap;margin-left:8px">$150-300</div>
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">
+        <span class="badge badge-blue" style="font-size:5px">⏰ 14 DAYS</span>
+        <span class="badge badge-purple" style="font-size:5px">Figma</span>
+        <span class="badge badge-purple" style="font-size:5px">Prototyping</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:5px;color:rgba(255,255,255,0.3)">Posted 5h ago · 7 applicants</span>
+        <button class="btn btn-green btn-sm" style="font-size:5px">APPLY →</button>
+      </div>
+    </div>
+
+    <div class="fl-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <div style="font-size:7px;color:#fff;line-height:1.6;flex:1">SMART CONTRACT AUDIT</div>
+        <div style="font-size:8px;color:#00ff88;white-space:nowrap;margin-left:8px">$500</div>
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">
+        <span class="badge badge-blue" style="font-size:5px">⏰ 5 DAYS</span>
+        <span class="badge badge-purple" style="font-size:5px">FunC</span>
+        <span class="badge badge-purple" style="font-size:5px">TON</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:5px;color:rgba(255,255,255,0.3)">Posted 1d ago · 2 applicants</span>
+        <button class="btn btn-green btn-sm" style="font-size:5px">APPLY →</button>
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+      <div class="nav-tab"><span>🏠</span>HOME</div>
+      <div class="nav-tab"><span>🏰</span>DEALS</div>
+      <div class="nav-tab"><span>⚡</span>LIVE</div>
+      <div class="nav-tab active"><span>📋</span>JOBS</div>
+      <div class="nav-tab"><span>👤</span>PROFILE</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- SCREEN 07 · PROFILE                        -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="screen">
+    <div class="screen-label">07 · PROFILE</div>
+
+    <div class="banner"></div>
+
+    <div style="text-align:center;padding-top:16px;margin-bottom:8px">
+      <div class="avatar-circle">🛡</div>
+      <div class="logo" style="font-size:10px;margin-bottom:4px">ALEX KNIGHT</div>
+      <div style="font-size:7px;color:rgba(255,255,255,0.35);margin-bottom:6px">@alexknight</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:6px">
+        <span style="font-size:6px;color:rgba(255,255,255,0.4)">🌍 Germany</span>
+        <span class="badge role-pill-g badge" style="font-size:5px;padding:3px 8px">🛠 FREELANCER</span>
+      </div>
+    </div>
+
+    <div style="padding:0 2px;margin-bottom:8px">
+      <div style="font-size:6px;color:rgba(255,255,255,0.3);margin-bottom:4px">XP · LVL 3 · 64%</div>
+      <div class="xpbar"><div class="xpbar-fill" style="width:64%"></div></div>
+    </div>
+
+    <div class="stats">
+      <div class="gl-sm stat">
+        <span class="stat-n" style="color:#00ff88;font-size:14px">12</span>
+        <span class="stat-l">✅ DEALS</span>
+      </div>
+      <div class="gl-sm stat">
+        <span class="stat-n" style="color:#ffaa00;font-size:11px">⭐4.9</span>
+        <span class="stat-l">RATING</span>
+      </div>
+      <div class="gl-sm stat">
+        <span class="stat-n" style="color:#cc44ff;font-size:14px">⚔3</span>
+        <span class="stat-l">LEVEL</span>
+      </div>
+      <div class="gl-sm stat">
+        <span class="stat-n" style="color:#0088ff;font-size:12px">640</span>
+        <span class="stat-l">XP</span>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab on" style="font-size:4px">STATS</div>
+      <div class="tab off" style="font-size:4px">PORTFOLIO</div>
+      <div class="tab off" style="font-size:4px">REVIEWS</div>
+      <div class="tab off" style="font-size:4px">EDIT</div>
+    </div>
+
+    <!-- STATS TAB CONTENT -->
+    <div class="coins-balance">
+      <span class="coins-num">🪙 350</span>
+      <div class="coins-label">SAFECOINS</div>
+    </div>
+
+    <div class="gl">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;justify-content:space-between;font-size:6px">
+          <span style="color:rgba(255,255,255,0.4)">🔥 Streak</span>
+          <span style="color:#ffaa00">7 days</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:6px">
+          <span style="color:rgba(255,255,255,0.4)">💼 Account</span>
+          <span style="color:#fff">Individual</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:6px">
+          <span style="color:rgba(255,255,255,0.4)">📈 Experience</span>
+          <span style="color:#cc44ff">Senior</span>
+        </div>
+        <div class="div"></div>
+        <div style="display:flex;justify-content:space-between;font-size:6px">
+          <span style="color:rgba(255,255,255,0.4)">💎 TON Wallet</span>
+          <span style="color:#0088ff">EQAb...3f7k</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+      <div class="nav-tab"><span>🏠</span>HOME</div>
+      <div class="nav-tab"><span>🏰</span>DEALS</div>
+      <div class="nav-tab"><span>⚡</span>LIVE</div>
+      <div class="nav-tab"><span>📋</span>JOBS</div>
+      <div class="nav-tab active"><span>👤</span>PROFILE</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- SCREEN 08 · PROFILE EDIT TAB               -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="screen">
+    <div class="screen-label">08 · PROFILE · EDIT TAB</div>
+
+    <div class="banner"></div>
+    <div style="text-align:center;padding-top:10px;margin-bottom:10px">
+      <div class="avatar-circle">🛡</div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab off" style="font-size:4px">STATS</div>
+      <div class="tab off" style="font-size:4px">PORTFOLIO</div>
+      <div class="tab off" style="font-size:4px">REVIEWS</div>
+      <div class="tab on" style="font-size:4px">EDIT</div>
+    </div>
+
+    <div class="gl">
+      <div class="section-label">AVATAR</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="avatar-circle" style="width:44px;height:44px;font-size:16px;margin:0;flex-shrink:0">🛡</div>
+        <button class="btn btn-outline btn-sm" style="font-size:5px">📷 UPLOAD</button>
+      </div>
+    </div>
+
+    <div class="gl">
+      <div class="section-label">PORTFOLIO SLIDES (2/5)</div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">
+        <div style="width:54px;height:44px;border-radius:6px;background:rgba(0,255,136,0.08);border:1px solid rgba(0,255,136,0.2);display:flex;align-items:center;justify-content:center;font-size:16px;position:relative">
+          🖼<span style="position:absolute;top:2px;right:4px;font-size:7px;color:#ff4466;cursor:pointer">×</span>
+        </div>
+        <div style="width:54px;height:44px;border-radius:6px;background:rgba(0,255,136,0.08);border:1px solid rgba(0,255,136,0.2);display:flex;align-items:center;justify-content:center;font-size:16px;position:relative">
+          🎨<span style="position:absolute;top:2px;right:4px;font-size:7px;color:#ff4466;cursor:pointer">×</span>
+        </div>
+        <div style="width:54px;height:44px;border-radius:6px;background:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(255,255,255,0.2)">+</div>
+      </div>
+    </div>
+
+    <div class="gl">
+      <div class="section-label">BANNER</div>
+      <div style="width:100%;height:36px;border-radius:8px;background:linear-gradient(135deg,rgba(0,255,136,0.15),rgba(0,136,255,0.12));border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;margin-bottom:6px">
+        <span style="font-size:6px;color:rgba(255,255,255,0.3)">CURRENT BANNER</span>
+      </div>
+      <button class="btn btn-outline btn-sm" style="font-size:5px">📷 CHANGE BANNER</button>
+    </div>
+
+    <div class="gl">
+      <div class="section-label">ABOUT</div>
+      <textarea class="inp" placeholder="Write your bio...">Senior TON blockchain developer. 5+ years in DeFi & smart contracts.</textarea>
+      <input class="inp" value="🌍 Germany" readonly/>
+    </div>
+
+    <div class="gl">
+      <div class="section-label">ROLE & SKILLS</div>
+      <select class="inp" style="appearance:none">
+        <option>🛠 FREELANCER</option>
+      </select>
+      <select class="inp" style="appearance:none">
+        <option>📈 SENIOR</option>
+      </select>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">
+        <span class="badge badge-purple" style="font-size:5px;cursor:pointer">FunC ×</span>
+        <span class="badge badge-purple" style="font-size:5px;cursor:pointer">TON ×</span>
+        <span class="badge badge-purple" style="font-size:5px;cursor:pointer">Node.js ×</span>
+        <span class="badge" style="font-size:5px;border:1px dashed rgba(255,255,255,0.2);color:rgba(255,255,255,0.3);cursor:pointer">+ ADD</span>
+      </div>
+    </div>
+
+    <button class="btn btn-green" style="margin-top:8px">💾 SAVE PROFILE</button>
+
+    <div class="bottom-nav">
+      <div class="nav-tab"><span>🏠</span>HOME</div>
+      <div class="nav-tab"><span>🏰</span>DEALS</div>
+      <div class="nav-tab"><span>⚡</span>LIVE</div>
+      <div class="nav-tab"><span>📋</span>JOBS</div>
+      <div class="nav-tab active"><span>👤</span>PROFILE</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- SCREEN 09 · COINS & QUESTS                 -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="screen">
+    <div class="screen-label">09 · COINS & QUESTS</div>
+
+    <div class="gl" style="text-align:center">
+      <div class="logo" style="color:#cc44ff;font-size:10px">🪙 SAFECOINS</div>
+      <div class="sub">Earn · Boost · Rise</div>
+    </div>
+
+    <div class="coins-balance">
+      <span class="coins-num">350</span>
+      <div class="coins-label">🪙 SAFECOINS</div>
+    </div>
+
+    <div class="tabs" style="margin-bottom:8px">
+      <div class="tab on" style="font-size:4px;flex:auto">QUESTS</div>
+      <div class="tab off" style="font-size:4px;flex:auto">SHOP</div>
+      <div class="tab off" style="font-size:4px;flex:auto">HISTORY</div>
+    </div>
+
+    <div class="gl">
+      <div class="section-label" style="color:#cc44ff">🟣 PROFILE</div>
+      <div class="quest">
+        <div class="quest-icon">📸</div>
+        <div class="quest-info">
+          <div class="quest-name">Upload avatar</div>
+          <div class="quest-bar"><div class="quest-bar-fill" style="width:100%"></div></div>
+        </div>
+        <div class="quest-done">✅</div>
+      </div>
+      <div class="quest">
+        <div class="quest-icon">✍️</div>
+        <div class="quest-info">
+          <div class="quest-name">Write your bio</div>
+          <div class="quest-bar"><div class="quest-bar-fill" style="width:100%"></div></div>
+        </div>
+        <div class="quest-done">✅</div>
+      </div>
+      <div class="quest">
+        <div class="quest-icon">🖼</div>
+        <div class="quest-info">
+          <div class="quest-name">Add 3 portfolio slides</div>
+          <div class="quest-bar"><div class="quest-bar-fill" style="width:66%"></div></div>
+          <div style="font-size:5px;color:rgba(255,255,255,0.3);margin-top:2px">2 / 3</div>
+        </div>
+        <div class="quest-reward">+75</div>
+      </div>
+    </div>
+
+    <div class="gl">
+      <div class="section-label" style="color:#0088ff">🔵 REFERRALS</div>
+      <div class="quest">
+        <div class="quest-icon">👤</div>
+        <div class="quest-info">
+          <div class="quest-name">Invite 1 friend</div>
+          <div class="quest-bar"><div class="quest-bar-fill" style="width:100%;background:#0088ff"></div></div>
+        </div>
+        <div class="quest-done">✅</div>
+      </div>
+      <div class="quest">
+        <div class="quest-icon">👥</div>
+        <div class="quest-info">
+          <div class="quest-name">Invite 3 friends</div>
+          <div class="quest-bar"><div class="quest-bar-fill" style="width:33%;background:#0088ff"></div></div>
+          <div style="font-size:5px;color:rgba(255,255,255,0.3);margin-top:2px">1 / 3</div>
+        </div>
+        <div class="quest-reward">+250</div>
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+      <div class="nav-tab"><span>🏠</span>HOME</div>
+      <div class="nav-tab"><span>🏰</span>DEALS</div>
+      <div class="nav-tab"><span>⚡</span>LIVE</div>
+      <div class="nav-tab"><span>📋</span>JOBS</div>
+      <div class="nav-tab active"><span>👤</span>PROFILE</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- SCREEN 10 · SHOP (BOOSTS)                  -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="screen">
+    <div class="screen-label">10 · COINS · SHOP</div>
+
+    <div class="gl" style="text-align:center">
+      <div class="logo" style="color:#cc44ff;font-size:10px">🪙 SAFECOINS</div>
+    </div>
+
+    <div class="coins-balance">
+      <span class="coins-num">350</span>
+      <div class="coins-label">🪙 SAFECOINS</div>
+    </div>
+
+    <div class="tabs" style="margin-bottom:8px">
+      <div class="tab off" style="font-size:4px;flex:auto">QUESTS</div>
+      <div class="tab on" style="font-size:4px;flex:auto">SHOP</div>
+      <div class="tab off" style="font-size:4px;flex:auto">HISTORY</div>
+    </div>
+
+    <div class="section-label">-- AVAILABLE BOOSTS --</div>
+
+    <div class="shop-card">
+      <div class="shop-icon">🔝</div>
+      <div class="shop-info">
+        <div class="shop-name">BOOST JOB POST</div>
+        <div style="font-size:5px;color:rgba(255,255,255,0.3);margin-bottom:4px;line-height:1.8">Top of Job Board for 24 hours</div>
+        <div class="shop-price">50 🪙 <span>or</span> 1 TON</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <button class="btn btn-outline btn-sm" style="font-size:5px;white-space:nowrap">🪙 COINS</button>
+        <button class="btn btn-gold btn-sm" style="font-size:5px">TON</button>
+      </div>
+    </div>
+
+    <div class="shop-card" style="border-color:rgba(255,170,0,0.25)">
+      <div class="shop-icon">⭐</div>
+      <div class="shop-info">
+        <div class="shop-name">TOP FREELANCER</div>
+        <div style="font-size:5px;color:rgba(255,255,255,0.3);margin-bottom:4px;line-height:1.8">Gold badge · 7 days</div>
+        <div class="shop-price">150 🪙 <span>or</span> 3 TON</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <button class="btn btn-outline btn-sm" style="font-size:5px;white-space:nowrap">🪙 COINS</button>
+        <button class="btn btn-gold btn-sm" style="font-size:5px">TON</button>
+      </div>
+    </div>
+
+    <div class="shop-card" style="border-color:rgba(255,170,0,0.4);background:rgba(255,170,0,0.06)">
+      <div class="shop-icon">🏆</div>
+      <div class="shop-info">
+        <div class="shop-name" style="color:#ffaa00">TOP FREELANCER PRO</div>
+        <div style="font-size:5px;color:rgba(255,255,255,0.3);margin-bottom:4px;line-height:1.8">Gold badge · 30 days · Priority listing</div>
+        <div class="shop-price">500 🪙 <span>or</span> 5 TON</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <button class="btn btn-outline btn-sm" style="font-size:5px;white-space:nowrap;opacity:0.4">🪙 NEED 150</button>
+        <button class="btn btn-gold btn-sm" style="font-size:5px">TON</button>
+      </div>
+    </div>
+
+    <div class="gl" style="margin-top:4px;background:rgba(0,255,136,0.04);border-color:rgba(0,255,136,0.15)">
+      <div style="font-size:6px;color:rgba(0,255,136,0.7);margin-bottom:6px">🎯 HOW TO EARN 500 COINS FAST</div>
+      <div style="font-size:5px;color:rgba(255,255,255,0.4);line-height:2.2">
+        Complete profile → +200<br>
+        Invite 3 friends → +250<br>
+        Leave a review → +50<br>
+        <span style="color:#00ff88">TOTAL → 500 🪙 ✅</span>
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+      <div class="nav-tab"><span>🏠</span>HOME</div>
+      <div class="nav-tab"><span>🏰</span>DEALS</div>
+      <div class="nav-tab"><span>⚡</span>LIVE</div>
+      <div class="nav-tab"><span>📋</span>JOBS</div>
+      <div class="nav-tab active"><span>👤</span>PROFILE</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- SCREEN 11 · PUBLIC PROFILE                 -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="screen">
+    <div class="screen-label">11 · PUBLIC PROFILE</div>
+
+    <button style="background:none;border:none;color:rgba(255,255,255,0.4);font-family:'Press Start 2P',monospace;font-size:7px;cursor:pointer;margin-bottom:8px">← BACK</button>
+
+    <div class="banner"></div>
+
+    <div class="gl" style="text-align:center;padding-top:28px">
+      <div class="avatar-circle" style="margin-top:-36px;border-color:rgba(0,136,255,0.5)">🛡</div>
+      <div class="logo" style="font-size:10px;margin-bottom:4px">ALEX KNIGHT</div>
+      <div style="font-size:7px;color:rgba(255,255,255,0.35);margin-bottom:8px">@alexknight</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap">
+        <span style="font-size:6px;color:rgba(255,255,255,0.4)">🌍 Germany</span>
+        <span class="badge role-pill-g badge" style="font-size:5px;padding:3px 8px">🛠 FREELANCER</span>
+      </div>
+    </div>
+
+    <div class="gl">
+      <div class="section-label">-- PORTFOLIO --</div>
+      <div style="height:90px;border-radius:10px;background:linear-gradient(135deg,rgba(0,255,136,0.1),rgba(0,136,255,0.08));border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:24px;position:relative">
+        🖼
+        <button style="position:absolute;left:6px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.5);border:none;color:#fff;font-family:'Press Start 2P',monospace;font-size:7px;border-radius:4px;padding:3px 6px;cursor:pointer">◀</button>
+        <button style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.5);border:none;color:#fff;font-family:'Press Start 2P',monospace;font-size:7px;border-radius:4px;padding:3px 6px;cursor:pointer">▶</button>
+      </div>
+      <div class="slider-dots" style="margin-top:6px">
+        <div class="slider-dot on"></div>
+        <div class="slider-dot off"></div>
+        <div class="slider-dot off"></div>
+      </div>
+    </div>
+
+    <div class="gl">
+      <div class="section-label">-- ABOUT --</div>
+      <div style="font-size:7px;color:rgba(255,255,255,0.6);line-height:2.2">Senior TON blockchain developer. 5+ years in DeFi & smart contracts.</div>
+    </div>
+
+    <div class="gl">
+      <div class="section-label">-- SKILLS --</div>
+      <div style="font-size:6px;color:rgba(255,255,255,0.4);margin-bottom:6px">BLOCKCHAIN · SENIOR</div>
+      <div class="pub-skills">
+        <span class="badge badge-purple" style="font-size:5px">FunC</span>
+        <span class="badge badge-purple" style="font-size:5px">TON</span>
+        <span class="badge badge-purple" style="font-size:5px">Node.js</span>
+        <span class="badge badge-purple" style="font-size:5px">DeFi</span>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="gl-sm stat">
+        <span class="stat-n" style="color:#00ff88;font-size:14px">12</span>
+        <span class="stat-l">✅ DEALS</span>
+      </div>
+      <div class="gl-sm stat">
+        <span class="stat-n" style="color:#ffaa00;font-size:11px">⭐4.9</span>
+        <span class="stat-l">RATING</span>
+      </div>
+      <div class="gl-sm stat">
+        <span class="stat-n" style="color:#cc44ff;font-size:14px">⚔3</span>
+        <span class="stat-l">LEVEL</span>
+      </div>
+      <div class="gl-sm stat">
+        <span class="stat-n" style="color:#0088ff;font-size:12px">640</span>
+        <span class="stat-l">XP</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- SCREEN 12 · FREELANCERS LIST               -->
+  <!-- ══════════════════════════════════════════ -->
+  <div class="screen">
+    <div class="screen-label">12 · FREELANCERS LIST</div>
+
+    <button style="background:none;border:none;color:rgba(255,255,255,0.4);font-family:'Press Start 2P',monospace;font-size:7px;cursor:pointer;margin-bottom:8px">← BACK</button>
+
+    <div class="gl" style="text-align:center">
+      <div class="logo" style="font-size:9px">👥 FREELANCERS</div>
+      <div class="sub">Find your hero</div>
+    </div>
+
+    <input class="inp" value="🔍  Search by name or skill..." readonly/>
+
+    <div class="filters">
+      <button class="fb fb-on">ALL</button>
+      <button class="fb fb-off">DEV</button>
+      <button class="fb fb-off">DESIGN</button>
+      <button class="fb fb-off">SMM</button>
+    </div>
+
+    <div class="fl-card">
+      <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px">
+        <div style="width:40px;height:40px;border-radius:50%;background:rgba(0,255,136,0.1);border:1px solid rgba(0,255,136,0.3);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🛡</div>
+        <div style="flex:1">
+          <div style="font-size:7px;color:#fff;margin-bottom:3px">ALEX KNIGHT</div>
+          <div style="font-size:5px;color:rgba(255,255,255,0.35);margin-bottom:5px">@alexknight</div>
+          <span class="badge badge-purple" style="font-size:5px;padding:2px 7px">📈 SENIOR</span>
+        </div>
+        <button class="btn btn-green btn-sm" style="font-size:5px;white-space:nowrap">VIEW →</button>
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:5px">
+        <span class="badge badge-purple" style="font-size:5px">FunC</span>
+        <span class="badge badge-purple" style="font-size:5px">TON</span>
+        <span class="badge badge-purple" style="font-size:5px">Node.js</span>
+      </div>
+      <div style="font-size:6px;color:rgba(255,255,255,0.4);line-height:1.8">Senior TON blockchain developer with 5+ years in DeFi...</div>
+    </div>
+
+    <div class="fl-card">
+      <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px">
+        <div style="width:40px;height:40px;border-radius:50%;background:rgba(255,170,0,0.1);border:1px solid rgba(255,170,0,0.3);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🎨</div>
+        <div style="flex:1">
+          <div style="font-size:7px;color:#fff;margin-bottom:3px">MARIA PIXELS</div>
+          <div style="font-size:5px;color:rgba(255,255,255,0.35);margin-bottom:5px">@mariapixels</div>
+          <span class="badge badge-gold" style="font-size:5px;padding:2px 7px">📊 MIDDLE</span>
+        </div>
+        <button class="btn btn-green btn-sm" style="font-size:5px;white-space:nowrap">VIEW →</button>
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:5px">
+        <span class="badge badge-purple" style="font-size:5px">Figma</span>
+        <span class="badge badge-purple" style="font-size:5px">UI/UX</span>
+        <span class="badge badge-purple" style="font-size:5px">Pixel Art</span>
+      </div>
+      <div style="font-size:6px;color:rgba(255,255,255,0.4);line-height:1.8">UI/UX designer specializing in Telegram mini apps...</div>
+    </div>
+
+    <div class="fl-card">
+      <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px">
+        <div style="width:40px;height:40px;border-radius:50%;background:rgba(0,136,255,0.1);border:1px solid rgba(0,136,255,0.3);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">✍️</div>
+        <div style="flex:1">
+          <div style="font-size:7px;color:#fff;margin-bottom:3px">JOHN WRITER</div>
+          <div style="font-size:5px;color:rgba(255,255,255,0.35);margin-bottom:5px">@johnwriter</div>
+          <span class="badge badge-green" style="font-size:5px;padding:2px 7px">🌱 JUNIOR</span>
+        </div>
+        <button class="btn btn-green btn-sm" style="font-size:5px;white-space:nowrap">VIEW →</button>
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:5px">
+        <span class="badge badge-purple" style="font-size:5px">Copywriting</span>
+        <span class="badge badge-purple" style="font-size:5px">SEO</span>
+      </div>
+      <div style="font-size:6px;color:rgba(255,255,255,0.4);line-height:1.8">Content writer focused on crypto and Web3 projects...</div>
+    </div>
+  </div>
+
+</div><!-- end .screens -->
+
+<!-- DESIGN SYSTEM LEGEND -->
+<div style="margin-top:48px;padding:24px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:20px;max-width:1400px">
+  <div style="font-size:9px;color:#00ff88;margin-bottom:16px;letter-spacing:2px">DESIGN SYSTEM REFERENCE</div>
+  <div style="display:flex;gap:32px;flex-wrap:wrap">
+    <div>
+      <div style="font-size:6px;color:rgba(255,255,255,0.35);margin-bottom:10px;letter-spacing:1px">COLORS</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;align-items:center;gap:8px"><div style="width:14px;height:14px;border-radius:3px;background:#00ff88"></div><span style="font-size:6px;color:#00ff88">#00FF88 · Success · Freelancer · Approved</span></div>
+        <div style="display:flex;align-items:center;gap:8px"><div style="width:14px;height:14px;border-radius:3px;background:#ffaa00"></div><span style="font-size:6px;color:#ffaa00">#FFAA00 · XP · Coins · Payment</span></div>
+        <div style="display:flex;align-items:center;gap:8px"><div style="width:14px;height:14px;border-radius:3px;background:#0088ff"></div><span style="font-size:6px;color:#0088ff">#0088FF · Frozen · Client · Info</span></div>
+        <div style="display:flex;align-items:center;gap:8px"><div style="width:14px;height:14px;border-radius:3px;background:#cc44ff"></div><span style="font-size:6px;color:#cc44ff">#CC44FF · Review · Level · Skills · Coins</span></div>
+        <div style="display:flex;align-items:center;gap:8px"><div style="width:14px;height:14px;border-radius:3px;background:#ff4466"></div><span style="font-size:6px;color:#ff4466">#FF4466 · Dispute · Danger · Error</span></div>
+        <div style="display:flex;align-items:center;gap:8px"><div style="width:14px;height:14px;border-radius:3px;background:#ff8800"></div><span style="font-size:6px;color:#ff8800">#FF8800 · Waiting · New · Pending</span></div>
+      </div>
+    </div>
+    <div>
+      <div style="font-size:6px;color:rgba(255,255,255,0.35);margin-bottom:10px;letter-spacing:1px">TYPOGRAPHY</div>
+      <div style="font-size:6px;color:rgba(255,255,255,0.6);line-height:2.5">
+        Font: Press Start 2P (Google Fonts)<br>
+        ALL TEXT IS UPPERCASE<br>
+        Title: 11-12px<br>
+        Subtitle: 8-9px<br>
+        Body: 7px<br>
+        Label: 6px<br>
+        Micro: 5px
+      </div>
+    </div>
+    <div>
+      <div style="font-size:6px;color:rgba(255,255,255,0.35);margin-bottom:10px;letter-spacing:1px">CARDS</div>
+      <div style="font-size:6px;color:rgba(255,255,255,0.6);line-height:2.5">
+        bg: rgba(255,255,255,0.045)<br>
+        border: 1px solid rgba(255,255,255,0.13)<br>
+        radius large: 20px<br>
+        radius small: 14px<br>
+        radius pill: 100px<br>
+        shimmer: top edge gradient<br>
+        pixel grid: 5×5px dot overlay
+      </div>
+    </div>
+    <div>
+      <div style="font-size:6px;color:rgba(255,255,255,0.35);margin-bottom:10px;letter-spacing:1px">BUTTONS</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <button class="btn btn-green" style="width:auto;padding:8px 16px;font-size:6px">PRIMARY ACTION</button>
+        <button class="btn btn-outline" style="width:auto;padding:8px 16px;font-size:6px">SECONDARY</button>
+        <button class="btn btn-gold" style="width:auto;padding:8px 16px;font-size:6px">WARNING</button>
+        <button class="btn btn-red" style="width:auto;padding:8px 16px;font-size:6px">DANGER</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

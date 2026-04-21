@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SafeDeal Admin</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg:      #0b0b0b;
+  --sidebar: #101010;
+  --card:    #141414;
+  --border:  #1f1f1f;
+  --border2: #2a2a2a;
+  --green:   #00ff88;
+  --gold:    #ffaa00;
+  --blue:    #0088ff;
+  --purple:  #cc44ff;
+  --red:     #ff4466;
+  --orange:  #ff8800;
+  --text:    #e0e0e0;
+  --muted:   #555;
+  --font:    'Courier New', monospace;
+}
+body { background:var(--bg); color:var(--text); font-family:var(--font); font-size:13px; min-height:100vh; }
+
+/* LOGIN */
+#login-screen {
+  display:flex; align-items:center; justify-content:center;
+  min-height:100vh; background:var(--bg);
+}
+.login-box {
+  background:var(--card); border:1px solid var(--border2);
+  border-radius:8px; padding:40px; width:360px;
+}
+.login-box h1 { font-size:16px; color:var(--green); margin-bottom:6px; letter-spacing:2px; }
+.login-box p  { font-size:11px; color:var(--muted); margin-bottom:28px; }
+.login-box input {
+  width:100%; padding:12px 14px; background:#0d0d0d;
+  border:1px solid var(--border2); border-radius:6px;
+  color:var(--text); font-family:var(--font); font-size:13px;
+  margin-bottom:14px; outline:none;
+  transition: border-color .2s;
+}
+.login-box input:focus { border-color:var(--green); }
+.login-box button {
+  width:100%; padding:12px; background:var(--green); border:none;
+  border-radius:6px; color:#000; font-family:var(--font);
+  font-size:13px; font-weight:bold; cursor:pointer; letter-spacing:1px;
+  transition: opacity .2s;
+}
+.login-box button:hover { opacity:.85; }
+.login-err { color:var(--red); font-size:11px; margin-top:8px; }
+
+/* MAIN LAYOUT */
+#app { display:none; }
+#app.visible { display:flex; min-height:100vh; }
+
+/* SIDEBAR */
+.sidebar {
+  width:200px; min-height:100vh; background:var(--sidebar);
+  border-right:1px solid var(--border); display:flex;
+  flex-direction:column; position:sticky; top:0; height:100vh; overflow-y:auto;
+}
+.sidebar-logo {
+  padding:22px 20px 18px; border-bottom:1px solid var(--border);
+  font-size:13px; color:var(--green); letter-spacing:2px;
+}
+.sidebar-logo span { color:var(--muted); font-size:10px; display:block; margin-top:3px; }
+.nav-item {
+  padding:12px 20px; cursor:pointer; color:var(--muted);
+  font-size:12px; letter-spacing:.5px;
+  border-left:2px solid transparent;
+  transition:all .15s; display:flex; align-items:center; gap:10px;
+}
+.nav-item:hover { color:var(--text); background:rgba(255,255,255,.03); }
+.nav-item.active { color:var(--green); border-left-color:var(--green); background:rgba(0,255,136,.05); }
+.nav-badge {
+  margin-left:auto; background:var(--red); color:#fff;
+  font-size:9px; padding:2px 6px; border-radius:10px;
+}
+.sidebar-footer {
+  margin-top:auto; padding:16px 20px; border-top:1px solid var(--border);
+  font-size:10px; color:var(--muted); display:flex; justify-content:space-between;
+}
+.sidebar-footer a { color:var(--muted); cursor:pointer; }
+.sidebar-footer a:hover { color:var(--red); }
+
+/* MAIN */
+.main { flex:1; overflow-y:auto; padding:28px 32px; min-width:0; }
+.section { display:none; }
+.section.active { display:block; }
+.page-title {
+  font-size:18px; color:var(--text); margin-bottom:6px; letter-spacing:1px;
+}
+.page-sub { font-size:11px; color:var(--muted); margin-bottom:24px; }
+
+/* CARDS */
+.cards-row { display:flex; gap:14px; margin-bottom:24px; flex-wrap:wrap; }
+.stat-card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:8px; padding:20px 22px; flex:1; min-width:140px;
+}
+.stat-card .label { font-size:10px; color:var(--muted); letter-spacing:1px; margin-bottom:8px; }
+.stat-card .value { font-size:26px; font-weight:bold; }
+.stat-card .sub   { font-size:10px; color:var(--muted); margin-top:4px; }
+
+/* TABLE */
+.table-wrap {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:8px; overflow:hidden; margin-bottom:20px;
+}
+.table-header {
+  padding:14px 18px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+}
+.table-title { font-size:13px; color:var(--text); letter-spacing:.5px; }
+table { width:100%; border-collapse:collapse; }
+thead tr { background:#0f0f0f; }
+th {
+  padding:10px 14px; text-align:left; font-size:10px;
+  color:var(--muted); letter-spacing:1px; font-weight:normal;
+  border-bottom:1px solid var(--border);
+}
+td {
+  padding:10px 14px; font-size:12px; color:var(--text);
+  border-bottom:1px solid var(--border); vertical-align:middle;
+}
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:rgba(255,255,255,.02); }
+
+/* INPUTS */
+.search-inp {
+  padding:8px 12px; background:#0d0d0d; border:1px solid var(--border2);
+  border-radius:6px; color:var(--text); font-family:var(--font);
+  font-size:12px; outline:none; width:220px;
+  transition:border-color .2s;
+}
+.search-inp:focus { border-color:var(--green); }
+select.search-inp { cursor:pointer; }
+
+/* BUTTONS */
+.btn {
+  padding:7px 14px; border:none; border-radius:5px; cursor:pointer;
+  font-family:var(--font); font-size:11px; letter-spacing:.5px;
+  transition:opacity .15s; white-space:nowrap;
+}
+.btn:hover { opacity:.8; }
+.btn-green  { background:var(--green); color:#000; font-weight:bold; }
+.btn-red    { background:var(--red); color:#fff; }
+.btn-blue   { background:var(--blue); color:#fff; }
+.btn-gold   { background:var(--gold); color:#000; font-weight:bold; }
+.btn-ghost  { background:transparent; border:1px solid var(--border2); color:var(--muted); }
+.btn-ghost:hover { color:var(--text); border-color:var(--text); }
+.btn-sm { padding:4px 10px; font-size:10px; }
+
+/* PILLS */
+.pill {
+  display:inline-block; padding:3px 8px; border-radius:4px;
+  font-size:10px; letter-spacing:.5px;
+}
+.pill-green  { background:rgba(0,255,136,.1); border:1px solid rgba(0,255,136,.3); color:var(--green); }
+.pill-gold   { background:rgba(255,170,0,.1);  border:1px solid rgba(255,170,0,.3);  color:var(--gold); }
+.pill-blue   { background:rgba(0,136,255,.1);  border:1px solid rgba(0,136,255,.3);  color:var(--blue); }
+.pill-red    { background:rgba(255,68,102,.1); border:1px solid rgba(255,68,102,.3); color:var(--red); }
+.pill-purple { background:rgba(204,68,255,.1); border:1px solid rgba(204,68,255,.3); color:var(--purple); }
+.pill-orange { background:rgba(255,136,0,.1);  border:1px solid rgba(255,136,0,.3);  color:var(--orange); }
+.pill-muted  { background:rgba(255,255,255,.05); border:1px solid var(--border2); color:var(--muted); }
+
+/* DISPUTE CARDS */
+.dispute-card {
+  background:var(--card); border:1px solid var(--border2);
+  border-radius:8px; padding:20px; margin-bottom:14px;
+}
+.dispute-card.open   { border-left:3px solid var(--red); }
+.dispute-card.resolved { border-left:3px solid var(--green); }
+.d-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; gap:14px; }
+.d-title  { font-size:13px; color:var(--text); margin-bottom:4px; }
+.d-meta   { font-size:10px; color:var(--muted); }
+.d-reason { font-size:11px; color:rgba(255,255,255,.55); background:rgba(255,255,255,.04);
+            padding:10px 12px; border-radius:5px; margin-bottom:14px; line-height:1.6; }
+.d-participants { display:flex; gap:20px; margin-bottom:14px; }
+.d-side   { flex:1; background:rgba(255,255,255,.03); border-radius:5px; padding:10px 12px; }
+.d-side-label { font-size:9px; color:var(--muted); letter-spacing:1px; margin-bottom:4px; }
+.d-side-name  { font-size:12px; color:var(--text); }
+.d-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.split-inp {
+  width:70px; padding:6px 10px; background:#0d0d0d;
+  border:1px solid var(--border2); border-radius:5px;
+  color:var(--text); font-family:var(--font); font-size:12px;
+  outline:none;
+}
+
+/* BROADCAST */
+.broadcast-wrap { max-width:600px; }
+.broadcast-wrap textarea {
+  width:100%; min-height:140px; padding:14px;
+  background:#0d0d0d; border:1px solid var(--border2); border-radius:6px;
+  color:var(--text); font-family:var(--font); font-size:13px;
+  resize:vertical; outline:none; margin-bottom:12px; line-height:1.6;
+}
+.broadcast-wrap textarea:focus { border-color:var(--green); }
+.broadcast-result {
+  margin-top:14px; padding:14px; border-radius:6px;
+  background:rgba(0,255,136,.06); border:1px solid rgba(0,255,136,.2);
+  font-size:12px; color:var(--green);
+}
+
+/* CHART */
+.chart-wrap {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:8px; padding:20px; margin-bottom:20px;
+}
+.chart-title { font-size:12px; color:var(--muted); letter-spacing:.5px; margin-bottom:16px; }
+.chart-bars { display:flex; align-items:flex-end; gap:6px; height:80px; }
+.chart-bar-col { display:flex; flex-direction:column; align-items:center; gap:4px; flex:1; }
+.chart-bar { width:100%; background:rgba(0,255,136,.25); border-radius:3px 3px 0 0;
+             transition:height .3s; position:relative; min-height:2px;
+             border-top:2px solid var(--green); }
+.chart-bar:hover { background:rgba(0,255,136,.45); }
+.chart-day { font-size:8px; color:var(--muted); }
+.chart-val { font-size:8px; color:var(--green); }
+
+/* PAGINATION */
+.pager { display:flex; gap:8px; align-items:center; margin-top:14px; }
+.pager button { padding:6px 12px; }
+
+/* TOAST */
+.toast {
+  position:fixed; bottom:24px; right:24px; z-index:9999;
+  padding:12px 18px; border-radius:7px; font-size:12px;
+  background:var(--card); border:1px solid var(--border2);
+  color:var(--text); box-shadow:0 8px 32px rgba(0,0,0,.5);
+  animation:slide-in .2s ease; max-width:320px;
+}
+.toast.ok  { border-color:rgba(0,255,136,.4); color:var(--green); }
+.toast.err { border-color:rgba(255,68,102,.4); color:var(--red); }
+@keyframes slide-in { from { transform:translateX(20px); opacity:0; } to { transform:none; opacity:1; } }
+
+/* LOADING */
+.loading { color:var(--muted); font-size:12px; padding:32px; text-align:center; }
+.empty   { color:var(--muted); font-size:12px; padding:24px; text-align:center; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<!-- ==================== LOGIN ==================== -->
+<div id="login-screen">
+  <div class="login-box">
+    <h1>⚔ SAFEDEAL</h1>
+    <p>Admin Panel · /admark</p>
+    <input type="password" id="pwd-inp" placeholder="Введите пароль..." onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">ВОЙТИ →</button>
+    <div id="login-err" class="login-err"></div>
+  </div>
+</div>
+
+<!-- ==================== MAIN APP ==================== -->
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">⚔ SAFEDEAL<span>Admin Panel</span></div>
+    <div class="nav-item active" onclick="nav('dashboard')">📊 Дашборд</div>
+    <div class="nav-item" onclick="nav('users')">👥 Пользователи</div>
+    <div class="nav-item" onclick="nav('contracts')">⚔️ Сделки</div>
+    <div class="nav-item" id="nav-disputes" onclick="nav('disputes')">⚖️ Споры</div>
+    <div class="nav-item" onclick="nav('jobs')">📌 Биржа</div>
+    <div class="nav-item" onclick="nav('broadcast')">📢 Broadcast</div>
+    <div class="sidebar-footer">
+      <span id="admin-time">--:--</span>
+      <a onclick="logout()">Выйти</a>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <section id="s-dashboard" class="section active">
+      <div class="page-title">Дашборд</div>
+      <div class="page-sub">Общая статистика платформы</div>
+
+      <div class="cards-row" id="stat-cards">
+        <div class="stat-card"><div class="label">ПОЛЬЗОВАТЕЛЕЙ</div><div class="value" id="st-users">—</div><div class="sub" id="st-users-today"></div></div>
+        <div class="stat-card"><div class="label">СДЕЛОК</div><div class="value" id="st-deals">—</div><div class="sub" id="st-deals-active"></div></div>
+        <div class="stat-card"><div class="label">ОБЪЁМ ($)</div><div class="value" id="st-volume">—</div><div class="sub">всего</div></div>
+        <div class="stat-card"><div class="label">ЗАРАБОТОК ($)</div><div class="value" id="st-revenue">—</div><div class="sub">комиссии 2%</div></div>
+        <div class="stat-card"><div class="label">ЭСКРОУ ($)</div><div class="value" id="st-escrow">—</div><div class="sub">заморожено</div></div>
+        <div class="stat-card"><div class="label">СПОРОВ</div><div class="value" id="st-disputes" style="color:var(--red)">—</div><div class="sub">открыто</div></div>
+      </div>
+
+      <div class="chart-wrap">
+        <div class="chart-title">НОВЫЕ СДЕЛКИ — последние 14 дней</div>
+        <div class="chart-bars" id="chart-bars"></div>
+      </div>
+
+      <div class="table-wrap">
+        <div class="table-header"><span class="table-title">🏆 Топ пользователей</span></div>
+        <table>
+          <thead><tr><th>#</th><th>USER</th><th>TG ID</th><th>СДЕЛОК</th></tr></thead>
+          <tbody id="top-users-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- USERS -->
+    <section id="s-users" class="section">
+      <div class="page-title">Пользователи</div>
+      <div class="page-sub">Все зарегистрированные пользователи</div>
+      <div class="table-wrap">
+        <div class="table-header">
+          <span class="table-title" id="users-count">Загрузка...</span>
+          <input class="search-inp" id="users-search" placeholder="Поиск по имени / TG ID..."
+            onkeydown="if(event.key==='Enter')loadUsers()">
+          <button class="btn btn-green btn-sm" onclick="loadUsers()">Найти</button>
+        </div>
+        <table>
+          <thead><tr><th>TG ID</th><th>USERNAME</th><th>ИМЯ</th><th>LVL</th><th>XP</th><th>СДЕЛОК</th><th>КОШЕЛЁК</th><th>ДАТА</th></tr></thead>
+          <tbody id="users-body"><tr><td colspan="8" class="loading">Загрузка...</td></tr></tbody>
+        </table>
+      </div>
+      <div class="pager">
+        <button class="btn btn-ghost btn-sm" onclick="usersPage(-1)">← Назад</button>
+        <span style="font-size:11px;color:var(--muted)" id="users-page-lbl">стр. 1</span>
+        <button class="btn btn-ghost btn-sm" onclick="usersPage(1)">Вперёд →</button>
+      </div>
+    </section>
+
+    <!-- CONTRACTS -->
+    <section id="s-contracts" class="section">
+      <div class="page-title">Сделки</div>
+      <div class="page-sub">Управление контрактами</div>
+      <div class="table-wrap">
+        <div class="table-header">
+          <span class="table-title">Контракты</span>
+          <select class="search-inp" id="contracts-status" onchange="loadContracts()" style="width:180px">
+            <option value="">Все статусы</option>
+            <option value="draft">draft</option>
+            <option value="pending_signature">pending_signature</option>
+            <option value="signed">signed</option>
+            <option value="awaiting_payment">awaiting_payment</option>
+            <option value="in_progress">in_progress</option>
+            <option value="under_review">under_review</option>
+            <option value="completed">completed</option>
+            <option value="disputed">disputed</option>
+            <option value="refunded">refunded</option>
+          </select>
+        </div>
+        <table>
+          <thead><tr><th>НАЗВАНИЕ</th><th>КЛИЕНТ</th><th>ФРИЛАНСЕР</th><th>$</th><th>СТАТУС</th><th>ЭСКРОУ</th><th>ДАТА</th><th>ДЕЙСТВИЯ</th></tr></thead>
+          <tbody id="contracts-body"><tr><td colspan="8" class="loading">Загрузка...</td></tr></tbody>
+        </table>
+      </div>
+      <div class="pager">
+        <button class="btn btn-ghost btn-sm" onclick="contractsPage(-1)">← Назад</button>
+        <span style="font-size:11px;color:var(--muted)" id="contracts-page-lbl">стр. 1</span>
+        <button class="btn btn-ghost btn-sm" onclick="contractsPage(1)">Вперёд →</button>
+      </div>
+    </section>
+
+    <!-- DISPUTES -->
+    <section id="s-disputes" class="section">
+      <div class="page-title">Споры</div>
+      <div class="page-sub">Разрешение конфликтов между участниками</div>
+      <div style="display:flex;gap:8px;margin-bottom:18px">
+        <button class="btn btn-ghost btn-sm" id="dfilter-open"     onclick="setDisputeFilter('open')"    >⚖️ Открытые</button>
+        <button class="btn btn-ghost btn-sm" id="dfilter-resolved" onclick="setDisputeFilter('resolved')">✅ Решённые</button>
+      </div>
+      <div id="disputes-list"><div class="loading">Загрузка...</div></div>
+    </section>
+
+    <!-- JOBS -->
+    <section id="s-jobs" class="section">
+      <div class="page-title">Биржа заказов</div>
+      <div class="page-sub">Модерация заказов</div>
+      <div class="table-wrap">
+        <div class="table-header"><span class="table-title" id="jobs-count">Загрузка...</span></div>
+        <table>
+          <thead><tr><th>НАЗВАНИЕ</th><th>КЛИЕНТ</th><th>БЮДЖЕТ</th><th>КАТЕГОРИЯ</th><th>СТАТУС</th><th>ОТКЛИКОВ</th><th>ДАТА</th><th>УДАЛИТЬ</th></tr></thead>
+          <tbody id="jobs-body"><tr><td colspan="8" class="loading">Загрузка...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- BROADCAST -->
+    <section id="s-broadcast" class="section">
+      <div class="page-title">Broadcast</div>
+      <div class="page-sub">Отправить сообщение всем пользователям через бота</div>
+      <div class="broadcast-wrap">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">Поддерживается HTML разметка: &lt;b&gt;, &lt;i&gt;, &lt;code&gt;, &lt;a href=...&gt;</div>
+        <textarea id="broadcast-msg" placeholder="Введите сообщение...&#10;&#10;Например:&#10;&lt;b&gt;🔔 Важное обновление&lt;/b&gt;&#10;Мы добавили новую функцию..."></textarea>
+        <button class="btn btn-green" onclick="sendBroadcast()" id="broadcast-btn">📢 ОТПРАВИТЬ ВСЕМ</button>
+        <div id="broadcast-result" style="display:none"></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+// ============================================================
+// SafeDeal Admin Panel — vanilla JS
+// ============================================================
+
+const BASE  = '';  // same origin
+let TOKEN   = localStorage.getItem('admin_token') || '';
+let _uPage  = 0;
+let _cPage  = 0;
+let _dFilter = 'open';
+
+// ---- Init ----
+window.onload = () => {
+  if (TOKEN) showApp();
+  updateClock();
+  setInterval(updateClock, 30000);
+};
+
+function updateClock() {
+  const d = new Date();
+  document.getElementById('admin-time').textContent =
+    d.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
+}
+
+// ---- Auth ----
+async function doLogin() {
+  const pwd = document.getElementById('pwd-inp').value.trim();
+  if (!pwd) return;
+  try {
+    const r = await post('/admark/login', { password: pwd });
+    TOKEN = r.token;
+    localStorage.setItem('admin_token', TOKEN);
+    showApp();
+  } catch(e) {
+    document.getElementById('login-err').textContent = e.message || 'Неверный пароль';
+  }
+}
+
+function logout() {
+  TOKEN = '';
+  localStorage.removeItem('admin_token');
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('pwd-inp').value = '';
+}
+
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+  nav('dashboard');
+}
+
+// ---- Navigation ----
+function nav(section) {
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+
+  const navEl = document.querySelector(`.nav-item[onclick*="${section}"]`);
+  if (navEl) navEl.classList.add('active');
+  const secEl = document.getElementById(`s-${section}`);
+  if (secEl) secEl.classList.add('active');
+
+  if (section === 'dashboard')  loadDashboard();
+  if (section === 'users')      loadUsers();
+  if (section === 'contracts')  loadContracts();
+  if (section === 'disputes')   loadDisputes();
+  if (section === 'jobs')       loadJobs();
+}
+
+// ---- API helpers ----
+async function get(url) {
+  const r = await fetch(BASE + url, { headers: { 'X-Admin-Token': TOKEN } });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || r.statusText);
+  return data;
+}
+async function post(url, body) {
+  const r = await fetch(BASE + url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Token': TOKEN },
+    body: JSON.stringify(body),
+  });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || r.statusText);
+  return data;
+}
+async function patch(url, body) {
+  const r = await fetch(BASE + url, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Token': TOKEN },
+    body: JSON.stringify(body),
+  });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || r.statusText);
+  return data;
+}
+async function del(url) {
+  const r = await fetch(BASE + url, {
+    method: 'DELETE',
+    headers: { 'X-Admin-Token': TOKEN },
+  });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || r.statusText);
+  return data;
+}
+
+// ---- Toast ----
+function toast(msg, type = 'ok') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// ---- Format helpers ----
+function fmt(n)    { return Number(n || 0).toLocaleString('ru-RU'); }
+function fmtd(n)   { return Number(n || 0).toFixed(2); }
+function fmtDate(s){ return s ? new Date(s).toLocaleDateString('ru-RU') : '—'; }
+function fmtDt(s)  {
+  if (!s) return '—';
+  const d = new Date(s);
+  return d.toLocaleDateString('ru-RU') + ' ' + d.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
+}
+
+function statusPill(s) {
+  const map = {
+    draft:'pill-muted', pending_signature:'pill-gold', signed:'pill-blue',
+    awaiting_payment:'pill-orange', in_progress:'pill-blue', under_review:'pill-purple',
+    completed:'pill-green', disputed:'pill-red', refunded:'pill-orange',
+    open:'pill-green', in_review:'pill-orange', closed:'pill-muted', taken:'pill-blue',
+  };
+  return `<span class="pill ${map[s]||'pill-muted'}">${s}</span>`;
+}
+
+// ---- DASHBOARD ----
+async function loadDashboard() {
+  try {
+    const d = await get('/admark/api/stats');
+
+    document.getElementById('st-users').textContent        = fmt(d.users.total);
+    document.getElementById('st-users-today').textContent  = `+${d.users.today} сегодня`;
+    document.getElementById('st-deals').textContent        = fmt(d.contracts.total);
+    document.getElementById('st-deals-active').textContent = `${d.contracts.active} активных`;
+    document.getElementById('st-volume').textContent       = '$' + fmt(Math.round(d.contracts.total_volume));
+    document.getElementById('st-revenue').textContent      = '$' + fmtd(d.revenue.total_fee);
+    document.getElementById('st-escrow').textContent       = '$' + fmt(Math.round(d.escrow.frozen_usd));
+    document.getElementById('st-disputes').textContent     = fmt(d.disputes.open);
+
+    // Badge on sidebar
+    if (d.disputes.open > 0) {
+      document.getElementById('nav-disputes').innerHTML =
+        `⚖️ Споры <span class="nav-badge">${d.disputes.open}</span>`;
+    }
+
+    // Chart
+    renderChart(d.chart);
+
+    // Top users
+    const tb = document.getElementById('top-users-body');
+    tb.innerHTML = d.top_users.map((u, i) => `
+      <tr>
+        <td style="color:var(--gold)">${i+1}</td>
+        <td>${u.first_name || ''} ${u.username ? '@'+u.username : ''}</td>
+        <td style="color:var(--muted)">${u.telegram_id}</td>
+        <td><b>${u.deals}</b></td>
+      </tr>
+    `).join('') || '<tr><td colspan="4" class="empty">Нет данных</td></tr>';
+
+  } catch(e) { toast('Ошибка загрузки дашборда: ' + e.message, 'err'); }
+}
+
+function renderChart(data) {
+  const wrap = document.getElementById('chart-bars');
+  if (!data || data.length === 0) { wrap.innerHTML = '<span style="color:var(--muted);font-size:11px">Нет данных</span>'; return; }
+  const max = Math.max(...data.map(d => d.count), 1);
+  wrap.innerHTML = data.map(d => {
+    const pct = Math.max(4, Math.round((d.count / max) * 80));
+    const label = d.day ? d.day.slice(5) : ''; // MM-DD
+    return `
+      <div class="chart-bar-col" title="${d.day}: ${d.count} сделок">
+        <div class="chart-val">${d.count}</div>
+        <div class="chart-bar" style="height:${pct}px"></div>
+        <div class="chart-day">${label}</div>
+      </div>`;
+  }).join('');
+}
+
+// ---- USERS ----
+async function loadUsers() {
+  const search = document.getElementById('users-search').value.trim();
+  const limit  = 50;
+  document.getElementById('users-body').innerHTML = '<tr><td colspan="8" class="loading">Загрузка...</td></tr>';
+  try {
+    const rows = await get(`/admark/api/users?search=${encodeURIComponent(search)}&limit=${limit}&offset=${_uPage * limit}`);
+    document.getElementById('users-count').textContent = `Пользователи (найдено: ${rows.length})`;
+    document.getElementById('users-page-lbl').textContent = `стр. ${_uPage + 1}`;
+    document.getElementById('users-body').innerHTML = rows.length === 0
+      ? '<tr><td colspan="8" class="empty">Ничего не найдено</td></tr>'
+      : rows.map(u => `
+        <tr>
+          <td style="color:var(--muted)">${u.telegram_id}</td>
+          <td>${u.username ? '@' + u.username : '—'}</td>
+          <td>${u.first_name || ''} ${u.last_name || ''}</td>
+          <td><span style="color:var(--gold)">LVL ${u.level||1}</span></td>
+          <td style="color:var(--muted)">${fmt(u.xp)} XP</td>
+          <td>${u.deals_total||0}</td>
+          <td style="font-size:10px;color:var(--muted)">${u.ton_wallet_address ? u.ton_wallet_address.slice(0,10)+'…' : '—'}</td>
+          <td style="color:var(--muted)">${fmtDate(u.created_at)}</td>
+        </tr>
+      `).join('');
+  } catch(e) { toast('Ошибка: ' + e.message, 'err'); }
+}
+function usersPage(d) {
+  _uPage = Math.max(0, _uPage + d);
+  loadUsers();
+}
+
+// ---- CONTRACTS ----
+async function loadContracts() {
+  const status = document.getElementById('contracts-status').value;
+  const limit  = 50;
+  document.getElementById('contracts-body').innerHTML = '<tr><td colspan="8" class="loading">Загрузка...</td></tr>';
+  try {
+    const rows = await get(`/admark/api/contracts?status=${status}&limit=${limit}&offset=${_cPage * limit}`);
+    document.getElementById('contracts-page-lbl').textContent = `стр. ${_cPage + 1}`;
+    document.getElementById('contracts-body').innerHTML = rows.length === 0
+      ? '<tr><td colspan="8" class="empty">Нет контрактов</td></tr>'
+      : rows.map(c => `
+        <tr>
+          <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.title}">${c.title}</td>
+          <td>${c.client_username ? '@'+c.client_username : c.client_tg_id}</td>
+          <td>${c.freelancer_username ? '@'+c.freelancer_username : (c.freelancer_tg_id || '—')}</td>
+          <td style="color:var(--gold)">$${c.amount_usd}</td>
+          <td>${statusPill(c.status)}</td>
+          <td>${c.escrow_status ? statusPill(c.escrow_status) : '—'}</td>
+          <td style="color:var(--muted)">${fmtDate(c.created_at)}</td>
+          <td>
+            <select onchange="changeContractStatus('${c.id}', this.value)" style="background:#0d0d0d;border:1px solid var(--border2);color:var(--text);padding:4px 6px;border-radius:4px;font-size:10px;cursor:pointer">
+              <option value="">— статус —</option>
+              ${['draft','pending_signature','signed','awaiting_payment','in_progress','under_review','completed','disputed','refunded'].map(s=>`<option value="${s}"${c.status===s?' selected':''}>${s}</option>`).join('')}
+            </select>
+          </td>
+        </tr>
+      `).join('');
+  } catch(e) { toast('Ошибка: ' + e.message, 'err'); }
+}
+function contractsPage(d) {
+  _cPage = Math.max(0, _cPage + d);
+  loadContracts();
+}
+async function changeContractStatus(id, status) {
+  if (!status) return;
+  try {
+    await patch(`/admark/api/contracts/${id}`, { status });
+    toast(`Статус изменён → ${status}`);
+    loadContracts();
+  } catch(e) { toast('Ошибка: ' + e.message, 'err'); }
+}
+
+// ---- DISPUTES ----
+function setDisputeFilter(f) {
+  _dFilter = f;
+  document.getElementById('dfilter-open').className     = 'btn btn-sm ' + (f === 'open'     ? 'btn-red'   : 'btn-ghost');
+  document.getElementById('dfilter-resolved').className = 'btn btn-sm ' + (f === 'resolved' ? 'btn-green' : 'btn-ghost');
+  loadDisputes();
+}
+async function loadDisputes() {
+  document.getElementById('disputes-list').innerHTML = '<div class="loading">Загрузка...</div>';
+  setDisputeFilter(_dFilter); // update button styles
+  try {
+    const rows = await get(`/admark/api/disputes?status=${_dFilter}`);
+    if (rows.length === 0) {
+      document.getElementById('disputes-list').innerHTML = '<div class="empty">Споров нет</div>';
+      return;
+    }
+    document.getElementById('disputes-list').innerHTML = rows.map(d => `
+      <div class="dispute-card ${d.status}">
+        <div class="d-header">
+          <div>
+            <div class="d-title">⚖️ ${d.contract_title}</div>
+            <div class="d-meta">${fmtDt(d.created_at)} · $${d.amount_usd} ${d.currency}</div>
+          </div>
+          <div>${statusPill(d.status)} ${d.decision ? statusPill(d.decision) : ''}</div>
+        </div>
+        <div class="d-reason">${d.reason}</div>
+        <div class="d-participants">
+          <div class="d-side">
+            <div class="d-side-label">КЛИЕНТ</div>
+            <div class="d-side-name">${d.client_username ? '@'+d.client_username : d.client_tg_id}</div>
+          </div>
+          <div class="d-side">
+            <div class="d-side-label">ФРИЛАНСЕР</div>
+            <div class="d-side-name">${d.freelancer_username ? '@'+d.freelancer_username : (d.freelancer_tg_id||'—')}</div>
+          </div>
+        </div>
+        ${d.status === 'open' ? `
+        <div class="d-actions">
+          <button class="btn btn-blue btn-sm"  onclick="resolveDispute('${d.id}','client_wins')">↩️ Вернуть клиенту</button>
+          <button class="btn btn-green btn-sm" onclick="resolveDispute('${d.id}','freelancer_wins')">✅ Фрилансер победил</button>
+          <button class="btn btn-gold btn-sm"  onclick="resolveDispute('${d.id}','split', document.getElementById('sp-${d.id}').value)">✂️ Split</button>
+          <input id="sp-${d.id}" class="split-inp" type="number" min="0" max="100" value="50" placeholder="% фрил.">
+        </div>` : `<div style="font-size:11px;color:var(--muted)">Решено: ${fmtDt(d.resolved_at)}</div>`}
+      </div>
+    `).join('');
+  } catch(e) { toast('Ошибка: ' + e.message, 'err'); }
+}
+async function resolveDispute(id, decision, splitPct) {
+  if (!confirm(`Разрешить спор: ${decision}?`)) return;
+  try {
+    const body = { decision };
+    if (decision === 'split') body.split_percent = Number(splitPct) || 50;
+    await post(`/admark/api/disputes/${id}/resolve`, body);
+    toast('Спор разрешён ✅');
+    loadDisputes();
+    loadDashboard();
+  } catch(e) { toast('Ошибка: ' + e.message, 'err'); }
+}
+
+// ---- JOBS ----
+async function loadJobs() {
+  document.getElementById('jobs-body').innerHTML = '<tr><td colspan="8" class="loading">Загрузка...</td></tr>';
+  try {
+    const rows = await get('/admark/api/jobs?limit=100');
+    document.getElementById('jobs-count').textContent = `Заказы (${rows.length})`;
+    document.getElementById('jobs-body').innerHTML = rows.length === 0
+      ? '<tr><td colspan="8" class="empty">Нет заказов</td></tr>'
+      : rows.map(j => `
+        <tr>
+          <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${j.title}">${j.title}</td>
+          <td>${j.client_username ? '@'+j.client_username : '—'}</td>
+          <td style="color:var(--gold)">${j.budget_min||''}${j.budget_max?' – $'+j.budget_max:''}</td>
+          <td><span class="pill pill-orange">${j.category||'—'}</span></td>
+          <td>${statusPill(j.status)}</td>
+          <td>${j.applications_count}</td>
+          <td style="color:var(--muted)">${fmtDate(j.created_at)}</td>
+          <td><button class="btn btn-red btn-sm" onclick="deleteJob('${j.id}','${j.title.replace(/'/g,"\\'")}')">🗑</button></td>
+        </tr>
+      `).join('');
+  } catch(e) { toast('Ошибка: ' + e.message, 'err'); }
+}
+async function deleteJob(id, title) {
+  if (!confirm(`Удалить заказ "${title}"?`)) return;
+  try {
+    await del(`/admark/api/jobs/${id}`);
+    toast('Заказ удалён');
+    loadJobs();
+  } catch(e) { toast('Ошибка: ' + e.message, 'err'); }
+}
+
+// ---- BROADCAST ----
+async function sendBroadcast() {
+  const msg = document.getElementById('broadcast-msg').value.trim();
+  if (!msg) return toast('Введите сообщение', 'err');
+  if (!confirm(`Отправить сообщение всем пользователям?`)) return;
+
+  const btn = document.getElementById('broadcast-btn');
+  btn.textContent = '⏳ Отправляем...';
+  btn.disabled = true;
+
+  try {
+    const r = await post('/admark/api/broadcast', { message: msg });
+    const res = document.getElementById('broadcast-result');
+    res.style.display = 'block';
+    res.className = 'broadcast-result';
+    res.innerHTML = `✅ Отправлено: <b>${r.sent}</b> · Ошибок: <b>${r.failed}</b> · Всего: <b>${r.total}</b>`;
+    toast(`Broadcast отправлен: ${r.sent} пользователей`);
+  } catch(e) {
+    toast('Ошибка: ' + e.message, 'err');
+  } finally {
+    btn.textContent = '📢 ОТПРАВИТЬ ВСЕМ';
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>

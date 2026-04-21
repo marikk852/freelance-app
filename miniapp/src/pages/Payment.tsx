@@ -7,7 +7,7 @@ import { useTelegram } from '../hooks/useTelegram';
 import toast from 'react-hot-toast';
 
 // ============================================================
-// Экран 04: PAYMENT — выбор валюты TON/USDT, адрес контракта
+// Screen 04: PAYMENT — TON/USDT currency selection, contract address
 // ============================================================
 
 export function Payment() {
@@ -27,7 +27,7 @@ export function Payment() {
   const handleDeploy = async () => {
     if (!wallets.client || !wallets.freelancer) {
       tg?.HapticFeedback?.notificationOccurred('error');
-      return toast.error('Введи оба TON адреса');
+      return toast.error('Enter both TON addresses');
     }
     tg?.HapticFeedback?.impactOccurred('medium');
     setLoading(true);
@@ -38,10 +38,10 @@ export function Payment() {
       });
       setDeployed(res.data);
       tg?.HapticFeedback?.notificationOccurred('success');
-      toast.success('Смарт-контракт задеплоен!');
+      toast.success('Smart contract deployed!');
     } catch (e: any) {
       tg?.HapticFeedback?.notificationOccurred('error');
-      toast.error(e.response?.data?.error || 'Ошибка деплоя');
+      toast.error(e.response?.data?.error || 'Deployment error');
     } finally {
       setLoading(false);
     }
@@ -56,7 +56,7 @@ export function Payment() {
 
       <div className="gl hud card-stagger-1">
         <div className="pxgrid" /><div className="sh" />
-        <div className="logo">💳 ОПЛАТА</div>
+        <div className="logo">💳 PAYMENT</div>
         {deal && (
           <div style={{ textAlign: 'center', fontSize: '8px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>
             {deal.title}
@@ -64,29 +64,29 @@ export function Payment() {
         )}
       </div>
 
-      {/* Разбивка суммы */}
+      {/* Amount breakdown */}
       {deal && (
         <div className="gl card-stagger-2" style={{ borderColor: 'rgba(255,170,0,0.25)' }}>
           <div className="pxgrid" /><div className="sh" />
           <div className="sec" style={{ margin: '0 0 10px', padding: 0, border: 'none', color: 'rgba(255,255,255,0.3)' }}>
-            -- РАЗБИВКА СУММЫ --
+            -- AMOUNT BREAKDOWN --
           </div>
-          <DataRow label="Сумма сделки"      value={`$${deal.amount_usd}`} color="#ffaa00" />
-          <DataRow label="Комиссия (2%)"     value={`-$${fee}`}           color="#ff4466" />
+          <DataRow label="Deal amount"        value={`$${deal.amount_usd}`} color="#ffaa00" />
+          <DataRow label="Fee (2%)"           value={`-$${fee}`}           color="#ff4466" />
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', margin: '8px 0' }} />
-          <DataRow label="Фрилансер получит" value={`$${toFreelancer}`}   color="#00ff88" />
+          <DataRow label="Freelancer receives" value={`$${toFreelancer}`}   color="#00ff88" />
         </div>
       )}
 
       {deployed ? (
-        /* Контракт задеплоен — показываем адрес */
+        /* Contract deployed — show address */
         <div className="gl card-stagger-3" style={{ borderColor: 'rgba(0,255,136,0.3)', background: 'rgba(0,255,136,0.04)' }}>
           <div className="pxgrid" /><div className="sh" />
           <div style={{ fontSize: '9px', color: '#00ff88', marginBottom: '10px', textAlign: 'center' }}>
-            ✅ КОНТРАКТ ГОТОВ
+            ✅ CONTRACT READY
           </div>
           <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px' }}>
-            АДРЕС КОНТРАКТА
+            CONTRACT ADDRESS
           </div>
           <div style={{ fontSize: '7px', color: '#0088ff', wordBreak: 'break-all', marginBottom: '10px',
             padding: '8px', background: 'rgba(0,136,255,0.08)', borderRadius: '8px',
@@ -94,27 +94,27 @@ export function Payment() {
             {deployed.tonContractAddress}
           </div>
           <div style={{ fontSize: '8px', color: '#ffaa00', marginBottom: '12px', textAlign: 'center' }}>
-            Отправь <b>{deployed.cryptoAmount.toFixed(4)} {currency}</b> на этот адрес
+            Send <b>{deployed.cryptoAmount.toFixed(4)} {currency}</b> to this address
           </div>
           <button className="btn btn-g btn-full"
             onClick={() => {
               navigator.clipboard.writeText(deployed.tonContractAddress);
               tg?.HapticFeedback?.notificationOccurred('success');
-              toast.success('Адрес скопирован!');
+              toast.success('Address copied!');
             }}>
-            [ 📋 СКОПИРОВАТЬ АДРЕС ]
+            [ 📋 COPY ADDRESS ]
           </button>
           <button className="btn btn-gr btn-full" style={{ marginTop: '8px' }}
             onClick={() => navigate(`/deal/${id}`)}>
-            [ ◀ К СДЕЛКЕ ]
+            [ ◀ BACK TO DEAL ]
           </button>
         </div>
       ) : (
         <>
-          {/* Выбор валюты и кошельки */}
+          {/* Currency selection and wallets */}
           <div className="gl card-stagger-3">
             <div className="pxgrid" /><div className="sh" />
-            <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', marginBottom: '10px' }}>ВАЛЮТА</div>
+            <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', marginBottom: '10px' }}>CURRENCY</div>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
               {(['TON','USDT'] as const).map(c => (
                 <button key={c} onClick={() => setCurrency(c)}
@@ -124,13 +124,13 @@ export function Payment() {
               ))}
             </div>
             <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px' }}>
-              TON КОШЕЛЁК КЛИЕНТА
+              CLIENT TON WALLET
             </div>
             <input className="input" placeholder="UQ..." value={wallets.client}
               onChange={e => setWallets(w => ({ ...w, client: e.target.value }))}
               style={{ marginBottom: '10px' }} />
             <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px' }}>
-              TON КОШЕЛЁК ФРИЛАНСЕРА
+              FREELANCER TON WALLET
             </div>
             <input className="input" placeholder="UQ..." value={wallets.freelancer}
               onChange={e => setWallets(w => ({ ...w, freelancer: e.target.value }))} />
@@ -138,7 +138,7 @@ export function Payment() {
 
           <button className="btn btn-y btn-full card-stagger-4"
             onClick={handleDeploy} disabled={loading}>
-            {loading ? '[ ⏳ ДЕПЛОИМ... ]' : '[ 🚀 ЗАДЕПЛОИТЬ КОНТРАКТ ]'}
+            {loading ? '[ ⏳ DEPLOYING... ]' : '[ 🚀 DEPLOY CONTRACT ]'}
           </button>
         </>
       )}

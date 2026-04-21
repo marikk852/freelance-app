@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 
 interface Criterion { text: string; required: boolean; }
 
-const STEPS = ['НАЗВАНИЕ', 'ОПИСАНИЕ', 'СУММА', 'ДЕДЛАЙН', 'КРИТЕРИИ'];
+const STEPS = ['TITLE', 'DESCRIPTION', 'AMOUNT', 'DEADLINE', 'CRITERIA'];
 
 export function NewDeal() {
   const navigate = useNavigate();
@@ -55,11 +55,11 @@ export function NewDeal() {
         criteria: criteria.filter(c => c.text.trim()),
       });
       tg?.HapticFeedback?.notificationOccurred('success');
-      toast.success('Сделка создана!');
+      toast.success('Deal created!');
       navigate(`/deal/${res.data.contractId}`, { state: { inviteUrl: res.data.inviteUrl } });
     } catch (e: any) {
       tg?.HapticFeedback?.notificationOccurred('error');
-      toast.error(e.response?.data?.error || 'Ошибка создания');
+      toast.error(e.response?.data?.error || 'Creation error');
     } finally {
       setLoading(false);
     }
@@ -69,9 +69,9 @@ export function NewDeal() {
     <div className="page fade-in">
       <PixelScene scene="new_deal" width={252} height={56} />
 
-      <div className="sec card-stagger-1">⚔ НОВЫЙ КВЕСТ</div>
+      <div className="sec card-stagger-1">⚔ NEW QUEST</div>
 
-      {/* Прогресс шагов */}
+      {/* Step progress */}
       <div className="gl card-stagger-2" style={{ padding: '12px 16px' }}>
         <div className="pxgrid" />
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -98,23 +98,23 @@ export function NewDeal() {
           }} />
         </div>
         <div style={{ textAlign: 'center', fontSize: '7px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>
-          ШАГ {step + 1}/5 — {STEPS[step]}
+          STEP {step + 1}/5 — {STEPS[step]}
         </div>
       </div>
 
-      {/* Контент шага */}
+      {/* Step content */}
       <div className="gl card-stagger-3">
         <div className="pxgrid" /><div className="sh" />
 
         {step === 0 && (
           <div>
             <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>
-              НАЗВАНИЕ СДЕЛКИ
+              DEAL TITLE
             </div>
-            <input className="input" placeholder="Разработка лендинга..." value={title}
+            <input className="input" placeholder="Landing page development..." value={title}
               onChange={e => setTitle(e.target.value)} maxLength={256} />
             <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.25)', marginTop: '6px' }}>
-              Мин. 3 символа · {title.length}/256
+              Min. 3 characters · {title.length}/256
             </div>
           </div>
         )}
@@ -122,13 +122,13 @@ export function NewDeal() {
         {step === 1 && (
           <div>
             <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>
-              ОПИСАНИЕ ЗАДАЧИ
+              TASK DESCRIPTION
             </div>
-            <textarea className="input" placeholder="Подробно опиши что нужно сделать..." value={description}
+            <textarea className="input" placeholder="Describe in detail what needs to be done..." value={description}
               onChange={e => setDescription(e.target.value)}
               style={{ minHeight: '100px', resize: 'vertical' }} />
             <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.25)', marginTop: '6px' }}>
-              Мин. 10 символов · {description.length} введено
+              Min. 10 characters · {description.length} entered
             </div>
           </div>
         )}
@@ -136,7 +136,7 @@ export function NewDeal() {
         {step === 2 && (
           <div>
             <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>
-              СУММА (МАКС. $500)
+              AMOUNT (MAX. $500)
             </div>
             <input className="input" type="number" placeholder="100" value={amountUsd}
               onChange={e => setAmountUsd(e.target.value)} min="1" max="500"
@@ -151,13 +151,13 @@ export function NewDeal() {
             </div>
             {Number(amountUsd) > 0 && (
               <div className="fee">
-                <span style={{ color: 'rgba(255,255,255,0.4)' }}>Комиссия 2%</span>
+                <span style={{ color: 'rgba(255,255,255,0.4)' }}>Fee 2%</span>
                 <span style={{ color: '#ffaa00' }}>-${(Number(amountUsd) * 0.02).toFixed(2)}</span>
               </div>
             )}
             {Number(amountUsd) > 0 && (
               <div className="fee">
-                <span style={{ color: 'rgba(255,255,255,0.4)' }}>Фрилансер получит</span>
+                <span style={{ color: 'rgba(255,255,255,0.4)' }}>Freelancer receives</span>
                 <span style={{ color: '#00ff88' }}>${(Number(amountUsd) * 0.98).toFixed(2)}</span>
               </div>
             )}
@@ -167,7 +167,7 @@ export function NewDeal() {
         {step === 3 && (
           <div>
             <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>
-              ДЕДЛАЙН
+              DEADLINE
             </div>
             <input className="input" type="date" value={deadline}
               onChange={e => setDeadline(e.target.value)}
@@ -178,7 +178,7 @@ export function NewDeal() {
         {step === 4 && (
           <div>
             <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.5)', marginBottom: '10px' }}>
-              КРИТЕРИИ ПРИЁМКИ (МИН. 3)
+              ACCEPTANCE CRITERIA (MIN. 3)
             </div>
             {criteria.map((c, i) => (
               <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
@@ -186,7 +186,7 @@ export function NewDeal() {
                   color: c.text.trim() ? '#00ff88' : 'rgba(255,255,255,0.3)',
                   fontSize: '9px', minWidth: '18px', fontWeight: 'bold',
                 }}>{i + 1}.</span>
-                <input className="input" placeholder={`Критерий ${i + 1}...`} value={c.text}
+                <input className="input" placeholder={`Criterion ${i + 1}...`} value={c.text}
                   onChange={e => {
                     const next = [...criteria];
                     next[i] = { ...next[i], text: e.target.value };
@@ -196,28 +196,28 @@ export function NewDeal() {
             ))}
             <button className="btn btn-gr btn-full" style={{ marginTop: '8px' }}
               onClick={() => setCriteria([...criteria, { text: '', required: false }])}>
-              + ДОБАВИТЬ КРИТЕРИЙ
+              + ADD CRITERION
             </button>
           </div>
         )}
       </div>
 
-      {/* Навигация */}
+      {/* Navigation */}
       <div className="card-stagger-4" style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
         {step > 0 && (
           <button className="btn btn-gr" style={{ flex: 1 }} onClick={goBack}>
-            ◀ НАЗАД
+            ◀ BACK
           </button>
         )}
         {step < STEPS.length - 1 ? (
           <button className={`btn btn-g`} style={{ flex: 2 }}
             onClick={goNext} disabled={!canNext()}>
-            ДАЛЕЕ ▶
+            NEXT ▶
           </button>
         ) : (
           <button className="btn btn-y" style={{ flex: 2 }}
             onClick={handleSubmit} disabled={!canNext() || loading}>
-            {loading ? '[ ⏳ СОЗДАЁМ... ]' : '[ ⚔ СОЗДАТЬ СДЕЛКУ ]'}
+            {loading ? '[ ⏳ CREATING... ]' : '[ ⚔ CREATE DEAL ]'}
           </button>
         )}
       </div>

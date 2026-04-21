@@ -173,15 +173,19 @@ async function simulate() {
     escrow      : statusRes.escrow_status,
   });
 
+  // 6.5. Симулируем платёж (bypass реального TON)
+  log('💰', 'Симулируем платёж в эскроу...');
+  const payRes = ok(await request('POST', `/api/contracts/${contractId}/simulate-payment`, null, clientAuth), 'Симуляция платежа');
+  log('✅', `Эскроу заморожен: ${payRes.cryptoAmount} ${payRes.currency}`);
+
   // 7. Сдача работы (фрилансер)
   log('📦', 'Фрилансер сдаёт работу (текстовый отчёт)...');
   const deliverRes = ok(await request('POST', '/api/deliveries', {
-    contract_id : contractId,
+    contractId  : contractId,
     description : 'Лендинг готов. Все критерии выполнены. Ссылка: https://example.com',
-    links       : [{ url: 'https://example.com', label: 'Готовый сайт' }],
-    files       : [],
+    links       : JSON.stringify([{ url: 'https://example.com', label: 'Готовый сайт' }]),
   }, freelancerAuth), 'Сдача работы');
-  const deliveryId = deliverRes.id || deliverRes.delivery?.id;
+  const deliveryId = deliverRes.deliveryId || deliverRes.id || deliverRes.delivery?.id;
   log('✅', `Работа сдана: ${deliveryId}`);
 
   // 8. Клиент одобряет

@@ -3,19 +3,19 @@ const { mainMenu } = require('../keyboards/inline');
 
 // ============================================================
 // Handler: /start
-// Регистрация/обновление пользователя + главное меню
+// User registration/update + main menu
 // ============================================================
 
 /**
- * Обработать /start.
- * Если передан параметр (start=room_XXXX) — открыть комнату.
+ * Handle /start.
+ * If a parameter is passed (start=room_XXXX) — open the room.
  */
 async function handleStart(ctx) {
   const tg   = ctx.from;
   const args = ctx.message?.text?.split(' ')[1]; // параметр после /start
 
   try {
-    // Upsert пользователя в БД
+    // Upsert user in DB
     const user = await User.upsert({
       telegram_id: tg.id,
       username   : tg.username,
@@ -23,29 +23,29 @@ async function handleStart(ctx) {
       last_name  : tg.last_name,
     });
 
-    // Обновляем streak и начисляем XP за ежедневный вход
+    // Update streak and award XP for daily login
     await User.updateStreak(user.id);
     await User.addXp(user.id, 10);
 
-    // Если это приглашение в комнату (фрилансер переходит по invite_link)
+    // If this is a room invite (freelancer following invite_link)
     if (args && args.startsWith('room_')) {
       const inviteLink = args.replace('room_', '');
       return handleRoomInvite(ctx, user, inviteLink);
     }
 
-    // Обычный /start — показываем главное меню
+    // Regular /start — show main menu
     const levelInfo = `LVL ${user.level} · ${user.xp} XP`;
     const greeting  = user.deals_completed > 0
-      ? `С возвращением, *${tg.first_name}*!`
-      : `Добро пожаловать в *SafeDeal*, *${tg.first_name}*!`;
+      ? `Welcome back, *${tg.first_name}*!`
+      : `Welcome to *SafeDeal*, *${tg.first_name}*!`;
 
     await ctx.reply(
       `${greeting}\n\n` +
-      `🛡 Безопасные сделки на блокчейне TON\n\n` +
-      `📊 Твой статус: ${levelInfo}\n` +
-      `🔥 Streak: ${user.streak_days} дней\n` +
-      `🏅 Рейтинг: ${user.rating > 0 ? `⭐ ${user.rating}` : 'нет отзывов'}\n\n` +
-      `Выбери действие:`,
+      `🛡 Secure deals on the TON blockchain\n\n` +
+      `📊 Your status: ${levelInfo}\n` +
+      `🔥 Streak: ${user.streak_days} days\n` +
+      `🏅 Rating: ${user.rating > 0 ? `⭐ ${user.rating}` : 'no reviews'}\n\n` +
+      `Choose an action:`,
       {
         parse_mode  : 'Markdown',
         reply_markup: mainMenu(),
@@ -53,12 +53,12 @@ async function handleStart(ctx) {
     );
   } catch (err) {
     console.error('[Bot] handleStart error:', err.message);
-    await ctx.reply('Произошла ошибка. Попробуй позже.');
+    await ctx.reply('An error occurred. Please try again later.');
   }
 }
 
 /**
- * Фрилансер перешёл по invite_link — показываем контракт.
+ * Freelancer followed invite_link — show the contract.
  */
 async function handleRoomInvite(ctx, user, inviteLink) {
   const { Room, Contract } = require('../../database/models');
@@ -68,42 +68,49 @@ async function handleRoomInvite(ctx, user, inviteLink) {
   try {
     const room = await Room.findByInviteLink(inviteLink);
     if (!room) {
-      return ctx.reply('❌ Ссылка недействительна или сделка уже закрыта.');
+      return ctx.reply('❌ The link is invalid or the deal is already closed.');
     }
 
     if (room.client_id === user.id) {
-      return ctx.reply('❌ Нельзя принять собственную сделку.');
+      return ctx.reply('❌ You cannot accept your own deal.');
     }
 
     if (room.status !== 'waiting') {
-      return ctx.reply('❌ Эта сделка уже началась или завершена.');
+      return ctx.reply('❌ This deal has already started or been completed.');
     }
 
-    // Получаем контракт
+    // Fetch contract
     const contract = await Contract.findByRoomId(room.id);
     if (!contract) {
-      return ctx.reply('❌ Контракт не найден.');
+      return ctx.reply('❌ Contract not found.');
     }
 
-    const deadline = new Date(contract.deadline).toLocaleDateString('ru-RU');
+    const deadline = new Date(contract.deadline).toLocaleDateString('en-US');
     const criteria = contract.criteria.map((c, i) => `${i + 1}. ${c.text}`).join('\n');
 
+    const webAppUrl = `${process.env.WEBAPP_URL}?room=${inviteLink}`;
+
     await ctx.reply(
-      `📋 *Предложение о сделке*\n\n` +
+      `📋 *Deal Proposal*\n\n` +
       `*${contract.title}*\n\n` +
       `📝 ${contract.description}\n\n` +
-      `💰 Сумма: *${contract.amount_usd} USD* (${contract.currency})\n` +
-      `📅 Дедлайн: *${deadline}*\n\n` +
-      `✅ Критерии приёмки:\n${criteria}\n\n` +
-      `Принять эту сделку?`,
+      `💰 Amount: *${contract.amount_usd} USD* (${contract.currency})\n` +
+      `📅 Deadline: *${deadline}*\n\n` +
+      `✅ Acceptance criteria:\n${criteria}\n\n` +
+      `Tap the button below to open the deal in the app:`,
       {
         parse_mode  : 'Markdown',
-        reply_markup: acceptContractMenu(room.id),
+        reply_markup: {
+          inline_keyboard: [[{
+            text   : '📱 Open deal in Mini App',
+            web_app: { url: webAppUrl },
+          }]],
+        },
       }
     );
   } catch (err) {
     console.error('[Bot] handleRoomInvite error:', err.message);
-    await ctx.reply('Произошла ошибка при загрузке сделки.');
+    await ctx.reply('An error occurred while loading the deal.');
   }
 }
 

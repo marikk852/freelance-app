@@ -225,6 +225,29 @@ async function releaseEscrow(contractId, approvedBy) {
     throw new Error(`[Escrow] Неверный статус для release: ${escrowRow.status}`);
   }
 
+  // Симуляционный режим — пропускаем реальный блокчейн
+  if (process.env.SIMULATE_PAYMENTS === 'true') {
+    const txHash = `sim_release_${Date.now()}`;
+    await transaction(async (client) => {
+      await client.query(
+        `UPDATE escrow SET status = 'released', tx_hash_out = $2, released_at = NOW()
+         WHERE contract_id = $1`,
+        [contractId, txHash]
+      );
+      await client.query(
+        `UPDATE contracts SET status = 'completed', updated_at = NOW() WHERE id = $1`,
+        [contractId]
+      );
+      await client.query(
+        `INSERT INTO audit_log (contract_id, action, details, tx_hash)
+         VALUES ($1, 'release_simulated', $2, $3)`,
+        [contractId, JSON.stringify({ simulated: true, approvedBy }), txHash]
+      );
+    });
+    console.log(`[Escrow] 🧪 Simulated release. Контракт: ${contractId}`);
+    return txHash;
+  }
+
   // Отправляем release() в смарт-контракт
   const body = beginCell().storeUint(OP.RELEASE, 32).endCell();
   const txHash = await tonService.sendArbitratorMessage(
@@ -248,12 +271,12 @@ async function releaseEscrow(contractId, approvedBy) {
 
     // Логируем финансовую операцию
     await client.query(
-      `INSERT INTO audit_log (contract_id, action, performed_by, details, tx_hash)
-       VALUES ($1, 'release', $2, $3, $4)`,
+      `INSERT INTO audit_log (contract_id, action, details, tx_hash)
+       VALUES ($1, 'release', $2, $3)`,
       [
         contractId,
-        approvedBy,
         JSON.stringify({
+          approvedBy,
           escrowAmount : escrowRow.amount,
           currency     : escrowRow.currency,
           platformFee  : escrowRow.platform_fee,

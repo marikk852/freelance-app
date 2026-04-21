@@ -1,7 +1,7 @@
 'use strict';
 /**
- * Routes: /api/marketing — AI маркетолог SafeDeal
- * SECURITY: только арбитр/администратор платформы.
+ * Routes: /api/marketing — SafeDeal AI marketer
+ * SECURITY: platform arbitrator/admin only.
  */
 
 const express = require('express');
@@ -9,11 +9,11 @@ const router  = express.Router();
 const { query } = require('../../database/db');
 const marketingAgent = require('../services/marketingAgent');
 
-// Middleware: только арбитр/admin
+// Middleware: arbitrator/admin only
 function requireArbitrator(req, res, next) {
   const arbitratorTgId = process.env.ARBITRATOR_TELEGRAM_ID;
   if (!arbitratorTgId || Number(req.user.telegramId) !== Number(arbitratorTgId)) {
-    return res.status(403).json({ error: 'Только администратор платформы' });
+    return res.status(403).json({ error: 'Platform administrator only' });
   }
   next();
 }
@@ -22,18 +22,18 @@ router.use(requireArbitrator);
 
 /**
  * POST /api/marketing/strategy
- * Генерирует маркетинговую стратегию для указанного канала.
+ * Generates a marketing strategy for the specified channel.
  */
 router.post('/strategy', async (req, res) => {
   try {
     const { goal, channel, audience } = req.body;
     if (!goal || !channel) {
-      return res.status(400).json({ error: 'goal и channel обязательны' });
+      return res.status(400).json({ error: 'goal and channel are required' });
     }
 
     const validChannels = ['telegram', 'twitter', 'reddit', 'product_hunt', 'referral', 'content'];
     if (!validChannels.includes(channel)) {
-      return res.status(400).json({ error: `channel должен быть одним из: ${validChannels.join(', ')}` });
+      return res.status(400).json({ error: `channel must be one of: ${validChannels.join(', ')}` });
     }
 
     const strategy = await marketingAgent.generateStrategy({ goal, channel, audience });
@@ -46,16 +46,16 @@ router.post('/strategy', async (req, res) => {
 
 /**
  * POST /api/marketing/content
- * Генерирует готовый контент для публикации.
+ * Generates ready-to-publish content.
  */
 router.post('/content', async (req, res) => {
   try {
     const { type, context, language } = req.body;
-    if (!type) return res.status(400).json({ error: 'type обязателен' });
+    if (!type) return res.status(400).json({ error: 'type is required' });
 
     const validTypes = ['telegram_post', 'cold_dm', 'reddit_post', 'landing_tagline', 'ad_copy'];
     if (!validTypes.includes(type)) {
-      return res.status(400).json({ error: `type должен быть одним из: ${validTypes.join(', ')}` });
+      return res.status(400).json({ error: `type must be one of: ${validTypes.join(', ')}` });
     }
 
     const variants = await marketingAgent.generateContent({ type, context, language });
@@ -68,11 +68,11 @@ router.post('/content', async (req, res) => {
 
 /**
  * GET /api/marketing/growth
- * Анализирует текущие метрики платформы и даёт рекомендации.
+ * Analyzes current platform metrics and provides recommendations.
  */
 router.get('/growth', async (req, res) => {
   try {
-    // Собираем реальные метрики из БД
+    // Gather real metrics from DB
     const { rows: stats } = await query(`
       SELECT
         (SELECT COUNT(*) FROM users) AS total_users,

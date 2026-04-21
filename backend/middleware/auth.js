@@ -1,33 +1,31 @@
 const crypto = require('crypto');
 
 // ============================================================
-// Auth Middleware — верификация Telegram Web App данных
-// Проверяем initData из Telegram Mini App по алгоритму HMAC-SHA256
+// Auth Middleware — Telegram Web App data verification
+// Validates initData from Telegram Mini App using HMAC-SHA256
 // ============================================================
 
 /**
- * Верифицировать Telegram Web App initData.
- * Документация: https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
+ * Verify Telegram Web App initData.
+ * Docs: https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
  *
- * @param {string} initData - строка из Telegram.WebApp.initData
- * @param {string} botToken - токен бота
+ * @param {string} initData - string from Telegram.WebApp.initData
+ * @param {string} botToken - bot token
  * @returns {{ valid: boolean, user?: Object }}
  */
 function verifyTelegramInitData(initData, botToken) {
   try {
     const params = new URLSearchParams(initData);
     const hash   = params.get('hash');
-    if (!hash) return { valid: false };
+    if (!hash) { console.warn('[Auth] No hash in initData'); return { valid: false }; }
 
     params.delete('hash');
 
-    // Строим data-check-string (отсортированные пары key=value)
     const dataCheckString = Array.from(params.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([k, v]) => `${k}=${v}`)
       .join('\n');
 
-    // Вычисляем HMAC
     const secretKey = crypto.createHmac('sha256', 'WebAppData')
       .update(botToken)
       .digest();
@@ -36,36 +34,51 @@ function verifyTelegramInitData(initData, botToken) {
       .update(dataCheckString)
       .digest('hex');
 
-    if (computedHash !== hash) return { valid: false };
+    if (computedHash !== hash) {
+      console.warn('[Auth] HMAC mismatch. Expected:', computedHash, 'Got:', hash);
+      return { valid: false };
+    }
 
-    // Проверяем что данные не старше 24 часов
     const authDate = Number(params.get('auth_date'));
     const now = Math.floor(Date.now() / 1000);
-    if (now - authDate > 86400) return { valid: false };
+    const age = now - authDate;
+    if (age > 86400 * 7) {
+      console.warn('[Auth] initData too old:', age, 'seconds');
+      return { valid: false };
+    }
 
     const user = JSON.parse(params.get('user') || '{}');
     return { valid: true, user };
-  } catch {
+  } catch (e) {
+    console.warn('[Auth] Exception:', e.message);
     return { valid: false };
   }
 }
 
 /**
- * Express middleware для авторизации запросов из Mini App.
- * Кладёт req.user = { telegramId, username, firstName }
+ * Express middleware for authorizing Mini App requests.
+ * Sets req.user = { telegramId, username, firstName }
  */
 function authMiddleware(req, res, next) {
   const initData = req.headers['x-telegram-init-data'];
 
+  // Dev bypass: skip verification outside production
+  if (process.env.NODE_ENV !== 'production') {
+    if (!initData) {
+      req.user = { telegramId: 1, username: 'dev', firstName: 'Dev', lastName: '' };
+      return next();
+    }
+  }
+
   if (!initData) {
-    return res.status(401).json({ error: 'Отсутствует заголовок X-Telegram-Init-Data' });
+    return res.status(401).json({ error: 'Missing X-Telegram-Init-Data header' });
   }
 
   const botToken = process.env.BOT_TOKEN;
   const { valid, user } = verifyTelegramInitData(initData, botToken);
 
   if (!valid) {
-    return res.status(401).json({ error: 'Недействительные данные Telegram' });
+    return res.status(401).json({ error: 'Invalid Telegram data' });
   }
 
   req.user = {

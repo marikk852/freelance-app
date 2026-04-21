@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>SafeDeal Admin</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0b0b0b;--sidebar:#0f0f0f;--card:#141414;--card2:#181818;
+  --border:#1e1e1e;--border2:#272727;
+  --green:#00cc6a;--gold:#e69500;--blue:#0077ee;
+  --purple:#aa33dd;--red:#e03355;--orange:#e07700;
+  --text:#e0e0e0;--muted:#555;--font:'Courier New',monospace;
+  --inp-bg:#0d0d0d;--split-bg:#0d0d0d;--textarea-bg:#0d0d0d;
+  --thead-bg:#0f0f0f;--tr-hover:rgba(255,255,255,.02);
+  --modal-overlay:rgba(0,0,0,.75);--broadcast-result-bg:rgba(0,255,136,.06);
+  --broadcast-result-border:rgba(0,255,136,.2)
+}
+body.light{
+  --bg:#f0f2f5;--sidebar:#ffffff;--card:#ffffff;--card2:#f8f9fb;
+  --border:#e0e4ea;--border2:#cdd3db;
+  --green:#008844;--gold:#b37300;--blue:#005bcc;
+  --purple:#7a1faa;--red:#c0142e;--orange:#b35500;
+  --text:#1a1d23;--muted:#8a94a0;
+  --inp-bg:#f5f7fa;--split-bg:#f5f7fa;--textarea-bg:#f5f7fa;
+  --thead-bg:#f5f7fa;--tr-hover:rgba(0,0,0,.025);
+  --modal-overlay:rgba(0,0,0,.45);--broadcast-result-bg:rgba(0,136,68,.06);
+  --broadcast-result-border:rgba(0,136,68,.25)
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;min-height:100vh;transition:background .2s,color .2s}
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh}
+.login-box{background:var(--card);border:1px solid var(--border2);border-radius:8px;padding:40px;width:360px}
+.login-box h1{font-size:16px;color:var(--green);margin-bottom:6px;letter-spacing:2px}
+.login-box p{font-size:11px;color:var(--muted);margin-bottom:28px}
+.login-box input{width:100%;padding:12px 14px;background:var(--inp-bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--font);font-size:13px;margin-bottom:14px;outline:none;transition:border-color .2s}
+.login-box input:focus{border-color:var(--green)}
+.login-box button{width:100%;padding:12px;background:var(--green);border:none;border-radius:6px;color:#000;font-family:var(--font);font-size:13px;font-weight:bold;cursor:pointer;letter-spacing:1px}
+.login-box button:hover{opacity:.85}
+.login-err{color:var(--red);font-size:11px;margin-top:8px}
+#app{display:none}
+#app.visible{display:flex;min-height:100vh}
+.sidebar{width:210px;min-height:100vh;background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.sidebar-logo{padding:20px 18px 16px;border-bottom:1px solid var(--border);font-size:13px;color:var(--green);letter-spacing:2px}
+.sidebar-logo span{color:var(--muted);font-size:10px;display:block;margin-top:3px}
+.nav-item{padding:11px 18px;cursor:pointer;color:var(--muted);font-size:11px;letter-spacing:.5px;border-left:2px solid transparent;transition:all .15s;display:flex;align-items:center;gap:8px}
+.nav-item:hover{color:var(--text);background:rgba(255,255,255,.03)}
+.nav-item.active{color:var(--green);border-left-color:var(--green);background:rgba(0,255,136,.05)}
+.nav-badge{margin-left:auto;background:var(--red);color:#fff;font-size:9px;padding:2px 6px;border-radius:10px}
+.nav-sep{height:1px;background:var(--border);margin:6px 0}
+.sidebar-footer{margin-top:auto;padding:14px 18px;border-top:1px solid var(--border);font-size:10px;color:var(--muted);display:flex;justify-content:space-between}
+.sidebar-footer a{color:var(--muted);cursor:pointer}
+.sidebar-footer a:hover{color:var(--red)}
+.main{flex:1;overflow-y:auto;padding:26px 30px;min-width:0}
+.section{display:none}
+.section.active{display:block}
+.page-title{font-size:17px;color:var(--text);margin-bottom:5px;letter-spacing:1px}
+.page-sub{font-size:11px;color:var(--muted);margin-bottom:22px}
+.cards-row{display:flex;gap:12px;margin-bottom:22px;flex-wrap:wrap}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:18px 20px;flex:1;min-width:130px}
+.stat-card .label{font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:8px}
+.stat-card .value{font-size:24px;font-weight:bold}
+.stat-card .sub{font-size:10px;color:var(--muted);margin-top:4px}
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:18px}
+.table-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.table-title{font-size:12px;color:var(--text);letter-spacing:.5px}
+table{width:100%;border-collapse:collapse}
+thead tr{background:var(--thead-bg)}
+th{padding:9px 13px;text-align:left;font-size:10px;color:var(--muted);letter-spacing:1px;font-weight:normal;border-bottom:1px solid var(--border)}
+td{padding:9px 13px;font-size:12px;color:var(--text);border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--tr-hover)}
+.inp{padding:8px 12px;background:var(--inp-bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--font);font-size:12px;outline:none;transition:border-color .2s}
+.inp:focus{border-color:var(--green)}
+select.inp{cursor:pointer}
+.btn{padding:7px 14px;border:none;border-radius:5px;cursor:pointer;font-family:var(--font);font-size:11px;letter-spacing:.5px;transition:opacity .15s;white-space:nowrap}
+.btn:hover{opacity:.8}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-green{background:var(--green);color:#000;font-weight:bold}
+.btn-red{background:var(--red);color:#fff}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-gold{background:var(--gold);color:#000;font-weight:bold}
+.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--muted)}
+.btn-ghost:hover{color:var(--text);border-color:var(--text)}
+.btn-sm{padding:4px 10px;font-size:10px}
+.pill{display:inline-block;padding:3px 8px;border-radius:4px;font-size:10px;letter-spacing:.5px}
+.pill-green{background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.3);color:var(--green)}
+.pill-gold{background:rgba(255,170,0,.1);border:1px solid rgba(255,170,0,.3);color:var(--gold)}
+.pill-blue{background:rgba(0,136,255,.1);border:1px solid rgba(0,136,255,.3);color:var(--blue)}
+.pill-red{background:rgba(255,68,102,.1);border:1px solid rgba(255,68,102,.3);color:var(--red)}
+.pill-purple{background:rgba(204,68,255,.1);border:1px solid rgba(204,68,255,.3);color:var(--purple)}
+.pill-orange{background:rgba(255,136,0,.1);border:1px solid rgba(255,136,0,.3);color:var(--orange)}
+.pill-muted{background:rgba(255,255,255,.05);border:1px solid var(--border2);color:var(--muted)}
+.chart-wrap{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:18px;margin-bottom:18px}
+.chart-title{font-size:11px;color:var(--muted);letter-spacing:.5px;margin-bottom:14px}
+.chart-bars{display:flex;align-items:flex-end;gap:5px;height:80px}
+.chart-bar-col{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1}
+.chart-bar{width:100%;background:rgba(0,200,100,.18);border-radius:3px 3px 0 0;min-height:2px;border-top:2px solid var(--green)}
+.chart-bar:hover{background:rgba(0,200,100,.35)}
+.chart-bar.rev{background:rgba(200,140,0,.18);border-top-color:var(--gold)}
+.chart-bar.rev:hover{background:rgba(200,140,0,.35)}
+.chart-day{font-size:8px;color:var(--muted)}
+.chart-val{font-size:8px;color:var(--green)}
+.chart-val.rev{color:var(--gold)}
+.dispute-card{background:var(--card);border:1px solid var(--border2);border-radius:8px;padding:18px;margin-bottom:12px}
+.dispute-card.open{border-left:3px solid var(--red)}
+.dispute-card.resolved{border-left:3px solid var(--green)}
+.d-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:12px}
+.d-title{font-size:13px;color:var(--text);margin-bottom:4px}
+.d-meta{font-size:10px;color:var(--muted)}
+.d-reason{font-size:11px;color:var(--muted);background:var(--tr-hover);padding:10px 12px;border-radius:5px;margin-bottom:12px;line-height:1.6}
+.d-participants{display:flex;gap:16px;margin-bottom:12px}
+.d-side{flex:1;background:var(--tr-hover);border-radius:5px;padding:10px 12px}
+.d-side-label{font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:4px}
+.d-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.split-inp{width:65px;padding:5px 9px;background:var(--split-bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--font);font-size:12px;outline:none}
+.monitor-section{margin-bottom:20px}
+.monitor-label{font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:10px;padding:8px 12px;background:var(--tr-hover);border-radius:5px;border-left:3px solid var(--orange)}
+.alert-row{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.alert-info{flex:1;min-width:0}
+.alert-title{font-size:12px;color:var(--text);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.alert-meta{font-size:10px;color:var(--muted)}
+.funnel-wrap{display:flex;gap:0;margin-bottom:18px;background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.funnel-step{flex:1;padding:16px;text-align:center;border-right:1px solid var(--border)}
+.funnel-step:last-child{border-right:none}
+.funnel-num{font-size:22px;font-weight:bold;margin-bottom:4px}
+.funnel-label{font-size:9px;color:var(--muted);letter-spacing:1px}
+.funnel-pct{font-size:10px;margin-top:4px}
+.settings-wrap{max-width:640px}
+.setting-row{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px 18px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.setting-info{flex:1}
+.setting-name{font-size:12px;color:var(--text);margin-bottom:3px}
+.setting-desc{font-size:10px;color:var(--muted)}
+.toggle{position:relative;width:44px;height:24px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:var(--border);border:1px solid var(--border2);border-radius:24px;transition:.3s}
+.toggle-slider:before{content:'';position:absolute;width:16px;height:16px;left:3px;bottom:3px;background:var(--muted);border-radius:50%;transition:.3s}
+.toggle input:checked+.toggle-slider{background:rgba(0,255,136,.2);border-color:var(--green)}
+.toggle input:checked+.toggle-slider:before{transform:translateX(20px);background:var(--green)}
+.fin-cards{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.fin-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px 18px;flex:1;min-width:160px}
+.fin-card .label{font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:6px}
+.fin-card .value{font-size:20px;font-weight:bold}
+.modal-overlay{position:fixed;inset:0;background:var(--modal-overlay);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:var(--card2);border:1px solid var(--border2);border-radius:10px;width:100%;max-width:680px;max-height:85vh;overflow-y:auto}
+.modal-header{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--card2);z-index:1}
+.modal-title{font-size:14px;color:var(--text)}
+.modal-close{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px 8px}
+.modal-close:hover{color:var(--red)}
+.modal-body{padding:18px 20px}
+.broadcast-wrap{max-width:600px}
+.broadcast-wrap textarea{width:100%;min-height:130px;padding:12px;background:var(--textarea-bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--font);font-size:12px;resize:vertical;outline:none;margin-bottom:10px;line-height:1.6}
+.broadcast-wrap textarea:focus{border-color:var(--green)}
+.broadcast-result{margin-top:12px;padding:12px;border-radius:6px;background:var(--broadcast-result-bg);border:1px solid var(--broadcast-result-border);font-size:12px;color:var(--green)}
+.pager{display:flex;gap:8px;align-items:center;margin-top:12px}
+.toast{position:fixed;bottom:22px;right:22px;z-index:9999;padding:11px 16px;border-radius:7px;font-size:12px;background:var(--card);border:1px solid var(--border2);color:var(--text);box-shadow:0 8px 32px rgba(0,0,0,.5);animation:slide-in .2s ease;max-width:300px}
+.toast.ok{border-color:rgba(0,255,136,.4);color:var(--green)}
+.toast.err{border-color:rgba(255,68,102,.4);color:var(--red)}
+@keyframes slide-in{from{transform:translateX(20px);opacity:0}to{transform:none;opacity:1}}
+.loading{color:var(--muted);font-size:12px;padding:28px;text-align:center}
+.empty{color:var(--muted);font-size:12px;padding:22px;text-align:center}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-box">
+    <h1>⚔ SAFEDEAL</h1>
+    <p>Admin Panel</p>
+    <input type="password" id="pwd-inp" data-i18n-placeholder="login_pwd" placeholder="Password..." onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()" data-i18n="login_btn">LOGIN →</button>
+    <div id="login-err" class="login-err"></div>
+  </div>
+</div>
+
+<div id="app">
+  <nav class="sidebar">
+    <div class="sidebar-logo">⚔ SAFEDEAL<span>Admin Panel</span></div>
+    <div class="nav-item active" onclick="nav('dashboard')" data-i18n="nav_dashboard">📊 Dashboard</div>
+    <div class="nav-item" onclick="nav('analytics')" data-i18n="nav_analytics">📈 Analytics</div>
+    <div class="nav-item" id="nav-monitor" onclick="nav('monitor')" data-i18n="nav_monitor">🚨 Monitoring</div>
+    <div class="nav-sep"></div>
+    <div class="nav-item" onclick="nav('users')" data-i18n="nav_users">👥 Users</div>
+    <div class="nav-item" onclick="nav('contracts')" data-i18n="nav_contracts">⚔️ Deals</div>
+    <div class="nav-item" id="nav-disputes" onclick="nav('disputes')" data-i18n="nav_disputes">⚖️ Disputes</div>
+    <div class="nav-item" onclick="nav('jobs')" data-i18n="nav_jobs">📌 Job Board</div>
+    <div class="nav-sep"></div>
+    <div class="nav-item" onclick="nav('finance')" data-i18n="nav_finance">💰 Finance</div>
+    <div class="nav-item" onclick="nav('commission')" data-i18n="nav_commission">💸 Commissions</div>
+    <div class="nav-item" onclick="nav('settings')" data-i18n="nav_settings">⚙️ Settings</div>
+    <div class="nav-item" onclick="nav('broadcast')" data-i18n="nav_broadcast">📢 Broadcast</div>
+    <div class="sidebar-footer"><span id="admin-time">--:--</span><a id="lang-btn" onclick="toggleLang()" title="Language" style="cursor:pointer">🇷🇺</a><a id="theme-btn" onclick="toggleTheme()" title="Toggle theme">🌙</a><a onclick="logout()" data-i18n="logout">Logout</a></div>
+  </nav>
+
+  <main class="main">
+
+    <section id="s-dashboard" class="section active">
+      <div class="page-title" data-i18n="nav_dashboard">Dashboard</div><div class="page-sub" data-i18n="sub_dashboard">Summary statistics</div>
+      <div class="cards-row">
+        <div class="stat-card"><div class="label" data-i18n="stat_users">USERS</div><div class="value" id="st-users">—</div><div class="sub" id="st-users-today"></div></div>
+        <div class="stat-card"><div class="label" data-i18n="stat_deals">DEALS</div><div class="value" id="st-deals">—</div><div class="sub" id="st-deals-active"></div></div>
+        <div class="stat-card"><div class="label" data-i18n="stat_volume">VOLUME ($)</div><div class="value" id="st-volume">—</div><div class="sub" data-i18n="stat_total">total</div></div>
+        <div class="stat-card"><div class="label" data-i18n="stat_earnings">EARNINGS ($)</div><div class="value" id="st-revenue" style="color:var(--gold)">—</div><div class="sub" data-i18n="stat_fee">2% fee</div></div>
+        <div class="stat-card"><div class="label" data-i18n="stat_escrow">ESCROW ($)</div><div class="value" id="st-escrow" style="color:var(--blue)">—</div><div class="sub" data-i18n="stat_frozen">frozen</div></div>
+        <div class="stat-card"><div class="label" data-i18n="stat_disputes">DISPUTES</div><div class="value" id="st-disputes" style="color:var(--red)">—</div><div class="sub" data-i18n="stat_open">open</div></div>
+      </div>
+      <div class="chart-wrap"><div class="chart-title" data-i18n="chart_deals14">NEW DEALS — 14 DAYS</div><div class="chart-bars" id="chart-bars"></div></div>
+      <div class="table-wrap">
+        <div class="table-header"><span class="table-title" data-i18n="top_users">🏆 Top users</span></div>
+        <table><thead><tr><th>#</th><th data-i18n="col_user">USER</th><th>TG ID</th><th data-i18n="col_deals">DEALS</th></tr></thead><tbody id="top-users-body"></tbody></table>
+      </div>
+    </section>
+
+    <section id="s-analytics" class="section">
+      <div class="page-title" data-i18n="nav_analytics">Analytics</div><div class="page-sub" data-i18n="sub_analytics">Conversion, average deal, retention</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:10px;letter-spacing:1px" data-i18n="funnel_title">CONVERSION FUNNEL</div>
+      <div class="funnel-wrap" id="funnel-wrap"><div class="loading" data-i18n="loading">Loading...</div></div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        <div style="flex:1;min-width:260px"><div class="chart-wrap"><div class="chart-title" data-i18n="avg_deal">AVERAGE DEAL SIZE</div><div id="avg-check-wrap"><div class="loading" data-i18n="loading">Loading...</div></div></div></div>
+        <div style="flex:1;min-width:260px"><div class="chart-wrap"><div class="chart-title" data-i18n="retention">RETENTION</div><div id="retention-wrap"><div class="loading" data-i18n="loading">Loading...</div></div></div></div>
+      </div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        <div style="flex:1;min-width:260px"><div class="chart-wrap"><div class="chart-title" data-i18n="top_categories">TOP JOB BOARD CATEGORIES</div><div id="categories-wrap"><div class="loading" data-i18n="loading">Loading...</div></div></div></div>
+        <div style="flex:1;min-width:260px"><div class="chart-wrap"><div class="chart-title" data-i18n="rev_by_day">REVENUE BY DAY (30D)</div><div class="chart-bars" id="rev-chart-bars" style="height:60px"></div></div></div>
+      </div>
+    </section>
+
+    <section id="s-monitor" class="section">
+      <div class="page-title" data-i18n="nav_monitor">Monitoring</div><div class="page-sub" data-i18n="sub_monitor">Problem situations requiring attention</div>
+      <div id="monitor-body"><div class="loading" data-i18n="loading">Loading...</div></div>
+    </section>
+
+    <section id="s-users" class="section">
+      <div class="page-title" data-i18n="nav_users">Users</div><div class="page-sub" data-i18n="sub_users">Account management</div>
+      <div class="table-wrap">
+        <div class="table-header">
+          <span class="table-title" id="users-count" data-i18n="nav_users">Users</span>
+          <div style="display:flex;gap:8px">
+            <input class="inp" id="users-search" data-i18n-placeholder="search_ph" placeholder="Search..." style="width:220px" onkeydown="if(event.key==='Enter')loadUsers()">
+            <button class="btn btn-green btn-sm" onclick="loadUsers()" data-i18n="search_btn">Search</button>
+          </div>
+        </div>
+        <table><thead><tr><th>TG ID</th><th data-i18n="col_username">USERNAME</th><th data-i18n="col_name">NAME</th><th>LVL</th><th>XP</th><th data-i18n="col_deals">DEALS</th><th data-i18n="col_wallet">WALLET</th><th data-i18n="col_status">STATUS</th><th data-i18n="col_date">DATE</th><th></th></tr></thead>
+        <tbody id="users-body"><tr><td colspan="10" class="loading" data-i18n="loading">Loading...</td></tr></tbody></table>
+      </div>
+      <div class="pager">
+        <button class="btn btn-ghost btn-sm" onclick="usersPage(-1)" data-i18n="back">← Back</button>
+        <span style="font-size:11px;color:var(--muted)" id="users-page-lbl">page 1</span>
+        <button class="btn btn-ghost btn-sm" onclick="usersPage(1)" data-i18n="next">Next →</button>
+      </div>
+    </section>
+
+    <section id="s-contracts" class="section">
+      <div class="page-title" data-i18n="nav_contracts">Deals</div><div class="page-sub" data-i18n="sub_contracts">Contract management</div>
+      <div class="table-wrap">
+        <div class="table-header">
+          <span class="table-title" data-i18n="nav_contracts">Contracts</span>
+          <select class="inp" id="contracts-status" onchange="loadContracts()" style="width:200px">
+            <option value="" data-i18n="all_statuses">All statuses</option>
+            <option value="draft">draft</option><option value="pending_signature">pending_signature</option>
+            <option value="signed">signed</option><option value="awaiting_payment">awaiting_payment</option>
+            <option value="in_progress">in_progress</option><option value="under_review">under_review</option>
+            <option value="completed">completed</option><option value="disputed">disputed</option><option value="refunded">refunded</option>
+          </select>
+        </div>
+        <table><thead><tr><th data-i18n="col_title">TITLE</th><th data-i18n="col_client">CLIENT</th><th data-i18n="col_freelancer">FREELANCER</th><th>$</th><th data-i18n="col_status">STATUS</th><th data-i18n="stat_escrow">ESCROW</th><th data-i18n="col_date">DATE</th><th data-i18n="col_actions">ACTIONS</th></tr></thead>
+        <tbody id="contracts-body"><tr><td colspan="8" class="loading" data-i18n="loading">Loading...</td></tr></tbody></table>
+      </div>
+      <div class="pager">
+        <button class="btn btn-ghost btn-sm" onclick="contractsPage(-1)" data-i18n="back">← Back</button>
+        <span style="font-size:11px;color:var(--muted)" id="contracts-page-lbl">page 1</span>
+        <button class="btn btn-ghost btn-sm" onclick="contractsPage(1)" data-i18n="next">Next →</button>
+      </div>
+    </section>
+
+    <section id="s-disputes" class="section">
+      <div class="page-title" data-i18n="nav_disputes">Disputes</div><div class="page-sub" data-i18n="sub_disputes">Conflict resolution</div>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <button class="btn btn-sm btn-red"   id="dfilter-open"     onclick="setDisputeFilter('open')" data-i18n="dfilter_open">⚖️ Open</button>
+        <button class="btn btn-sm btn-ghost" id="dfilter-resolved" onclick="setDisputeFilter('resolved')" data-i18n="dfilter_resolved">✅ Resolved</button>
+      </div>
+      <div id="disputes-list"><div class="loading" data-i18n="loading">Loading...</div></div>
+    </section>
+
+    <section id="s-jobs" class="section">
+      <div class="page-title" data-i18n="nav_jobs">Job Board</div><div class="page-sub" data-i18n="sub_jobs">Moderation</div>
+      <div class="table-wrap">
+        <div class="table-header"><span class="table-title" id="jobs-count" data-i18n="nav_jobs">Jobs</span></div>
+        <table><thead><tr><th data-i18n="col_title">TITLE</th><th data-i18n="col_client">CLIENT</th><th data-i18n="col_budget">BUDGET</th><th data-i18n="col_category">CATEGORY</th><th data-i18n="col_status">STATUS</th><th data-i18n="col_apps">APPS.</th><th data-i18n="col_date">DATE</th><th></th></tr></thead>
+        <tbody id="jobs-body"><tr><td colspan="8" class="loading" data-i18n="loading">Loading...</td></tr></tbody></table>
+      </div>
+    </section>
+
+    <section id="s-finance" class="section">
+      <div class="page-title" data-i18n="nav_finance">Finance</div><div class="page-sub" data-i18n="sub_finance">Platform revenue and export</div>
+      <div class="fin-cards" id="fin-totals"></div>
+      <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:flex-end">
+        <div><div style="font-size:10px;color:var(--muted);margin-bottom:5px" data-i18n="export_from">EXPORT FROM</div><input class="inp" type="date" id="export-from" style="width:150px"></div>
+        <div><div style="font-size:10px;color:var(--muted);margin-bottom:5px" data-i18n="export_to">TO</div><input class="inp" type="date" id="export-to" style="width:150px"></div>
+        <button class="btn btn-gold" onclick="exportCSV()" data-i18n="download_csv">⬇ Download CSV</button>
+      </div>
+      <div class="table-wrap">
+        <div class="table-header"><span class="table-title" data-i18n="by_month">By month</span></div>
+        <table><thead><tr><th data-i18n="col_month">MONTH</th><th data-i18n="col_currency">CURRENCY</th><th data-i18n="col_deals">DEALS</th><th data-i18n="col_volume">VOLUME ($)</th><th data-i18n="col_fee">FEE ($)</th></tr></thead>
+        <tbody id="finance-body"><tr><td colspan="5" class="loading" data-i18n="loading">Loading...</td></tr></tbody></table>
+      </div>
+    </section>
+
+    <section id="s-commission" class="section">
+      <div class="page-title" data-i18n="nav_commission">Commissions</div><div class="page-sub" data-i18n="sub_commission">Changes apply instantly to all new deals</div>
+      <div style="max-width:560px">
+
+        <!-- Current rate -->
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:28px 24px;margin-bottom:16px;text-align:center">
+          <div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:10px" data-i18n="comm_current">CURRENT FEE</div>
+          <div id="comm-display" style="font-size:56px;font-weight:bold;color:var(--green);line-height:1">—%</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:8px" data-i18n="comm_auto">deducted automatically when a deal is closed</div>
+        </div>
+
+        <!-- Slider -->
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:22px 24px;margin-bottom:16px">
+          <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:16px" data-i18n="comm_new_pct">NEW PERCENTAGE</div>
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+            <input type="range" id="comm-slider" min="0" max="20" step="0.5" value="2"
+              style="flex:1;accent-color:var(--green);cursor:pointer;height:4px"
+              oninput="document.getElementById('comm-num').value=this.value;updateCommPreview()">
+            <div style="display:flex;align-items:center;gap:4px">
+              <input type="number" id="comm-num" class="inp" min="0" max="20" step="0.5" value="2"
+                style="width:72px;text-align:center;font-size:16px"
+                oninput="document.getElementById('comm-slider').value=this.value;updateCommPreview()">
+              <span style="font-size:16px;color:var(--muted)">%</span>
+            </div>
+          </div>
+
+          <!-- Value scale -->
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-bottom:20px">
+            <span>0%</span><span>2%</span><span>5%</span><span>10%</span><span>15%</span><span>20%</span>
+          </div>
+
+          <!-- Earnings preview -->
+          <div style="background:var(--card2);border:1px solid var(--border);border-radius:7px;padding:14px 16px;margin-bottom:18px">
+            <div style="font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:10px" data-i18n="comm_preview_title">EARNINGS AT DIFFERENT DEAL AMOUNTS</div>
+            <div style="display:flex;gap:0;flex-wrap:wrap" id="comm-preview">
+              <div style="flex:1;min-width:80px;padding:8px;text-align:center;border-right:1px solid var(--border)">
+                <div style="font-size:9px;color:var(--muted)">$50</div>
+                <div id="cp-50" style="font-size:13px;color:var(--gold);font-weight:bold">—</div>
+              </div>
+              <div style="flex:1;min-width:80px;padding:8px;text-align:center;border-right:1px solid var(--border)">
+                <div style="font-size:9px;color:var(--muted)">$100</div>
+                <div id="cp-100" style="font-size:13px;color:var(--gold);font-weight:bold">—</div>
+              </div>
+              <div style="flex:1;min-width:80px;padding:8px;text-align:center;border-right:1px solid var(--border)">
+                <div style="font-size:9px;color:var(--muted)">$250</div>
+                <div id="cp-250" style="font-size:13px;color:var(--gold);font-weight:bold">—</div>
+              </div>
+              <div style="flex:1;min-width:80px;padding:8px;text-align:center">
+                <div style="font-size:9px;color:var(--muted)">$500</div>
+                <div id="cp-500" style="font-size:13px;color:var(--gold);font-weight:bold">—</div>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn btn-green" style="width:100%;padding:12px;font-size:13px" onclick="saveCommission()" data-i18n="comm_save">SAVE FEE</button>
+        </div>
+
+        <!-- Change history -->
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 24px">
+          <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:14px" data-i18n="comm_history">CHANGE HISTORY</div>
+          <div id="comm-history"><div class="loading">Loading...</div></div>
+        </div>
+
+      </div>
+    </section>
+
+    <section id="s-settings" class="section">
+      <div class="page-title" data-i18n="nav_settings">Settings</div><div class="page-sub" data-i18n="sub_settings">Applied immediately without redeployment</div>
+      <div class="settings-wrap" id="settings-wrap"><div class="loading" data-i18n="loading">Loading...</div></div>
+      <button class="btn btn-green" onclick="saveSettings()" style="margin-top:14px" data-i18n="save_btn">💾 SAVE</button>
+    </section>
+
+    <section id="s-broadcast" class="section">
+      <div class="page-title" data-i18n="nav_broadcast">Broadcast</div><div class="page-sub" data-i18n="sub_broadcast">Message to all users (except banned)</div>
+      <div class="broadcast-wrap">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:8px">HTML: &lt;b&gt;, &lt;i&gt;, &lt;code&gt;, &lt;a href=...&gt;</div>
+        <textarea id="broadcast-msg" data-i18n-placeholder="broadcast_ph" placeholder="Message text..."></textarea>
+        <button class="btn btn-green" onclick="sendBroadcast()" id="broadcast-btn" data-i18n="broadcast_btn">📢 SEND TO ALL</button>
+        <div id="broadcast-result" style="display:none" class="broadcast-result"></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div id="user-modal" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeUserModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-title">User</span>
+      <button class="modal-close" onclick="closeUserModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+const BASE='';
+let TOKEN=localStorage.getItem('admin_token')||'';
+let _uPage=0,_cPage=0,_dFilter='open';
+let _lang=localStorage.getItem('admin_lang')||'en';
+
+// ── Translations ────────────────────────────────────────────
+const LANGS={
+  en:{
+    login_pwd:'Password...',login_btn:'LOGIN →',logout:'Logout',
+    nav_dashboard:'📊 Dashboard',nav_analytics:'📈 Analytics',nav_monitor:'🚨 Monitoring',
+    nav_users:'👥 Users',nav_contracts:'⚔️ Deals',nav_disputes:'⚖️ Disputes',
+    nav_jobs:'📌 Job Board',nav_finance:'💰 Finance',nav_commission:'💸 Commissions',
+    nav_settings:'⚙️ Settings',nav_broadcast:'📢 Broadcast',
+    sub_dashboard:'Summary statistics',sub_analytics:'Conversion, average deal, retention',
+    sub_monitor:'Problem situations requiring attention',sub_users:'Account management',
+    sub_contracts:'Contract management',sub_disputes:'Conflict resolution',
+    sub_jobs:'Moderation',sub_finance:'Platform revenue and export',
+    sub_commission:'Adjust the fee percentage at any time',
+    sub_settings:'Applied immediately without redeployment',
+    sub_broadcast:'Message to all users (except banned)',
+    stat_users:'USERS',stat_deals:'DEALS',stat_volume:'VOLUME ($)',stat_earnings:'EARNINGS ($)',
+    stat_escrow:'ESCROW ($)',stat_disputes:'DISPUTES',stat_total:'total',stat_fee:'2% fee',
+    stat_frozen:'frozen',stat_open:'open',
+    chart_deals14:'NEW DEALS — 14 DAYS',top_users:'🏆 Top users',
+    funnel_title:'CONVERSION FUNNEL',avg_deal:'AVERAGE DEAL SIZE',retention:'RETENTION',
+    top_categories:'TOP JOB BOARD CATEGORIES',rev_by_day:'REVENUE BY DAY (30D)',
+    col_user:'USER',col_deals:'DEALS',col_username:'USERNAME',col_name:'NAME',
+    col_wallet:'WALLET',col_status:'STATUS',col_date:'DATE',col_title:'TITLE',
+    col_client:'CLIENT',col_freelancer:'FREELANCER',col_actions:'ACTIONS',
+    col_budget:'BUDGET',col_category:'CATEGORY',col_apps:'APPS.',
+    col_month:'MONTH',col_currency:'CURRENCY',col_volume:'VOLUME ($)',col_fee:'FEE ($)',
+    all_statuses:'All statuses',search_ph:'Search...',search_btn:'Search',
+    back:'← Back',next:'Next →',loading:'Loading...',
+    dfilter_open:'⚖️ Open',dfilter_resolved:'✅ Resolved',
+    export_from:'EXPORT FROM',export_to:'TO',download_csv:'⬇ Download CSV',by_month:'By month',
+    comm_current:'CURRENT FEE',comm_auto:'deducted automatically when a deal is closed',
+    comm_new_pct:'NEW PERCENTAGE',comm_preview_title:'EARNINGS AT DIFFERENT DEAL AMOUNTS',
+    comm_save:'SAVE FEE',comm_history:'CHANGE HISTORY',
+    save_btn:'💾 SAVE',broadcast_ph:'Message text...',broadcast_btn:'📢 SEND TO ALL',
+    // dynamic
+    today:'today',active:'active',no_data:'No data',nothing_found:'Nothing found',none:'None',
+    no_disputes:'No disputes',page_lbl:'page',
+    all_good:'✅ All looks good',
+    stuck_label:'⏸ STUCK IN IN_PROGRESS 7+ DAYS',expired_label:'⌛ DEADLINE EXPIRED',
+    escrow_label:'🔒 ESCROW FROZEN 48H+',no_freelancer_label:'👤 WAITING FOR FREELANCER 3+ DAYS',
+    deadline_lbl:'deadline',status_lbl:'— status —',
+    deal_history:'DEAL HISTORY',no_deals:'No deals',
+    unban:'✅ Unban',ban:'🚫 Ban',award:'💰 Award',
+    total_processed:'TOTAL PROCESSED',platform_earnings:'PLATFORM EARNINGS',
+    deals_volume:'deals · volume',returned_lbl:'returned for a 2nd deal',
+    no_completed:'No completed deals',
+    resolve_confirm:'Resolve dispute',
+    delete_confirm:'Delete',deleted:'Deleted',banned:'Banned',unbanned:'Unbanned',awarded:'Awarded ✅',
+    sending:'⏳ Sending...',sent_result:'✅ Sent',failed_lbl:'Failed',total_lbl:'Total',
+    broadcast_delivered:'delivered',settings_saved:'Settings saved ✅',
+    enter_msg:'Enter a message',send_confirm:'Send to all users?',
+    enter_reward:'Enter XP or Coins',status_changed:'Status →',
+    comm_saved:'Fee updated',comm_load_err:'Load error',comm_hist_na:'History unavailable',
+    comm_no_hist:'No changes yet',
+    s_fee_name:'Platform fee (%)',s_fee_desc:'Percentage from each completed deal',
+    s_max_name:'Maximum deal amount ($)',s_max_desc:'MVP limit',
+    s_sim_name:'Payment simulation mode',s_sim_desc:'Test without real TON blockchain',
+    s_maint_name:'Maintenance mode',s_maint_desc:'Blocks the Mini App for users',
+    s_msg_name:'Maintenance message',s_msg_desc:'Shown to users in maintenance mode',
+    s_msg_ph:'⚙️ Maintenance in progress...',
+  },
+  ru:{
+    login_pwd:'Пароль...',login_btn:'ВОЙТИ →',logout:'Выйти',
+    nav_dashboard:'📊 Дашборд',nav_analytics:'📈 Аналитика',nav_monitor:'🚨 Мониторинг',
+    nav_users:'👥 Пользователи',nav_contracts:'⚔️ Сделки',nav_disputes:'⚖️ Споры',
+    nav_jobs:'📌 Биржа',nav_finance:'💰 Финансы',nav_commission:'💸 Комиссии',
+    nav_settings:'⚙️ Настройки',nav_broadcast:'📢 Рассылка',
+    sub_dashboard:'Сводная статистика',sub_analytics:'Конверсия, средний чек, удержание',
+    sub_monitor:'Проблемы требующие внимания',sub_users:'Управление аккаунтами',
+    sub_contracts:'Управление контрактами',sub_disputes:'Разрешение конфликтов',
+    sub_jobs:'Модерация',sub_finance:'Доходы платформы и экспорт',
+    sub_commission:'Изменяйте процент комиссии в любой момент',
+    sub_settings:'Применяются сразу без редеплоя',
+    sub_broadcast:'Сообщение всем пользователям (кроме заблокированных)',
+    stat_users:'ПОЛЬЗОВАТЕЛИ',stat_deals:'СДЕЛКИ',stat_volume:'ОБЪЁМ ($)',stat_earnings:'ЗАРАБОТОК ($)',
+    stat_escrow:'ЭСКРОУ ($)',stat_disputes:'СПОРЫ',stat_total:'всего',stat_fee:'2% комиссия',
+    stat_frozen:'заморожено',stat_open:'открыто',
+    chart_deals14:'НОВЫЕ СДЕЛКИ — 14 ДНЕЙ',top_users:'🏆 Топ пользователей',
+    funnel_title:'ВОРОНКА КОНВЕРСИИ',avg_deal:'СРЕДНИЙ ЧЕК',retention:'УДЕРЖАНИЕ',
+    top_categories:'ТОП КАТЕГОРИИ БИРЖИ',rev_by_day:'ВЫРУЧКА ПО ДНЯМ (30Д)',
+    col_user:'ПОЛЬЗОВАТЕЛЬ',col_deals:'СДЕЛОК',col_username:'ЛОГИН',col_name:'ИМЯ',
+    col_wallet:'КОШЕЛЁК',col_status:'СТАТУС',col_date:'ДАТА',col_title:'НАЗВАНИЕ',
+    col_client:'КЛИЕНТ',col_freelancer:'ФРИЛАНСЕР',col_actions:'ДЕЙСТВИЯ',
+    col_budget:'БЮДЖЕТ',col_category:'КАТЕГОРИЯ',col_apps:'ОТКЛИКОВ',
+    col_month:'МЕСЯЦ',col_currency:'ВАЛЮТА',col_volume:'ОБЪЁМ ($)',col_fee:'КОМИССИЯ ($)',
+    all_statuses:'Все статусы',search_ph:'Поиск...',search_btn:'Найти',
+    back:'← Назад',next:'Далее →',loading:'Загрузка...',
+    dfilter_open:'⚖️ Открытые',dfilter_resolved:'✅ Решённые',
+    export_from:'ЭКСПОРТ С',export_to:'ПО',download_csv:'⬇ Скачать CSV',by_month:'По месяцам',
+    comm_current:'ТЕКУЩАЯ КОМИССИЯ',comm_auto:'снимается автоматически при закрытии сделки',
+    comm_new_pct:'НОВЫЙ ПРОЦЕНТ',comm_preview_title:'ЗАРАБОТОК ПРИ РАЗНЫХ СУММАХ СДЕЛКИ',
+    comm_save:'СОХРАНИТЬ КОМИССИЮ',comm_history:'ИСТОРИЯ ИЗМЕНЕНИЙ',
+    save_btn:'💾 СОХРАНИТЬ',broadcast_ph:'Текст сообщения...',broadcast_btn:'📢 ОТПРАВИТЬ ВСЕМ',
+    // dynamic
+    today:'сегодня',active:'активных',no_data:'Нет данных',nothing_found:'Ничего не найдено',none:'Нет',
+    no_disputes:'Нет споров',page_lbl:'стр.',
+    all_good:'✅ Всё в порядке',
+    stuck_label:'⏸ ЗАВИС В IN_PROGRESS 7+ ДНЕЙ',expired_label:'⌛ ДЕДЛАЙН ИСТЁК',
+    escrow_label:'🔒 ЭСКРОУ ЗАМОРОЖЕН 48Ч+',no_freelancer_label:'👤 ОЖИДАЕТ ФРИЛАНСЕРА 3+ ДНЯ',
+    deadline_lbl:'дедлайн',status_lbl:'— статус —',
+    deal_history:'ИСТОРИЯ СДЕЛОК',no_deals:'Нет сделок',
+    unban:'✅ Разблокировать',ban:'🚫 Заблокировать',award:'💰 Выдать',
+    total_processed:'ОБРАБОТАНО ВСЕГО',platform_earnings:'ЗАРАБОТОК ПЛАТФОРМЫ',
+    deals_volume:'сделок · объём',returned_lbl:'вернулись на 2-ю сделку',
+    no_completed:'Нет завершённых сделок',
+    resolve_confirm:'Разрешить спор',
+    delete_confirm:'Удалить',deleted:'Удалено',banned:'Заблокирован',unbanned:'Разблокирован',awarded:'Выдано ✅',
+    sending:'⏳ Отправка...',sent_result:'✅ Отправлено',failed_lbl:'Ошибок',total_lbl:'Всего',
+    broadcast_delivered:'доставлено',settings_saved:'Настройки сохранены ✅',
+    enter_msg:'Введите сообщение',send_confirm:'Отправить всем пользователям?',
+    enter_reward:'Введите XP или монеты',status_changed:'Статус →',
+    comm_saved:'Комиссия обновлена',comm_load_err:'Ошибка загрузки',comm_hist_na:'История недоступна',
+    comm_no_hist:'Изменений ещё не было',
+    s_fee_name:'Комиссия платформы (%)',s_fee_desc:'Процент с каждой завершённой сделки',
+    s_max_name:'Максимальная сумма сделки ($)',s_max_desc:'Ограничение MVP',
+    s_sim_name:'Режим симуляции платежей',s_sim_desc:'Тест без реального TON блокчейна',
+    s_maint_name:'Технические работы',s_maint_desc:'Блокирует Mini App для пользователей',
+    s_msg_name:'Сообщение о техработах',s_msg_desc:'Показывается пользователям при maintenance',
+    s_msg_ph:'⚙️ Технические работы...',
+  }
+};
+function t(k){return(LANGS[_lang]||LANGS.en)[k]||k}
+function applyLang(){
+  document.querySelectorAll('[data-i18n]').forEach(function(el){
+    var k=el.getAttribute('data-i18n');var v=t(k);
+    // preserve badge inside nav items
+    var badge=el.querySelector('.nav-badge');
+    el.textContent=v;
+    if(badge)el.appendChild(badge);
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el){
+    el.placeholder=t(el.getAttribute('data-i18n-placeholder'));
+  });
+  // re-render current section
+  var active=document.querySelector('.section.active');
+  if(active){var id=active.id.replace('s-','');
+    if(id==='dashboard')loadDashboard();
+    else if(id==='analytics')loadAnalytics();
+    else if(id==='monitor')loadMonitor();
+    else if(id==='users')loadUsers();
+    else if(id==='contracts')loadContracts();
+    else if(id==='disputes')loadDisputes();
+    else if(id==='jobs')loadJobs();
+    else if(id==='finance')loadFinance();
+    else if(id==='commission')loadCommission();
+    else if(id==='settings')loadSettings();
+  }
+}
+function toggleLang(){
+  _lang=_lang==='en'?'ru':'en';
+  localStorage.setItem('admin_lang',_lang);
+  document.getElementById('lang-btn').textContent=_lang==='en'?'🇷🇺':'🇬🇧';
+  applyLang();
+}
+(function(){
+  if(localStorage.getItem('admin_lang')==='ru'){_lang='ru';}
+  var btn=document.getElementById('lang-btn');
+  if(btn)btn.textContent=_lang==='en'?'🇷🇺':'🇬🇧';
+})();
+
+window.onload=function(){if(TOKEN)showApp();updateClock();setInterval(updateClock,30000);applyLang()};
+function updateClock(){const d=new Date();document.getElementById('admin-time').textContent=d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}
+
+function doLogin(){
+  const pwd=document.getElementById('pwd-inp').value.trim();
+  if(!pwd)return;
+  post('/admark/login',{password:pwd})
+    .then(function(r){TOKEN=r.token;localStorage.setItem('admin_token',TOKEN);showApp()})
+    .catch(function(e){document.getElementById('login-err').textContent=e.message||'Invalid password'});
+}
+function logout(){TOKEN='';localStorage.removeItem('admin_token');document.getElementById('app').classList.remove('visible');document.getElementById('login-screen').style.display='flex';document.getElementById('pwd-inp').value=''}
+function showApp(){document.getElementById('login-screen').style.display='none';document.getElementById('app').classList.add('visible');nav('dashboard')}
+function toggleTheme(){var isLight=document.body.classList.toggle('light');localStorage.setItem('admin_theme',isLight?'light':'dark');document.getElementById('theme-btn').textContent=isLight?'☀️':'🌙'}
+(function(){if(localStorage.getItem('admin_theme')==='light'){document.body.classList.add('light');var btn=document.getElementById('theme-btn');if(btn)btn.textContent='☀️'}})()
+
+function nav(s){
+  document.querySelectorAll('.nav-item').forEach(function(el){el.classList.remove('active')});
+  document.querySelectorAll('.section').forEach(function(el){el.classList.remove('active')});
+  var ni=document.querySelector('.nav-item[onclick*="\''+s+'\'"]');
+  if(ni)ni.classList.add('active');
+  var sec=document.getElementById('s-'+s);
+  if(sec)sec.classList.add('active');
+  if(s==='dashboard')loadDashboard();
+  if(s==='analytics')loadAnalytics();
+  if(s==='monitor')loadMonitor();
+  if(s==='users')loadUsers();
+  if(s==='contracts')loadContracts();
+  if(s==='disputes')loadDisputes();
+  if(s==='jobs')loadJobs();
+  if(s==='finance')loadFinance();
+  if(s==='commission')loadCommission();
+  if(s==='settings')loadSettings();
+}
+
+function get(url){return fetch(BASE+url,{headers:{'X-Admin-Token':TOKEN}}).then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||r.statusText);return d})})}
+function post(url,body){return fetch(BASE+url,{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Token':TOKEN},body:JSON.stringify(body)}).then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||r.statusText);return d})})}
+function patch(url,body){return fetch(BASE+url,{method:'PATCH',headers:{'Content-Type':'application/json','X-Admin-Token':TOKEN},body:JSON.stringify(body)}).then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||r.statusText);return d})})}
+function del(url){return fetch(BASE+url,{method:'DELETE',headers:{'X-Admin-Token':TOKEN}}).then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||r.statusText);return d})})}
+
+function toast(msg,type){
+  type=type||'ok';
+  var el=document.createElement('div');el.className='toast '+type;el.textContent=msg;
+  document.getElementById('toast-container').appendChild(el);setTimeout(function(){el.remove()},3500);
+}
+function fmt(n){return Number(n||0).toLocaleString('en-US')}
+function fmtd(n){return Number(n||0).toFixed(2)}
+function fmtDate(s){return s?new Date(s).toLocaleDateString('en-US'):'—'}
+function fmtDt(s){if(!s)return'—';var d=new Date(s);return d.toLocaleDateString('en-US')+' '+d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}
+function ago(s){if(!s)return'—';var diff=Date.now()-new Date(s).getTime();var d=Math.floor(diff/86400000);if(d>0)return d+'d ago';var h=Math.floor(diff/3600000);if(h>0)return h+'h ago';return Math.floor(diff/60000)+'m ago'}
+function statusPill(s){var m={draft:'pill-muted',pending_signature:'pill-gold',signed:'pill-blue',awaiting_payment:'pill-orange',in_progress:'pill-blue',under_review:'pill-purple',completed:'pill-green',disputed:'pill-red',refunded:'pill-orange',open:'pill-green',in_review:'pill-orange',closed:'pill-muted',taken:'pill-blue'};return'<span class="pill '+(m[s]||'pill-muted')+'">'+s+'</span>'}
+
+// DASHBOARD
+function loadDashboard(){
+  get('/admark/api/stats').then(function(d){
+    document.getElementById('st-users').textContent=fmt(d.users.total);
+    document.getElementById('st-users-today').textContent='+'+d.users.today+' '+t('today');
+    document.getElementById('st-deals').textContent=fmt(d.contracts.total);
+    document.getElementById('st-deals-active').textContent=d.contracts.active+' '+t('active');
+    document.getElementById('st-volume').textContent='$'+fmt(Math.round(d.contracts.total_volume));
+    document.getElementById('st-revenue').textContent='$'+fmtd(d.revenue.total_fee);
+    document.getElementById('st-escrow').textContent='$'+fmt(Math.round(d.escrow.frozen_usd));
+    document.getElementById('st-disputes').textContent=fmt(d.disputes.open);
+    if(d.disputes.open>0)document.getElementById('nav-disputes').innerHTML=t('nav_disputes')+' <span class="nav-badge">'+d.disputes.open+'</span>';
+    renderChart('chart-bars',d.chart,'count',false);
+    document.getElementById('top-users-body').innerHTML=d.top_users.map(function(u,i){return'<tr><td style="color:var(--gold)">'+(i+1)+'</td><td>'+(u.first_name||'')+' '+(u.username?'@'+u.username:'')+'</td><td style="color:var(--muted)">'+u.telegram_id+'</td><td><b>'+u.deals+'</b></td></tr>'}).join('')||'<tr><td colspan="4" class="empty">'+t('no_data')+'</td></tr>';
+  }).catch(function(e){toast('Error: '+e.message,'err')});
+}
+
+function renderChart(elId,data,field,isRev){
+  var wrap=document.getElementById(elId);
+  if(!data||!data.length){wrap.innerHTML='<span style="color:var(--muted);font-size:10px">'+t('no_data')+'</span>';return}
+  var max=Math.max.apply(null,data.map(function(d){return Number(d[field])||0}));if(max<1)max=1;
+  wrap.innerHTML=data.map(function(d){
+    var val=Number(d[field])||0;
+    var pct=Math.max(4,Math.round((val/max)*70));
+    var lbl=(d.day||d.month||'').slice(-5);
+    return'<div class="chart-bar-col" title="'+lbl+': '+val+'"><div class="chart-val'+(isRev?' rev':'')+'">'+( isRev?'$'+fmtd(val):val)+'</div><div class="chart-bar'+(isRev?' rev':'')+'" style="height:'+pct+'px"></div><div class="chart-day">'+lbl+'</div></div>';
+  }).join('');
+}
+
+// ANALYTICS
+function loadAnalytics(){
+  get('/admark/api/analytics').then(function(d){
+    var f=d.funnel,total=f.total||1;
+    document.getElementById('funnel-wrap').innerHTML=
+      '<div class="funnel-step"><div class="funnel-num">'+fmt(f.total)+'</div><div class="funnel-label">'+(_lang==='ru'?'СОЗДАНО':'CREATED')+'</div><div class="funnel-pct" style="color:var(--muted)">100%</div></div>'+
+      '<div class="funnel-step"><div class="funnel-num" style="color:var(--blue)">'+fmt(f.signed)+'</div><div class="funnel-label">'+(_lang==='ru'?'ПОДПИСАНО':'SIGNED')+'</div><div class="funnel-pct" style="color:var(--blue)">'+Math.round(f.signed/total*100)+'%</div></div>'+
+      '<div class="funnel-step"><div class="funnel-num" style="color:var(--gold)">'+fmt(f.paid)+'</div><div class="funnel-label">'+(_lang==='ru'?'ОПЛАЧЕНО':'PAID')+'</div><div class="funnel-pct" style="color:var(--gold)">'+Math.round(f.paid/total*100)+'%</div></div>'+
+      '<div class="funnel-step"><div class="funnel-num" style="color:var(--green)">'+fmt(f.completed)+'</div><div class="funnel-label">'+(_lang==='ru'?'ЗАВЕРШЕНО':'COMPLETED')+'</div><div class="funnel-pct" style="color:var(--green)">'+Math.round(f.completed/total*100)+'%</div></div>';
+
+    document.getElementById('avg-check-wrap').innerHTML=d.avg_check.length?
+      d.avg_check.map(function(c){return'<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">'+c.currency+'</span><span>$'+fmtd(c.avg_usd)+' <span style="color:var(--muted);font-size:10px">('+c.count+' deals)</span></span></div>'}).join('')
+      :'<div class="empty">'+t('no_completed')+'</div>';
+
+    var ret=d.retention,retPct=ret.total_users>0?Math.round(ret.returning_clients/ret.total_users*100):0;
+    document.getElementById('retention-wrap').innerHTML='<div style="text-align:center;padding:10px"><div style="font-size:36px;font-weight:bold;color:var(--green)">'+retPct+'%</div><div style="font-size:11px;color:var(--muted);margin-top:6px">'+t('returned_lbl')+'</div><div style="font-size:10px;color:var(--muted);margin-top:4px">'+ret.returning_clients+' of '+ret.total_users+'</div></div>';
+
+    var maxCat=d.categories.length?Math.max.apply(null,d.categories.map(function(c){return c.count})):1;
+    document.getElementById('categories-wrap').innerHTML=d.categories.length?
+      d.categories.map(function(c){var w=Math.round(c.count/maxCat*100);return'<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px"><span>'+(c.category||'general')+'</span><span style="color:var(--muted)">'+c.count+'</span></div><div style="height:6px;background:var(--border);border-radius:3px"><div style="height:100%;width:'+w+'%;background:var(--orange);border-radius:3px"></div></div></div>'}).join('')
+      :'<div class="empty">'+t('no_data')+'</div>';
+
+    renderChart('rev-chart-bars',d.daily_rev,'fee',true);
+  }).catch(function(e){toast('Error: '+e.message,'err')});
+}
+
+// MONITORING
+function loadMonitor(){
+  get('/admark/api/monitoring').then(function(d){
+    var total=d.stuck.length+d.expired.length+d.escrow.length+d.no_freelancer.length;
+    if(total>0)document.getElementById('nav-monitor').innerHTML=t('nav_monitor')+' <span class="nav-badge">'+total+'</span>';
+    var html='';
+    if(d.stuck.length){
+      html+='<div class="monitor-section"><div class="monitor-label">'+t('stuck_label')+' ('+d.stuck.length+')</div>';
+      html+=d.stuck.map(function(c){return'<div class="alert-row"><div class="alert-info"><div class="alert-title">'+c.title+'</div><div class="alert-meta">'+(c.client||'—')+' → '+(c.freelancer||'—')+' · $'+c.amount_usd+' · '+ago(c.updated_at)+'</div></div><select onchange="changeContractStatus(\''+c.id+'\',this.value)" class="inp" style="padding:5px 8px;font-size:10px;cursor:pointer"><option value="">'+t('status_lbl')+'</option><option value="under_review">under_review</option><option value="completed">completed</option><option value="disputed">disputed</option></select></div>'}).join('');
+      html+='</div>';
+    }
+    if(d.expired.length){
+      html+='<div class="monitor-section"><div class="monitor-label">'+t('expired_label')+' ('+d.expired.length+')</div>';
+      html+=d.expired.map(function(c){return'<div class="alert-row"><div class="alert-info"><div class="alert-title">'+c.title+'</div><div class="alert-meta">'+(c.client||'—')+' · '+statusPill(c.status)+' · '+t('deadline_lbl')+' '+fmtDate(c.deadline)+'</div></div></div>'}).join('');
+      html+='</div>';
+    }
+    if(d.escrow.length){
+      html+='<div class="monitor-section"><div class="monitor-label">'+t('escrow_label')+' ('+d.escrow.length+')</div>';
+      html+=d.escrow.map(function(c){return'<div class="alert-row"><div class="alert-info"><div class="alert-title">'+c.title+'</div><div class="alert-meta">'+(c.client||'—')+' · $'+c.escrow_usd+' · '+ago(c.frozen_at)+'</div></div></div>'}).join('');
+      html+='</div>';
+    }
+    if(d.no_freelancer.length){
+      html+='<div class="monitor-section"><div class="monitor-label">'+t('no_freelancer_label')+' ('+d.no_freelancer.length+')</div>';
+      html+=d.no_freelancer.map(function(c){return'<div class="alert-row"><div class="alert-info"><div class="alert-title">'+c.title+'</div><div class="alert-meta">'+(c.client||'—')+' · $'+c.amount_usd+' · '+ago(c.created_at)+'</div></div></div>'}).join('');
+      html+='</div>';
+    }
+    document.getElementById('monitor-body').innerHTML=html||'<div class="empty" style="color:var(--green)">'+t('all_good')+'</div>';
+  }).catch(function(e){toast('Error: '+e.message,'err')});
+}
+
+// USERS
+function loadUsers(){
+  var search=document.getElementById('users-search').value.trim();
+  document.getElementById('users-body').innerHTML='<tr><td colspan="10" class="loading">'+t('loading')+'</td></tr>';
+  get('/admark/api/users?search='+encodeURIComponent(search)+'&limit=50&offset='+(_uPage*50)).then(function(rows){
+    document.getElementById('users-count').textContent=t('nav_users')+' ('+rows.length+')';
+    document.getElementById('users-page-lbl').textContent=t('page_lbl')+' '+(_uPage+1);
+    document.getElementById('users-body').innerHTML=rows.length===0?'<tr><td colspan="10" class="empty">'+t('nothing_found')+'</td></tr>':
+      rows.map(function(u){return'<tr><td style="color:var(--muted)">'+u.telegram_id+'</td><td>'+(u.username?'@'+u.username:'—')+'</td><td>'+(u.first_name||'')+' '+(u.last_name||'')+'</td><td style="color:var(--gold)">LVL '+(u.level||1)+'</td><td style="color:var(--muted)">'+fmt(u.xp)+'</td><td>'+(u.deals_total||0)+'</td><td style="font-size:10px;color:var(--muted)">'+(u.ton_wallet_address?u.ton_wallet_address.slice(0,10)+'…':'—')+'</td><td>'+(u.is_banned?'<span class="pill pill-red">BANNED</span>':'<span class="pill pill-green">OK</span>')+'</td><td style="color:var(--muted)">'+fmtDate(u.created_at)+'</td><td><button class="btn btn-ghost btn-sm" onclick="openUserModal('+u.telegram_id+',\''+((u.username||u.first_name||'').replace(/'/g,"\\'"))+'\','+u.is_banned+')">···</button></td></tr>'}).join('');
+  }).catch(function(e){toast('Error: '+e.message,'err')});
+}
+function usersPage(d){_uPage=Math.max(0,_uPage+d);loadUsers()}
+
+function openUserModal(tgId,name,isBanned){
+  document.getElementById('modal-title').textContent='👤 '+(name||tgId);
+  document.getElementById('modal-body').innerHTML='<div class="loading">Loading...</div>';
+  document.getElementById('user-modal').style.display='flex';
+  get('/admark/api/users/'+tgId+'/history').then(function(history){
+    document.getElementById('modal-body').innerHTML=
+      '<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">'+
+        '<button class="btn '+(isBanned?'btn-green':'btn-red')+' btn-sm" onclick="toggleBan('+tgId+','+isBanned+')">'+(isBanned?t('unban'):t('ban'))+'</button>'+
+        '<div style="display:flex;gap:6px;align-items:center">'+
+          '<input id="reward-xp" class="inp" type="number" placeholder="XP" style="width:80px" value="100">'+
+          '<input id="reward-coins" class="inp" type="number" placeholder="Coins" style="width:80px" value="0">'+
+          '<button class="btn btn-gold btn-sm" onclick="giveReward('+tgId+')">'+t('award')+'</button>'+
+        '</div>'+
+      '</div>'+
+      '<div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:10px">'+t('deal_history')+' ('+history.length+')</div>'+
+      (history.length===0?'<div class="empty">'+t('no_deals')+'</div>':
+        history.map(function(c){return'<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);gap:10px"><div style="flex:1;min-width:0"><div style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+c.title+'</div><div style="font-size:10px;color:var(--muted);margin-top:2px">'+fmtDate(c.created_at)+' · <span style="color:'+(c.role==='client'?'var(--green)':'var(--blue)')+'">'+c.role+'</span></div></div><div style="text-align:right;flex-shrink:0"><div style="font-size:11px;color:var(--gold)">$'+c.amount_usd+'</div><div style="margin-top:3px">'+statusPill(c.status)+'</div></div></div>'}).join(''));
+  }).catch(function(e){document.getElementById('modal-body').innerHTML='<div class="empty">Error: '+e.message+'</div>'});
+}
+function closeUserModal(){document.getElementById('user-modal').style.display='none'}
+function toggleBan(tgId,isBanned){
+  var p=isBanned?del('/admark/api/users/'+tgId+'/ban'):post('/admark/api/users/'+tgId+'/ban',{reason:'Terms of service violation'});
+  p.then(function(){toast(isBanned?t('unbanned'):t('banned'));closeUserModal();loadUsers()}).catch(function(e){toast('Error: '+e.message,'err')});
+}
+function giveReward(tgId){
+  var xp=Number(document.getElementById('reward-xp').value)||0;
+  var coins=Number(document.getElementById('reward-coins').value)||0;
+  if(!xp&&!coins)return toast(t('enter_reward'),'err');
+  post('/admark/api/users/'+tgId+'/reward',{xp:xp,coins:coins})
+    .then(function(){toast(t('awarded'));closeUserModal()})
+    .catch(function(e){toast('Error: '+e.message,'err')});
+}
+
+// CONTRACTS
+function loadContracts(){
+  var status=document.getElementById('contracts-status').value;
+  document.getElementById('contracts-body').innerHTML='<tr><td colspan="8" class="loading">'+t('loading')+'</td></tr>';
+  get('/admark/api/contracts?status='+status+'&limit=50&offset='+(_cPage*50)).then(function(rows){
+    document.getElementById('contracts-page-lbl').textContent=t('page_lbl')+' '+(_cPage+1);
+    var statuses=['draft','pending_signature','signed','awaiting_payment','in_progress','under_review','completed','disputed','refunded'];
+    document.getElementById('contracts-body').innerHTML=rows.length===0?'<tr><td colspan="8" class="empty">'+t('none')+'</td></tr>':
+      rows.map(function(c){return'<tr><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+c.title+'">'+c.title+'</td><td>'+(c.client_username?'@'+c.client_username:c.client_tg_id)+'</td><td>'+(c.freelancer_username?'@'+c.freelancer_username:(c.freelancer_tg_id||'—'))+'</td><td style="color:var(--gold)">$'+c.amount_usd+'</td><td>'+statusPill(c.status)+'</td><td>'+(c.escrow_status?statusPill(c.escrow_status):'—')+'</td><td style="color:var(--muted)">'+fmtDate(c.created_at)+'</td><td><select onchange="changeContractStatus(\''+c.id+'\',this.value)" class="inp" style="padding:4px 6px;font-size:10px;cursor:pointer"><option value="">'+t('status_lbl')+'</option>'+statuses.map(function(s){return'<option value="'+s+'">'+s+'</option>'}).join('')+'</select></td></tr>'}).join('');
+  }).catch(function(e){toast('Error: '+e.message,'err')});
+}
+function contractsPage(d){_cPage=Math.max(0,_cPage+d);loadContracts()}
+function changeContractStatus(id,status){
+  if(!status)return;
+  patch('/admark/api/contracts/'+id,{status:status}).then(function(){toast(t('status_changed')+' '+status);loadContracts()}).catch(function(e){toast('Error: '+e.message,'err')});
+}
+
+// DISPUTES
+function setDisputeFilter(f){
+  _dFilter=f;
+  document.getElementById('dfilter-open').className='btn btn-sm '+(f==='open'?'btn-red':'btn-ghost');
+  document.getElementById('dfilter-resolved').className='btn btn-sm '+(f==='resolved'?'btn-green':'btn-ghost');
+  loadDisputes();
+}
+function loadDisputes(){
+  document.getElementById('disputes-list').innerHTML='<div class="loading">'+t('loading')+'</div>';
+  get('/admark/api/disputes?status='+_dFilter).then(function(rows){
+    document.getElementById('disputes-list').innerHTML=rows.length===0?'<div class="empty">'+t('no_disputes')+'</div>':
+      rows.map(function(d){return'<div class="dispute-card '+d.status+'"><div class="d-header"><div><div class="d-title">⚖️ '+d.contract_title+'</div><div class="d-meta">'+fmtDt(d.created_at)+' · $'+d.amount_usd+' '+d.currency+'</div></div><div>'+statusPill(d.status)+' '+(d.decision?statusPill(d.decision):'')+'</div></div><div class="d-reason">'+d.reason+'</div><div class="d-participants"><div class="d-side"><div class="d-side-label">'+t('col_client')+'</div><div>'+(d.client_username?'@'+d.client_username:d.client_tg_id)+'</div></div><div class="d-side"><div class="d-side-label">'+t('col_freelancer')+'</div><div>'+(d.freelancer_username?'@'+d.freelancer_username:(d.freelancer_tg_id||'—'))+'</div></div></div>'+(d.status==='open'?'<div class="d-actions"><button class="btn btn-blue btn-sm" onclick="resolveDispute(\''+d.id+'\',\'client_wins\')">↩️ '+t('col_client')+'</button><button class="btn btn-green btn-sm" onclick="resolveDispute(\''+d.id+'\',\'freelancer_wins\')">✅ '+t('col_freelancer')+'</button><button class="btn btn-gold btn-sm" onclick="resolveDispute(\''+d.id+'\',\'split\',document.getElementById(\'sp-'+d.id+'\').value)">✂️ Split</button><input id="sp-'+d.id+'" class="split-inp" type="number" min="0" max="100" value="50"></div>':'<div style="font-size:11px;color:var(--muted)">'+(_lang==='ru'?'Решено: ':'Resolved: ')+fmtDt(d.resolved_at)+'</div>')+'</div>'}).join('');
+  }).catch(function(e){toast('Error: '+e.message,'err')});
+}
+function resolveDispute(id,decision,splitPct){
+  if(!confirm(t('resolve_confirm')+': '+decision+'?'))return;
+  var body={decision:decision};
+  if(decision==='split')body.split_percent=Number(splitPct)||50;
+  post('/admark/api/disputes/'+id+'/resolve',body).then(function(){toast(t('resolve_confirm')+' ✅');loadDisputes();loadDashboard()}).catch(function(e){toast('Error: '+e.message,'err')});
+}
+
+// JOBS
+function loadJobs(){
+  document.getElementById('jobs-body').innerHTML='<tr><td colspan="8" class="loading">'+t('loading')+'</td></tr>';
+  get('/admark/api/jobs?limit=100').then(function(rows){
+    document.getElementById('jobs-count').textContent=t('nav_jobs')+' ('+rows.length+')';
+    document.getElementById('jobs-body').innerHTML=rows.length===0?'<tr><td colspan="8" class="empty">'+t('none')+'</td></tr>':
+      rows.map(function(j){return'<tr><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+j.title+'">'+j.title+'</td><td>'+(j.client_username?'@'+j.client_username:'—')+'</td><td style="color:var(--gold)">'+(j.budget_min?'$'+j.budget_min:'')+(j.budget_max?' – $'+j.budget_max:'')+'</td><td><span class="pill pill-orange">'+(j.category||'—')+'</span></td><td>'+statusPill(j.status)+'</td><td>'+j.applications_count+'</td><td style="color:var(--muted)">'+fmtDate(j.created_at)+'</td><td><button class="btn btn-red btn-sm" onclick="deleteJob(\''+j.id+'\',\''+j.title.replace(/'/g,"\\'").replace(/"/g,'&quot;')+'\')" >🗑</button></td></tr>'}).join('');
+  }).catch(function(e){toast('Error: '+e.message,'err')});
+}
+function deleteJob(id,title){
+  if(!confirm(t('delete_confirm')+' "'+title+'"?'))return;
+  del('/admark/api/jobs/'+id).then(function(){toast(t('deleted'));loadJobs()}).catch(function(e){toast('Error: '+e.message,'err')});
+}
+
+// FINANCE
+function loadFinance(){
+  get('/admark/api/finance').then(function(d){
+    var t=d.total||{};
+    document.getElementById('fin-totals').innerHTML=
+      '<div class="fin-card"><div class="label">'+t('total_processed')+'</div><div class="value" style="color:var(--blue)">$'+fmtd(t.total_processed||0)+'</div></div>'+
+      '<div class="fin-card"><div class="label">'+t('platform_earnings')+'</div><div class="value" style="color:var(--gold)">$'+fmtd(t.total_earned||0)+'</div></div>'+
+      d.by_currency.map(function(c){return'<div class="fin-card"><div class="label">'+c.currency+'</div><div class="value" style="color:var(--green)">$'+fmtd(c.fee)+'</div><div style="font-size:10px;color:var(--muted);margin-top:4px">'+c.count+' '+t('deals_volume').split(' · ')[0]+' · $'+fmtd(c.volume)+' '+t('deals_volume').split(' · ')[1]+'</div></div>'}).join('');
+    document.getElementById('finance-body').innerHTML=d.monthly.length===0?'<tr><td colspan="5" class="empty">'+t('none')+'</td></tr>':
+      d.monthly.map(function(m){return'<tr><td>'+m.month+'</td><td><span class="pill pill-blue">'+m.currency+'</span></td><td>'+m.deals+'</td><td style="color:var(--blue)">$'+fmtd(m.volume)+'</td><td style="color:var(--gold)">$'+fmtd(m.fee)+'</td></tr>'}).join('');
+  }).catch(function(e){toast('Error: '+e.message,'err')});
+}
+function exportCSV(){
+  var from=document.getElementById('export-from').value;
+  var to=document.getElementById('export-to').value;
+  var params=new URLSearchParams();
+  if(from)params.append('from',from);if(to)params.append('to',to);
+  fetch('/admark/api/export/contracts?'+params,{headers:{'X-Admin-Token':TOKEN}})
+    .then(function(r){return r.blob()})
+    .then(function(blob){var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='safedeal_'+new Date().toISOString().slice(0,10)+'.csv';a.click()})
+    .catch(function(e){toast('Error: '+e.message,'err')});
+}
+
+// SETTINGS
+function loadSettings(){
+  get('/admark/api/settings').then(function(s){
+    document.getElementById('settings-wrap').innerHTML=
+      '<div class="setting-row"><div class="setting-info"><div class="setting-name">'+t('s_fee_name')+'</div><div class="setting-desc">'+t('s_fee_desc')+'</div></div><input class="inp" type="number" id="s-fee" value="'+(s.platform_fee_percent||2)+'" style="width:80px" min="0" max="20"></div>'+
+      '<div class="setting-row"><div class="setting-info"><div class="setting-name">'+t('s_max_name')+'</div><div class="setting-desc">'+t('s_max_desc')+'</div></div><input class="inp" type="number" id="s-maxdeal" value="'+(s.max_deal_amount_usd||500)+'" style="width:100px" min="10"></div>'+
+      '<div class="setting-row"><div class="setting-info"><div class="setting-name">'+t('s_sim_name')+'</div><div class="setting-desc">'+t('s_sim_desc')+'</div></div><label class="toggle"><input type="checkbox" id="s-simulate" '+(s.simulate_payments==='true'?'checked':'')+"><span class=\"toggle-slider\"></span></label></div>"+
+      '<div class="setting-row"><div class="setting-info"><div class="setting-name">'+t('s_maint_name')+'</div><div class="setting-desc">'+t('s_maint_desc')+'</div></div><label class="toggle"><input type="checkbox" id="s-maintenance" '+(s.maintenance_mode==='true'?'checked':'')+"><span class=\"toggle-slider\"></span></label></div>"+
+      '<div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:8px"><div class="setting-info"><div class="setting-name">'+t('s_msg_name')+'</div><div class="setting-desc">'+t('s_msg_desc')+'</div></div><input class="inp" type="text" id="s-mainmsg" value="'+(s.maintenance_message||'').replace(/"/g,'&quot;')+'" style="width:100%" placeholder="'+t('s_msg_ph')+'"></div>';
+  }).catch(function(e){toast('Error: '+e.message,'err')});
+}
+function saveSettings(){
+  post('/admark/api/settings',{
+    platform_fee_percent:document.getElementById('s-fee').value,
+    max_deal_amount_usd:document.getElementById('s-maxdeal').value,
+    simulate_payments:document.getElementById('s-simulate').checked?'true':'false',
+    maintenance_mode:document.getElementById('s-maintenance').checked?'true':'false',
+    maintenance_message:document.getElementById('s-mainmsg').value,
+  }).then(function(){toast('Settings saved ✅')}).catch(function(e){toast('Error: '+e.message,'err')});
+}
+
+// BROADCAST
+function sendBroadcast(){
+  var msg=document.getElementById('broadcast-msg').value.trim();
+  if(!msg)return toast(t('enter_msg'),'err');
+  if(!confirm(t('send_confirm')))return;
+  var btn=document.getElementById('broadcast-btn');
+  btn.textContent=t('sending');btn.disabled=true;
+  post('/admark/api/broadcast',{message:msg}).then(function(r){
+    var res=document.getElementById('broadcast-result');res.style.display='block';
+    res.innerHTML=t('sent_result')+': <b>'+r.sent+'</b> · '+t('failed_lbl')+': <b>'+r.failed+'</b> · '+t('total_lbl')+': <b>'+r.total+'</b>';
+    toast('Broadcast: '+r.sent+' '+t('broadcast_delivered'));
+  }).catch(function(e){toast('Error: '+e.message,'err')})
+  .finally(function(){btn.textContent=t('broadcast_btn');btn.disabled=false});
+}
+
+// ── Commissions ───────────────────────────────────────────
+var _commHistory=[];
+function loadCommission(){
+  get('/admark/api/settings').then(function(s){
+    var fee=parseFloat(s.platform_fee_percent)||2;
+    document.getElementById('comm-display').textContent=fee+'%';
+    document.getElementById('comm-slider').value=fee;
+    document.getElementById('comm-num').value=fee;
+    updateCommPreview();
+  }).catch(function(e){toast(t('comm_load_err')+': '+e.message,'err')});
+  get('/admark/api/commission/history').then(function(rows){
+    _commHistory=rows||[];
+    renderCommHistory();
+  }).catch(function(){
+    document.getElementById('comm-history').innerHTML='<div class="empty">'+t('comm_hist_na')+'</div>';
+  });
+}
+function updateCommPreview(){
+  var pct=parseFloat(document.getElementById('comm-num').value)||0;
+  [50,100,250,500].forEach(function(amt){
+    var earn=(amt*pct/100).toFixed(2);
+    document.getElementById('cp-'+amt).textContent='$'+earn;
+  });
+}
+function saveCommission(){
+  var val=parseFloat(document.getElementById('comm-num').value);
+  if(isNaN(val)||val<0||val>20){toast('Value must be 0–20%','err');return}
+  post('/admark/api/settings',{platform_fee_percent:String(val)}).then(function(){
+    document.getElementById('comm-display').textContent=val+'%';
+    toast(t('comm_saved')+': '+val+'%');
+    // add entry to history
+    _commHistory.unshift({value:val,changed_at:new Date().toISOString()});
+    if(_commHistory.length>20)_commHistory=_commHistory.slice(0,20);
+    // save to DB
+    post('/admark/api/commission/history',{value:val}).catch(function(){});
+    renderCommHistory();
+  }).catch(function(e){toast('Error: '+e.message,'err')});
+}
+function renderCommHistory(){
+  var el=document.getElementById('comm-history');
+  if(!_commHistory.length){el.innerHTML='<div class="empty">'+t('comm_no_hist')+'</div>';return}
+  el.innerHTML=_commHistory.map(function(h,i){
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)'+(i===_commHistory.length-1?';border-bottom:none':'')+'">'+
+      '<span style="font-size:13px;color:var(--green);font-weight:bold">'+h.value+'%</span>'+
+      '<span style="font-size:10px;color:var(--muted)">'+fmtDt(h.changed_at)+'</span>'+
+    '</div>';
+  }).join('');
+}
+</script>
+</body>
+</html>

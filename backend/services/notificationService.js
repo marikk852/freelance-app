@@ -1,15 +1,15 @@
 const { query } = require('../../database/db');
 
 // ============================================================
-// Notification Service — отправка Telegram уведомлений
-// Агент 4: используется escrowService для нотификаций
+// Notification Service — sending Telegram notifications
+// Agent 4: used by escrowService for notifications
 // ============================================================
 
 let _bot = null;
 
 /**
- * Установить экземпляр бота для отправки уведомлений.
- * Вызывается при инициализации бота.
+ * Set bot instance for sending notifications.
+ * Called during bot initialization.
  * @param {import('telegraf').Telegraf} bot
  */
 function setBot(bot) {
@@ -17,14 +17,14 @@ function setBot(bot) {
 }
 
 /**
- * Отправить уведомление пользователю через Telegram + сохранить в БД.
- * @param {number} telegramId - Telegram ID пользователя
- * @param {string} type       - тип уведомления
- * @param {string} message    - текст сообщения (Markdown)
- * @param {Object} payload    - дополнительные данные (для кнопок)
+ * Send a notification to a user via Telegram + save to DB.
+ * @param {number} telegramId - user's Telegram ID
+ * @param {string} type       - notification type
+ * @param {string} message    - message text (Markdown)
+ * @param {Object} payload    - additional data (for buttons)
  */
 async function notify(telegramId, type, message, payload = {}) {
-  // Сохраняем в БД
+  // Save to DB
   try {
     const { rows } = await query(
       `SELECT id FROM users WHERE telegram_id = $1`,
@@ -38,10 +38,10 @@ async function notify(telegramId, type, message, payload = {}) {
       );
     }
   } catch (err) {
-    console.error('[Notify] Ошибка сохранения уведомления в БД:', err.message);
+    console.error('[Notify] Error saving notification to DB:', err.message);
   }
 
-  // Отправляем через Telegram
+  // Send via Telegram
   if (_bot) {
     try {
       await _bot.telegram.sendMessage(telegramId, message, {
@@ -51,91 +51,91 @@ async function notify(telegramId, type, message, payload = {}) {
           : undefined,
       });
     } catch (err) {
-      console.error(`[Notify] Ошибка отправки в Telegram (${telegramId}):`, err.message);
+      console.error(`[Notify] Error sending to Telegram (${telegramId}):`, err.message);
     }
   }
 }
 
 // ============================================================
-// Готовые уведомления для ключевых событий сделки
+// Pre-built notifications for key deal events
 // ============================================================
 
-/** Уведомить клиента что деньги заморожены, фрилансера — начинай работу */
+/** Notify client that funds are frozen, freelancer — start working */
 async function notifyEscrowFrozen({ clientTgId, freelancerTgId, contractTitle, contractId }) {
   await notify(
     clientTgId,
     'payment_received',
-    `🔒 *Деньги заморожены*\n\nСделка: *${contractTitle}*\nФрилансер начинает работу. Вы получите уведомление когда работа будет сдана.`,
+    `🔒 *Funds frozen*\n\nDeal: *${contractTitle}*\nThe freelancer is starting work. You will be notified when the work is submitted.`,
     { contractId }
   );
   await notify(
     freelancerTgId,
     'payment_received',
-    `✅ *Оплата получена*\n\nСделка: *${contractTitle}*\nДеньги заморожены в смарт-контракте. Начинай работу! 🚀`,
+    `✅ *Payment received*\n\nDeal: *${contractTitle}*\nFunds are frozen in the smart contract. Start working! 🚀`,
     { contractId }
   );
 }
 
-/** Уведомить клиента о сдаче работы */
+/** Notify client that work has been submitted */
 async function notifyWorkSubmitted({ clientTgId, contractTitle, contractId }) {
   await notify(
     clientTgId,
     'work_submitted',
-    `📦 *Работа сдана на проверку*\n\nСделка: *${contractTitle}*\nПроверь результат и прими решение.`,
+    `📦 *Work submitted for review*\n\nDeal: *${contractTitle}*\nCheck the result and make a decision.`,
     {
       contractId,
       inlineKeyboard: [[
-        { text: '🔍 Проверить', callback_data: `review_${contractId}` },
+        { text: '🔍 Review', callback_data: `review_${contractId}` },
       ]],
     }
   );
 }
 
-/** Уведомить фрилансера о принятии работы */
+/** Notify freelancer that work was approved */
 async function notifyWorkApproved({ freelancerTgId, contractTitle, amount, currency }) {
   await notify(
     freelancerTgId,
     'work_approved',
-    `🎉 *Работа принята!*\n\nСделка: *${contractTitle}*\n💰 *${amount} ${currency}* отправлено на ваш кошелёк.\n\n+200 XP начислено!`,
+    `🎉 *Work accepted!*\n\nDeal: *${contractTitle}*\n💰 *${amount} ${currency}* sent to your wallet.\n\n+200 XP awarded!`,
     {}
   );
 }
 
-/** Уведомить фрилансера об отклонении работы */
+/** Notify freelancer that work was rejected */
 async function notifyWorkRejected({ freelancerTgId, contractTitle, comment }) {
   await notify(
     freelancerTgId,
     'work_rejected',
-    `🔄 *Нужны правки*\n\nСделка: *${contractTitle}*\n\n📝 Комментарий клиента:\n${comment}`,
+    `🔄 *Revisions needed*\n\nDeal: *${contractTitle}*\n\n📝 Client's comment:\n${comment}`,
     {}
   );
 }
 
-/** Уведомить обоих об открытии спора */
+/** Notify both parties that a dispute was opened */
 async function notifyDisputeOpened({ clientTgId, freelancerTgId, contractTitle, reason }) {
-  const msg = `⚖️ *Открыт спор*\n\nСделка: *${contractTitle}*\nПричина: ${reason}\n\nАрбитр рассмотрит спор в течение 24 часов.`;
+  const msg = `⚖️ *Dispute opened*\n\nDeal: *${contractTitle}*\nReason: ${reason}\n\nThe arbitrator will review the dispute within 24 hours.`;
   await notify(clientTgId,     'dispute_opened', msg, {});
   await notify(freelancerTgId, 'dispute_opened', msg, {});
 }
 
-/** Уведомить обоих о решении спора */
+/** Notify both parties of dispute resolution */
 async function notifyDisputeResolved({ clientTgId, freelancerTgId, contractTitle, decision, splitPercent }) {
   let decisionText;
-  if (decision === 'client_wins')     decisionText = '💙 Клиент получает полный возврат';
-  else if (decision === 'freelancer_wins') decisionText = '💚 Фрилансер получает полную оплату';
-  else decisionText = `⚖️ Раздел: ${splitPercent}% фрилансеру, ${100 - splitPercent}% клиенту`;
+  if (decision === 'client_wins')     decisionText = '💙 Client receives full refund';
+  else if (decision === 'freelancer_wins') decisionText = '💚 Freelancer receives full payment';
+  else decisionText = `⚖️ Split: ${splitPercent}% to freelancer, ${100 - splitPercent}% to client`;
 
-  const msg = `✅ *Спор разрешён*\n\nСделка: *${contractTitle}*\n${decisionText}`;
+  const msg = `✅ *Dispute resolved*\n\nDeal: *${contractTitle}*\n${decisionText}`;
   await notify(clientTgId,     'dispute_resolved', msg, {});
   await notify(freelancerTgId, 'dispute_resolved', msg, {});
 }
 
-/** Напоминание о приближающемся дедлайне (за 24 часа) */
+/** Reminder about approaching deadline (24 hours before) */
 async function notifyDeadlineReminder({ freelancerTgId, contractTitle, hoursLeft }) {
   await notify(
     freelancerTgId,
     'deadline_reminder',
-    `⏰ *Дедлайн через ${hoursLeft} часов*\n\nСделка: *${contractTitle}*\nНе забудь сдать работу вовремя!`,
+    `⏰ *Deadline in ${hoursLeft} hours*\n\nDeal: *${contractTitle}*\nDon't forget to submit your work on time!`,
     {}
   );
 }

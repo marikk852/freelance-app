@@ -5,13 +5,13 @@ const escrowService = require('../services/escrowService');
 const notificationService = require('../services/notificationService');
 
 // ============================================================
-// Routes: /api/disputes — управление спорами
+// Routes: /api/disputes — dispute management
 // ============================================================
 
 /**
  * POST /api/disputes
- * Открыть спор по контракту.
- * SECURITY: только участник сделки (клиент или фрилансер) может открыть спор.
+ * Open a dispute for a contract.
+ * SECURITY: only a deal participant (client or freelancer) can open a dispute.
  */
 router.post('/', async (req, res) => {
   try {
@@ -19,10 +19,10 @@ router.post('/', async (req, res) => {
     const { telegramId } = req.user;
 
     if (!contractId || !reason) {
-      return res.status(400).json({ error: 'contractId и reason обязательны' });
+      return res.status(400).json({ error: 'contractId and reason are required' });
     }
 
-    // Проверяем что пользователь является участником сделки
+    // Check that the user is a deal participant
     const { rows: participants } = await query(
       `SELECT u.id AS user_id,
               uc.telegram_id AS client_tg_id,
@@ -38,7 +38,7 @@ router.post('/', async (req, res) => {
     );
 
     if (!participants[0]) {
-      return res.status(404).json({ error: 'Контракт не найден' });
+      return res.status(404).json({ error: 'Contract not found' });
     }
 
     const p = participants[0];
@@ -46,14 +46,14 @@ router.post('/', async (req, res) => {
       .map(Number).includes(Number(telegramId));
 
     if (!isParticipant) {
-      return res.status(403).json({ error: 'Только участники сделки могут открывать споры' });
+      return res.status(403).json({ error: 'Only deal participants can open disputes' });
     }
 
     if (!['in_progress', 'under_review'].includes(p.status)) {
-      return res.status(400).json({ error: 'Спор можно открыть только для активной сделки' });
+      return res.status(400).json({ error: 'A dispute can only be opened for an active deal' });
     }
 
-    // Определяем кто открыл спор
+    // Determine who opened the dispute
     const openedBy = p.user_id;
     const evidenceJson = evidence ? JSON.stringify(evidence) : null;
 
@@ -87,14 +87,14 @@ router.post('/', async (req, res) => {
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('[API] POST /disputes error:', err.message);
-    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 /**
  * POST /api/disputes/:id/resolve
- * Арбитр разрешает спор.
- * SECURITY: только арбитр платформы (ARBITRATOR_TELEGRAM_ID) может разрешить спор.
+ * Arbitrator resolves the dispute.
+ * SECURITY: only the platform arbitrator (ARBITRATOR_TELEGRAM_ID) can resolve disputes.
  * Body: { decision: 'client_wins'|'freelancer_wins'|'split', splitPercent?: number }
  */
 router.post('/:id/resolve', async (req, res) => {
@@ -102,19 +102,19 @@ router.post('/:id/resolve', async (req, res) => {
     const { decision, splitPercent } = req.body;
     const { telegramId } = req.user;
 
-    // SECURITY: только арбитр платформы может разрешать споры
+    // SECURITY: only the platform arbitrator can resolve disputes
     const arbitratorTgId = process.env.ARBITRATOR_TELEGRAM_ID;
     if (!arbitratorTgId || Number(telegramId) !== Number(arbitratorTgId)) {
-      return res.status(403).json({ error: 'Только арбитр платформы может разрешить спор' });
+      return res.status(403).json({ error: 'Only the platform arbitrator can resolve disputes' });
     }
 
     if (!['client_wins', 'freelancer_wins', 'split'].includes(decision)) {
-      return res.status(400).json({ error: 'Неверное decision' });
+      return res.status(400).json({ error: 'Invalid decision' });
     }
 
     if (decision === 'split') {
       if (splitPercent === undefined || splitPercent < 0 || splitPercent > 100) {
-        return res.status(400).json({ error: 'splitPercent (0-100) обязателен для decision=split' });
+        return res.status(400).json({ error: 'splitPercent (0-100) is required for decision=split' });
       }
     }
 
@@ -131,7 +131,7 @@ router.post('/:id/resolve', async (req, res) => {
       [req.params.id]
     );
     if (!disputes[0]) {
-      return res.status(404).json({ error: 'Спор не найден или уже разрешён' });
+      return res.status(404).json({ error: 'Dispute not found or already resolved' });
     }
 
     const dispute = disputes[0];
@@ -145,7 +145,7 @@ router.post('/:id/resolve', async (req, res) => {
       txHash = await escrowService.splitEscrow(dispute.contract_id, splitPercent, telegramId);
     }
 
-    // Обновляем спор
+    // Update the dispute
     await query(
       `UPDATE disputes
        SET status = 'resolved', decision = $2, split_percent = $3, resolved_at = NOW()
@@ -153,7 +153,7 @@ router.post('/:id/resolve', async (req, res) => {
       [req.params.id, decision, splitPercent || null]
     );
 
-    // Обновляем статус контракта
+    // Update contract status
     await query(
       `UPDATE contracts SET status = 'disputed_resolved', updated_at = NOW() WHERE id = $1`,
       [dispute.contract_id]

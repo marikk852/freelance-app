@@ -5,30 +5,30 @@ const notificationService = require('../../backend/services/notificationService'
 const { dealRoomClient, dealRoomFreelancer, currencyMenu, confirmMenu, openMiniApp } = require('../keyboards/inline');
 
 // ============================================================
-// Handler: Управление сделками
+// Handler: Deal management
 // ============================================================
 
 /**
- * Показать список активных сделок пользователя.
+ * Show a list of the user's active deals.
  */
 async function handleMyDeals(ctx) {
   try {
     const { rows: userRows } = await query(
       'SELECT id FROM users WHERE telegram_id = $1', [ctx.from.id]
     );
-    if (!userRows[0]) return ctx.reply('Сначала нажми /start');
+    if (!userRows[0]) return ctx.reply('Please run /start first');
 
     const rooms = await Room.findActiveByUser(userRows[0].id);
 
     if (rooms.length === 0) {
       return ctx.reply(
-        '📋 *Активных сделок нет*\n\nСоздай новую сделку или найди заказ на бирже.',
+        '📋 *No active deals*\n\nCreate a new deal or find a job on the board.',
         {
           parse_mode  : 'Markdown',
           reply_markup: {
             inline_keyboard: [
-              [{ text: '⚔️ Новая сделка',  callback_data: 'new_deal' }],
-              [{ text: '📌 Биржа заказов', callback_data: 'job_board' }],
+              [{ text: '⚔️ New deal',    callback_data: 'new_deal' }],
+              [{ text: '📌 Job board',   callback_data: 'job_board' }],
             ],
           },
         }
@@ -42,35 +42,35 @@ async function handleMyDeals(ctx) {
 
     const list = rooms.map((r, i) => {
       const emoji  = statusEmoji[r.status] || '🔄';
-      const title  = r.contract_title || 'Без названия';
+      const title  = r.contract_title || 'Untitled';
       const amount = r.amount_usd ? `$${r.amount_usd}` : '';
       return `${i + 1}. ${emoji} *${title}* ${amount}`;
     }).join('\n');
 
     const buttons = rooms.slice(0, 5).map(r => ([{
-      text         : r.contract_title || `Сделка ${r.id.slice(0, 8)}`,
+      text         : r.contract_title || `Deal ${r.id.slice(0, 8)}`,
       callback_data: `deal_${r.id}`,
     }]));
 
     await ctx.reply(
-      `📋 *Твои активные сделки:*\n\n${list}`,
+      `📋 *Your active deals:*\n\n${list}`,
       { parse_mode: 'Markdown', reply_markup: { inline_keyboard: buttons } }
     );
   } catch (err) {
     console.error('[Bot] handleMyDeals error:', err.message);
-    await ctx.reply('Ошибка загрузки сделок.');
+    await ctx.reply('Error loading deals.');
   }
 }
 
 /**
- * Показать комнату конкретной сделки.
+ * Show the room for a specific deal.
  */
 async function handleDealRoom(ctx, roomId) {
   try {
     const { rows: userRows } = await query(
       'SELECT id FROM users WHERE telegram_id = $1', [ctx.from.id]
     );
-    if (!userRows[0]) return ctx.reply('Сначала нажми /start');
+    if (!userRows[0]) return ctx.reply('Please run /start first');
 
     const { rows } = await query(
       `SELECT r.*, c.title, c.description, c.amount_usd, c.currency,
@@ -84,38 +84,38 @@ async function handleDealRoom(ctx, roomId) {
       [roomId]
     );
 
-    if (!rows[0]) return ctx.reply('❌ Сделка не найдена.');
+    if (!rows[0]) return ctx.reply('❌ Deal not found.');
 
     const room     = rows[0];
     const isClient = room.client_id === userRows[0].id;
-    const deadline = new Date(room.deadline).toLocaleDateString('ru-RU');
+    const deadline = new Date(room.deadline).toLocaleDateString('en-US');
 
     const escrowStatusText = {
-      waiting_payment: '⏳ Ожидает оплаты',
-      frozen         : '🔒 Средства заморожены',
-      released       : '✅ Выплачено',
-      refunded       : '↩️ Возвращено',
+      waiting_payment: '⏳ Awaiting payment',
+      frozen         : '🔒 Funds frozen',
+      released       : '✅ Paid out',
+      refunded       : '↩️ Refunded',
     };
 
     const contractStatusText = {
-      draft             : '📝 Черновик',
-      pending_signature : '✍️ Ожидает подписи',
-      signed            : '✅ Подписан',
-      awaiting_payment  : '💳 Ожидает оплаты',
-      in_progress       : '🔄 В работе',
-      under_review      : '🔍 На проверке',
-      completed         : '✅ Завершён',
-      disputed          : '⚖️ Спор',
+      draft             : '📝 Draft',
+      pending_signature : '✍️ Awaiting signature',
+      signed            : '✅ Signed',
+      awaiting_payment  : '💳 Awaiting payment',
+      in_progress       : '🔄 In progress',
+      under_review      : '🔍 Under review',
+      completed         : '✅ Completed',
+      disputed          : '⚖️ Dispute',
     };
 
     const msg =
       `🛡 *${room.title}*\n\n` +
-      `📊 Статус: ${contractStatusText[room.contract_status] || room.contract_status}\n` +
-      `💰 Сумма: *${room.amount_usd} USD* (${room.currency})\n` +
-      `📅 Дедлайн: ${deadline}\n` +
-      (room.escrow_status ? `🔐 Эскроу: ${escrowStatusText[room.escrow_status]}\n` : '') +
+      `📊 Status: ${contractStatusText[room.contract_status] || room.contract_status}\n` +
+      `💰 Amount: *${room.amount_usd} USD* (${room.currency})\n` +
+      `📅 Deadline: ${deadline}\n` +
+      (room.escrow_status ? `🔐 Escrow: ${escrowStatusText[room.escrow_status]}\n` : '') +
       (room.ton_contract_address
-        ? `\n📍 Контракт: \`${room.ton_contract_address.slice(0, 20)}...\``
+        ? `\n📍 Contract: \`${room.ton_contract_address.slice(0, 20)}...\``
         : '');
 
     const keyboard = isClient
@@ -125,44 +125,44 @@ async function handleDealRoom(ctx, roomId) {
     await ctx.reply(msg, { parse_mode: 'Markdown', reply_markup: keyboard });
   } catch (err) {
     console.error('[Bot] handleDealRoom error:', err.message);
-    await ctx.reply('Ошибка загрузки комнаты.');
+    await ctx.reply('Error loading room.');
   }
 }
 
 /**
- * Фрилансер принимает контракт.
+ * Freelancer accepts the contract.
  */
 async function handleAcceptContract(ctx, roomId) {
   try {
     const { rows: userRows } = await query(
       'SELECT id, ton_wallet_address FROM users WHERE telegram_id = $1', [ctx.from.id]
     );
-    if (!userRows[0]) return ctx.answerCbQuery('Сначала нажми /start');
+    if (!userRows[0]) return ctx.answerCbQuery('Please run /start first');
 
     const user = userRows[0];
 
-    // Присоединяем фрилансера к комнате
+    // Attach freelancer to the room
     const room = await Room.joinAsFreelancer(roomId, user.id);
     if (!room) {
-      return ctx.answerCbQuery('❌ Не удалось присоединиться. Сделка уже занята.');
+      return ctx.answerCbQuery('❌ Could not join. Deal is already taken.');
     }
 
-    // Подписываем контракт за фрилансера
+    // Sign contract as freelancer
     const contract = await Contract.findByRoomId(roomId);
     await Contract.sign(contract.id, 'freelancer');
 
     await ctx.editMessageText(
-      `✅ *Ты принял сделку!*\n\n` +
+      `✅ *You accepted the deal!*\n\n` +
       `*${contract.title}*\n\n` +
-      `Теперь клиент должен подтвердить и оплатить.\n` +
-      `Ты получишь уведомление когда деньги будут заморожены.`,
+      `The client must now confirm and pay.\n` +
+      `You will receive a notification once funds are frozen.`,
       {
         parse_mode  : 'Markdown',
         reply_markup: openMiniApp('deal_room', contract.id),
       }
     );
 
-    // Уведомляем клиента
+    // Notify the client
     const { rows: clientRows } = await query(
       `SELECT u.telegram_id FROM users u
        JOIN rooms r ON r.client_id = u.id
@@ -172,41 +172,41 @@ async function handleAcceptContract(ctx, roomId) {
       await notificationService.notify(
         clientRows[0].telegram_id,
         'contract_signed',
-        `✍️ *Фрилансер принял контракт!*\n\n` +
-        `Сделка: *${contract.title}*\n\n` +
-        `Теперь выбери валюту и задеплой смарт-контракт для оплаты.`,
+        `✍️ *Freelancer accepted the contract!*\n\n` +
+        `Deal: *${contract.title}*\n\n` +
+        `Now select the currency and deploy the smart contract for payment.`,
         { contractId: contract.id }
       );
     }
   } catch (err) {
     console.error('[Bot] handleAcceptContract error:', err.message);
-    await ctx.answerCbQuery('Произошла ошибка.');
+    await ctx.answerCbQuery('An error occurred.');
   }
 }
 
 /**
- * Показать выбор валюты для оплаты.
+ * Show currency selection for payment.
  */
 async function handlePayment(ctx, contractId) {
   try {
     const contract = await Contract.findById(contractId);
-    if (!contract) return ctx.answerCbQuery('Контракт не найден');
+    if (!contract) return ctx.answerCbQuery('Contract not found');
 
     await ctx.reply(
-      `💳 *Оплата сделки*\n\n` +
-      `Сделка: *${contract.title}*\n` +
-      `Сумма: *$${contract.amount_usd}*\n\n` +
-      `Выбери валюту для оплаты:`,
+      `💳 *Deal payment*\n\n` +
+      `Deal: *${contract.title}*\n` +
+      `Amount: *$${contract.amount_usd}*\n\n` +
+      `Select payment currency:`,
       { parse_mode: 'Markdown', reply_markup: currencyMenu(contractId) }
     );
   } catch (err) {
     console.error('[Bot] handlePayment error:', err.message);
-    await ctx.reply('Ошибка загрузки оплаты.');
+    await ctx.reply('Error loading payment.');
   }
 }
 
 /**
- * Деплой смарт-контракта после выбора валюты.
+ * Deploy smart contract after selecting currency.
  */
 async function handleDeployCurrency(ctx, currency, contractId) {
   try {
@@ -217,15 +217,15 @@ async function handleDeployCurrency(ctx, currency, contractId) {
     const clientWallet = userRows[0]?.ton_wallet_address;
     if (!clientWallet) {
       return ctx.reply(
-        '❌ *Кошелёк не привязан*\n\nУкажи TON адрес через /wallet <адрес>',
+        '❌ *Wallet not linked*\n\nProvide your TON address via /wallet <address>',
         { parse_mode: 'Markdown' }
       );
     }
 
     const contract = await Contract.findById(contractId);
-    if (!contract) return ctx.answerCbQuery('Контракт не найден');
+    if (!contract) return ctx.answerCbQuery('Contract not found');
 
-    // Получаем адрес фрилансера
+    // Get freelancer address
     const { rows: freeRows } = await query(
       `SELECT u.ton_wallet_address FROM users u
        JOIN rooms r ON r.freelancer_id = u.id
@@ -234,10 +234,10 @@ async function handleDeployCurrency(ctx, currency, contractId) {
 
     const freelancerWallet = freeRows[0]?.ton_wallet_address;
     if (!freelancerWallet) {
-      return ctx.reply('❌ У фрилансера не привязан TON кошелёк. Попроси его добавить через /wallet');
+      return ctx.reply('❌ The freelancer has no TON wallet linked. Ask them to add one via /wallet');
     }
 
-    await ctx.reply('⏳ Деплоим смарт-контракт...');
+    await ctx.reply('⏳ Deploying smart contract...');
 
     const result = await escrowService.deployContract({
       contractId       : contractId,
@@ -249,16 +249,16 @@ async function handleDeployCurrency(ctx, currency, contractId) {
     });
 
     await ctx.reply(
-      `✅ *Смарт-контракт готов!*\n\n` +
-      `📍 Адрес: \`${result.tonContractAddress}\`\n` +
-      `💰 Сумма: *${result.cryptoAmount.toFixed(4)} ${currency}*\n\n` +
-      `Отправь точно эту сумму на адрес контракта через *@wallet* или *Tonkeeper*.\n\n` +
-      `⚠️ Деньги заморозятся автоматически — бот уведомит обоих участников.`,
+      `✅ *Smart contract is ready!*\n\n` +
+      `📍 Address: \`${result.tonContractAddress}\`\n` +
+      `💰 Amount: *${result.cryptoAmount.toFixed(4)} ${currency}*\n\n` +
+      `Send exactly this amount to the contract address via *@wallet* or *Tonkeeper*.\n\n` +
+      `⚠️ Funds will freeze automatically — the bot will notify both participants.`,
       { parse_mode: 'Markdown' }
     );
   } catch (err) {
     console.error('[Bot] handleDeployCurrency error:', err.message);
-    await ctx.reply(`❌ Ошибка деплоя: ${err.message}`);
+    await ctx.reply(`❌ Deploy error: ${err.message}`);
   }
 }
 

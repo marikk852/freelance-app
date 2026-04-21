@@ -6,7 +6,7 @@ import { useTelegram } from '../hooks/useTelegram';
 import toast from 'react-hot-toast';
 
 // ============================================================
-// Экран 05: REVIEW — чек-лист критериев, превью файлов
+// Screen 05: REVIEW — criteria checklist, file previews
 // ============================================================
 
 export function Review() {
@@ -20,7 +20,16 @@ export function Review() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // In production: fetch delivery by contract_id
+    if (!id) return;
+    deliveries.getByContractId(id)
+      .then(r => {
+        setDelivery(r.data);
+        // pre-fill checklist from criteria
+        const initial: Record<number, boolean> = {};
+        (r.data.criteria || []).forEach((_: any, i: number) => { initial[i] = false; });
+        setChecked(initial);
+      })
+      .catch(() => setDelivery(null));
   }, [id]);
 
   const allChecked = delivery?.criteria?.every((_: any, i: number) => checked[i]);
@@ -34,24 +43,24 @@ export function Review() {
     try {
       await deliveriesApi.approve(delivery.id);
       tg?.HapticFeedback?.notificationOccurred('success');
-      toast.success('🎉 Работа принята! Деньги отправлены фрилансеру.');
+      toast.success('🎉 Work accepted! Funds sent to the freelancer.');
       navigate(`/deal/${id}`);
     } catch (e: any) {
       tg?.HapticFeedback?.notificationOccurred('error');
-      toast.error(e.response?.data?.error || 'Ошибка');
+      toast.error(e.response?.data?.error || 'Error');
     } finally { setLoading(false); }
   };
 
   const handleReject = async () => {
-    if (!delivery || !rejectComment.trim()) return toast.error('Напиши комментарий');
+    if (!delivery || !rejectComment.trim()) return toast.error('Write a comment');
     tg?.HapticFeedback?.impactOccurred('medium');
     setLoading(true);
     try {
       await deliveriesApi.reject(delivery.id, rejectComment);
       tg?.HapticFeedback?.notificationOccurred('warning');
-      toast.success('Отправлено на доработку');
+      toast.success('Sent for revision');
       navigate(`/deal/${id}`);
-    } catch { toast.error('Ошибка'); } finally { setLoading(false); }
+    } catch { toast.error('Error'); } finally { setLoading(false); }
   };
 
   const toggleCheck = (i: number) => {
@@ -65,7 +74,7 @@ export function Review() {
 
       <div className="gl hud card-stagger-1">
         <div className="pxgrid" /><div className="sh" />
-        <div className="logo" style={{ color: '#cc44ff' }}>🔍 ПРОВЕРКА</div>
+        <div className="logo" style={{ color: '#cc44ff' }}>🔍 REVIEW</div>
       </div>
 
       {!delivery ? (
@@ -73,7 +82,7 @@ export function Review() {
           <div className="pxgrid" /><div className="sh" />
           <div style={{ fontSize: '28px', marginBottom: '10px', animation: 'float 3s ease-in-out infinite' }}>📭</div>
           <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.35)', lineHeight: '2.2' }}>
-            РАБОТА ЕЩЁ НЕ СДАНА<br/>ОЖИДАЙТЕ УВЕДОМЛЕНИЯ
+            WORK NOT SUBMITTED YET<br/>WAIT FOR NOTIFICATION
           </div>
         </div>
       ) : (
@@ -83,7 +92,7 @@ export function Review() {
             <div className="gl card-stagger-2">
               <div className="pxgrid" /><div className="sh" />
               <div className="sec" style={{ margin: '0 0 10px', padding: 0, border: 'none', color: 'rgba(255,255,255,0.3)' }}>
-                -- 📎 ФАЙЛЫ --
+                -- 📎 FILES --
               </div>
               {delivery.files.map((f: any, i: number) => (
                 <div key={i} style={{
@@ -96,7 +105,7 @@ export function Review() {
                     className="gl-pill"
                     style={{ fontSize: '7px', color: '#0088ff', textDecoration: 'none',
                       padding: '3px 8px', border: '1px solid rgba(0,136,255,0.35)' }}>
-                    👁 ПРЕВЬЮ
+                    👁 PREVIEW
                   </a>
                 </div>
               ))}
@@ -108,7 +117,7 @@ export function Review() {
             <div className="pxgrid" /><div className="sh" />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
               <div className="sec" style={{ margin: 0, padding: 0, border: 'none', color: 'rgba(255,255,255,0.3)' }}>
-                -- ЧЕК-ЛИСТ --
+                -- CHECKLIST --
               </div>
               <span className="gl-pill" style={{
                 fontSize: '7px', padding: '2px 8px',
@@ -159,45 +168,45 @@ export function Review() {
             ))}
           </div>
 
-          {/* Комментарий для отказа */}
+          {/* Rejection comment */}
           {mode === 'reject' && (
             <div className="gl card-stagger-4">
               <div className="pxgrid" /><div className="sh" />
               <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>
-                КОММЕНТАРИЙ ДЛЯ ФРИЛАНСЕРА
+                COMMENT FOR FREELANCER
               </div>
               <textarea className="input" value={rejectComment}
                 onChange={e => setRejectComment(e.target.value)}
-                placeholder="Что именно нужно исправить..."
+                placeholder="What exactly needs to be fixed..."
                 style={{ minHeight: '80px', resize: 'vertical' }} />
             </div>
           )}
 
-          {/* Кнопки */}
+          {/* Buttons */}
           <div className="card-stagger-5" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {mode === 'review' ? (
               <>
                 <button className="btn btn-g btn-full" onClick={handleApprove}
                   disabled={!allChecked || loading}>
-                  {loading ? '[ ⏳ ]' : '[ ✅ ПРИНЯТЬ РАБОТУ ]'}
+                  {loading ? '[ ⏳ ]' : '[ ✅ ACCEPT WORK ]'}
                 </button>
                 <button className="btn btn-gr btn-full" onClick={() => setMode('reject')}>
-                  [ 🔄 НУЖНЫ ПРАВКИ ]
+                  [ 🔄 NEEDS REVISION ]
                 </button>
                 <button className="btn btn-r btn-full" onClick={() => navigate(`/dispute/${id}`)}>
-                  [ ⚖️ ОТКРЫТЬ СПОР ]
+                  [ ⚖️ OPEN DISPUTE ]
                 </button>
               </>
             ) : (
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button className="btn btn-gr" style={{ flex: 1 }} onClick={() => setMode('review')}>
-                  ◀ НАЗАД
+                  ◀ BACK
                 </button>
                 <button className="btn" style={{
                   flex: 2, background: 'linear-gradient(135deg,#ff8800,#ff6600)',
                   color: '#000', border: 'none',
                 }} onClick={handleReject} disabled={loading}>
-                  {loading ? '⏳' : '[ 📤 ОТПРАВИТЬ ]'}
+                  {loading ? '⏳' : '[ 📤 SEND ]'}
                 </button>
               </div>
             )}

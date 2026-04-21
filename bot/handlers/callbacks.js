@@ -6,12 +6,12 @@ const notificationService = require('../../backend/services/notificationService'
 const { openMiniApp, confirmMenu } = require('../keyboards/inline');
 
 // ============================================================
-// Callback Query Router — все нажатия inline-кнопок
+// Callback Query Router — all inline button presses
 // ============================================================
 
 /**
- * Главный роутер callback_data.
- * Парсим prefix_payload и вызываем нужный обработчик.
+ * Main callback_data router.
+ * Parse prefix_payload and call the appropriate handler.
  */
 async function handleCallback(ctx) {
   const data = ctx.callbackQuery.data;
@@ -22,84 +22,84 @@ async function handleCallback(ctx) {
     if (data === 'profile')     return handleProfile(ctx);
     if (data === 'new_deal')    return handleNewDeal(ctx);
     if (data === 'job_board')   return handleJobBoard(ctx);
-    if (data === 'cancel_action') return ctx.answerCbQuery('Отменено');
+    if (data === 'cancel_action') return ctx.answerCbQuery('Cancelled');
 
-    // ---- Комната сделки ----
+    // ---- Deal room ----
     if (data.startsWith('deal_')) {
       await ctx.answerCbQuery();
       return handleDealRoom(ctx, data.replace('deal_', ''));
     }
 
-    // ---- Принять/отклонить контракт ----
+    // ---- Accept/decline contract ----
     if (data.startsWith('accept_contract_')) {
-      await ctx.answerCbQuery('⏳ Обрабатываем...');
+      await ctx.answerCbQuery('⏳ Processing...');
       return handleAcceptContract(ctx, data.replace('accept_contract_', ''));
     }
     if (data.startsWith('decline_contract_')) {
-      await ctx.answerCbQuery('Отклонено');
-      return ctx.editMessageText('❌ Ты отклонил это предложение.');
+      await ctx.answerCbQuery('Declined');
+      return ctx.editMessageText('❌ You declined this proposal.');
     }
 
-    // ---- Валюта оплаты ----
+    // ---- Payment currency ----
     if (data.startsWith('pay_ton_')) {
-      await ctx.answerCbQuery('💎 TON выбран');
+      await ctx.answerCbQuery('💎 TON selected');
       return handleDeployCurrency(ctx, 'TON', data.replace('pay_ton_', ''));
     }
     if (data.startsWith('pay_usdt_')) {
-      await ctx.answerCbQuery('💵 USDT выбран');
+      await ctx.answerCbQuery('💵 USDT selected');
       return handleDeployCurrency(ctx, 'USDT', data.replace('pay_usdt_', ''));
     }
 
-    // ---- Проверка работы ----
+    // ---- Work review ----
     if (data.startsWith('review_')) {
       await ctx.answerCbQuery();
       return handleReview(ctx, data.replace('review_', ''));
     }
 
-    // ---- Одобрение работы ----
+    // ---- Approve work ----
     if (data.startsWith('approve_')) {
-      await ctx.answerCbQuery('⏳ Подтверждаем...');
+      await ctx.answerCbQuery('⏳ Confirming...');
       return handleApproveDelivery(ctx, data.replace('approve_', ''));
     }
 
-    // ---- Отклонение работы ----
+    // ---- Reject work ----
     if (data.startsWith('reject_')) {
       await ctx.answerCbQuery();
       return handleRejectDelivery(ctx, data.replace('reject_', ''));
     }
 
-    // ---- Спор ----
+    // ---- Dispute ----
     if (data.startsWith('dispute_')) {
       await ctx.answerCbQuery();
       return handleOpenDispute(ctx, data.replace('dispute_', ''));
     }
 
-    // ---- Подтверждения ----
+    // ---- Confirmations ----
     if (data.startsWith('confirm_')) {
       await ctx.answerCbQuery();
       return handleConfirm(ctx, data.replace('confirm_', ''));
     }
 
-    await ctx.answerCbQuery('Неизвестное действие');
+    await ctx.answerCbQuery('Unknown action');
   } catch (err) {
     console.error('[Bot] handleCallback error:', err.message, '| data:', data);
-    await ctx.answerCbQuery('Произошла ошибка').catch(() => {});
+    await ctx.answerCbQuery('An error occurred').catch(() => {});
   }
 }
 
 /**
- * Пригласить фрилансера — показываем ссылку.
+ * Invite freelancer — show link.
  */
 async function handleNewDeal(ctx) {
   await ctx.reply(
-    `⚔️ *Новая сделка*\n\n` +
-    `Для создания сделки используй Mini App — там удобнее заполнить все детали:\n` +
-    `название, описание, сумму, дедлайн и критерии приёмки.`,
+    `⚔️ *New deal*\n\n` +
+    `Use the Mini App to create a deal — it's easier to fill in all the details there:\n` +
+    `title, description, amount, deadline and acceptance criteria.`,
     {
       parse_mode  : 'Markdown',
       reply_markup: {
         inline_keyboard: [[{
-          text   : '✍️ Создать сделку',
+          text   : '✍️ Create deal',
           web_app: { url: `${process.env.WEBAPP_URL}?screen=new_deal` },
         }]],
       },
@@ -108,16 +108,16 @@ async function handleNewDeal(ctx) {
 }
 
 /**
- * Биржа заказов — открываем Mini App.
+ * Job board — open Mini App.
  */
 async function handleJobBoard(ctx) {
   await ctx.reply(
-    '📌 *Биржа заказов*\n\nОткрой приложение для просмотра заказов:',
+    '📌 *Job board*\n\nOpen the app to browse jobs:',
     {
       parse_mode  : 'Markdown',
       reply_markup: {
         inline_keyboard: [[{
-          text   : '🔍 Открыть биржу',
+          text   : '🔍 Open job board',
           web_app: { url: `${process.env.WEBAPP_URL}?screen=job_board` },
         }]],
       },
@@ -126,7 +126,7 @@ async function handleJobBoard(ctx) {
 }
 
 /**
- * Клиент проверяет сданную работу.
+ * Client reviews submitted work.
  */
 async function handleReview(ctx, contractId) {
   const { rows } = await query(
@@ -138,7 +138,7 @@ async function handleReview(ctx, contractId) {
   );
 
   if (!rows[0]) {
-    return ctx.reply('📭 Работа ещё не сдана.');
+    return ctx.reply('📭 Work has not been submitted yet.');
   }
 
   const delivery = rows[0];
@@ -150,19 +150,19 @@ async function handleReview(ctx, contractId) {
   ).join('\n');
 
   await ctx.reply(
-    `🔍 *Проверка работы* (попытка ${delivery.attempt_number})\n\n` +
+    `🔍 *Work review* (attempt ${delivery.attempt_number})\n\n` +
     (delivery.description ? `📝 ${delivery.description}\n\n` : '') +
-    `📎 Файлы:\n${fileList}\n\n` +
-    `Превью доступны по ссылкам выше. Оригиналы — после принятия.`,
+    `📎 Files:\n${fileList}\n\n` +
+    `Previews are available via the links above. Originals — after acceptance.`,
     {
       parse_mode  : 'Markdown',
       reply_markup: {
         inline_keyboard: [
-          [{ text: '✅ Принять работу',  callback_data: `approve_${delivery.id}` }],
-          [{ text: '🔄 Нужны правки',   callback_data: `reject_${delivery.id}` }],
-          [{ text: '⚖️ Открыть спор',  callback_data: `dispute_${contractId}` }],
+          [{ text: '✅ Accept work',   callback_data: `approve_${delivery.id}` }],
+          [{ text: '🔄 Needs revision', callback_data: `reject_${delivery.id}` }],
+          [{ text: '⚖️ Open dispute',  callback_data: `dispute_${contractId}` }],
           [{
-            text   : '🔍 Смотреть в приложении',
+            text   : '🔍 View in app',
             web_app: { url: `${process.env.WEBAPP_URL}?screen=review&id=${contractId}` },
           }],
         ],
@@ -172,7 +172,7 @@ async function handleReview(ctx, contractId) {
 }
 
 /**
- * Клиент принимает работу → release эскроу.
+ * Client approves work → release escrow.
  */
 async function handleApproveDelivery(ctx, deliveryId) {
   const { rows } = await query(
@@ -186,16 +186,16 @@ async function handleApproveDelivery(ctx, deliveryId) {
      WHERE d.id = $1`,
     [deliveryId]
   );
-  if (!rows[0]) return ctx.reply('❌ Delivery не найден.');
+  if (!rows[0]) return ctx.reply('❌ Delivery not found.');
 
   const rec = rows[0];
 
-  // Подтверждение перед release
+  // Confirmation before release
   await ctx.editMessageText(
-    `⚠️ *Подтверди принятие работы*\n\n` +
-    `Сделка: *${rec.title}*\n` +
-    `После подтверждения *${rec.crypto_amount} ${rec.currency}* будет отправлено фрилансеру.\n\n` +
-    `Это действие необратимо!`,
+    `⚠️ *Confirm work acceptance*\n\n` +
+    `Deal: *${rec.title}*\n` +
+    `Upon confirmation *${rec.crypto_amount} ${rec.currency}* will be sent to the freelancer.\n\n` +
+    `This action is irreversible!`,
     {
       parse_mode  : 'Markdown',
       reply_markup: confirmMenu('approve', deliveryId),
@@ -204,7 +204,7 @@ async function handleApproveDelivery(ctx, deliveryId) {
 }
 
 /**
- * Финальное подтверждение — выполняем действие.
+ * Final confirmation — execute action.
  */
 async function handleConfirm(ctx, actionAndId) {
   const [action, id] = actionAndId.split('_');
@@ -222,12 +222,12 @@ async function handleConfirm(ctx, actionAndId) {
          WHERE d.id = $1`, [id]
       );
 
-      // Помечаем delivery как approved
+      // Mark delivery as approved
       await query(
         `UPDATE deliveries SET status = 'approved', reviewed_at = NOW() WHERE id = $1`, [id]
       );
 
-      // Триггерим release
+      // Trigger release
       const txHash = await escrowService.releaseEscrow(rows[0].contract_id, ctx.from.id);
 
       await notificationService.notifyWorkApproved({
@@ -238,42 +238,42 @@ async function handleConfirm(ctx, actionAndId) {
       });
 
       await ctx.editMessageText(
-        `🎉 *Работа принята!*\n\n` +
-        `*${rows[0].crypto_amount} ${rows[0].currency}* отправлено фрилансеру.\n` +
+        `🎉 *Work accepted!*\n\n` +
+        `*${rows[0].crypto_amount} ${rows[0].currency}* sent to the freelancer.\n` +
         `TX: \`${txHash.slice(0, 20)}...\`\n\n` +
-        `+200 XP начислено! Не забудь оставить отзыв.`,
+        `+200 XP awarded! Don't forget to leave a review.`,
         { parse_mode: 'Markdown' }
       );
     } catch (err) {
       console.error('[Bot] handleConfirm approve error:', err.message);
-      await ctx.reply(`❌ Ошибка: ${err.message}`);
+      await ctx.reply(`❌ Error: ${err.message}`);
     }
   }
 }
 
 /**
- * Клиент отклоняет работу — запрашиваем комментарий.
+ * Client rejects work — request a comment.
  */
 async function handleRejectDelivery(ctx, deliveryId) {
-  // Сохраняем deliveryId в session для следующего шага
+  // Save deliveryId in session for the next step
   ctx.session = ctx.session || {};
   ctx.session.pendingReject = deliveryId;
 
   await ctx.reply(
-    '✏️ Напиши комментарий с пожеланиями по правкам:',
+    '✏️ Write a comment with revision requests:',
     { reply_markup: { force_reply: true } }
   );
 }
 
 /**
- * Открыть спор по контракту.
+ * Open a dispute for a contract.
  */
 async function handleOpenDispute(ctx, contractId) {
   ctx.session = ctx.session || {};
   ctx.session.pendingDispute = contractId;
 
   await ctx.reply(
-    '⚖️ *Открытие спора*\n\nОпиши причину спора:',
+    '⚖️ *Opening a dispute*\n\nDescribe the reason for the dispute:',
     { parse_mode: 'Markdown', reply_markup: { force_reply: true } }
   );
 }

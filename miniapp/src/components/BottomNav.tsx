@@ -1,38 +1,51 @@
+import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTelegram } from '../hooks/useTelegram';
+import { HomeIcon, LiveIcon, JobsIcon, ProfileIcon } from './PixelNavIcons';
 
 const NAV_ITEMS = [
-  { path: '/',        label: 'HOME',    icon: '🏠' },
-  { path: '/live',    label: 'LIVE',    icon: '📡' },
-  { path: '/jobs',    label: 'JOBS',    icon: '📌' },
-  { path: '/profile', label: 'PROFILE', icon: '👤' },
+  { path: '/',        label: 'HOME',    Icon: HomeIcon    },
+  { path: '/live',    label: 'LIVE',    Icon: LiveIcon    },
+  { path: '/jobs',    label: 'JOBS',    Icon: JobsIcon    },
+  { path: '/profile', label: 'PROFILE', Icon: ProfileIcon },
 ];
 
+// Icon size: +15% over previous 20px → 23px
+const ICON_SIZE = 23;
+
 export function BottomNav() {
-  const navigate = useNavigate();
-  const { pathname } = useLocation();
-  const { tg } = useTelegram();
+  const navigate        = useNavigate();
+  const { pathname }    = useLocation();
+  const { tg }          = useTelegram();
+  const [spinning, setSpin] = useState<string | null>(null);
 
   const handleNav = (path: string) => {
-    tg?.HapticFeedback?.selectionChanged();
+    tg?.HapticFeedback?.impactOccurred('light');
+    setSpin(path);
     navigate(path);
   };
 
   return (
     <nav className="bottom-nav">
-      {NAV_ITEMS.map(item => {
-        const active = pathname === item.path || (item.path !== '/' && pathname.startsWith(item.path));
+      {NAV_ITEMS.map(({ path, label, Icon }) => {
+        const active = pathname === path || (path !== '/' && pathname.startsWith(path));
+        const isSpinning = spinning === path;
+
         return (
           <button
-            key={item.path}
+            key={path}
             className={`nav-item ${active ? 'active' : ''}`}
-            onClick={() => handleNav(item.path)}
-            style={{ background:'none', border:'none' }}
+            onClick={() => handleNav(path)}
+            style={{ background: 'none', border: 'none' }}
           >
-            <span style={{ fontSize:'20px', display:'block', transition:'transform 0.2s', transform: active ? 'scale(1.2)' : 'scale(1)' }}>
-              {item.icon}
+            <span
+              className={isSpinning ? 'nav-icon-spin' : ''}
+              onAnimationEnd={() => setSpin(null)}
+              style={{ display: 'block' }}
+            >
+              <Icon size={ICON_SIZE} />
             </span>
-            <span style={{ fontSize:'5px' }}>{item.label}</span>
+            <span style={{ fontSize: '6px' }}>{label}</span>
           </button>
         );
       })}
