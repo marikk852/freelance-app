@@ -12,23 +12,23 @@ const OUT_DIR = './src/assets/icons';
 const ICONS = [
   {
     name: 'deals',
-    description: 'Two crossed swords forming an X shape. Bright green blades with white shine highlight. Gold crossguard where blades meet. Small red ruby gem at the center of the crossguard. Gray steel hilts at bottom of each sword. Black transparent background.',
+    description: 'Minecraft style pixel art item icon. Two crossed swords making an X. Each sword has chunky square pixels. Bright neon green blade pixels. Gold square guard pixels where swords cross. Red pixel gem at center. Gray pixel hilts at tips. Transparent background. 16x16 pixel grid, each pixel is a large visible square block.',
   },
   {
     name: 'newdeal',
-    description: 'A handshake from the front view. Two hands clasped together in the center. Left sleeve cuff is green, right sleeve cuff is blue. Small white sparkle pixels above the handshake. Skin tone hands. Black transparent background.',
+    description: 'Minecraft style pixel art item icon. Two hands shaking in a handshake, viewed from front. Chunky square pixels. Skin tone pixels for hands. Green pixel cuff on left arm, blue pixel cuff on right arm. White sparkle pixel above. Transparent background. 16x16 pixel grid, each pixel is a large visible square block.',
   },
   {
     name: 'live',
-    description: 'Broadcast antenna tower. Vertical gray pole centered. Wide gray base stand at bottom. Three pairs of signal arcs radiating outward from antenna top: inner arc green, middle arc blue, outer arc light blue. Small red dot at the very tip of the antenna. Black transparent background.',
+    description: 'Minecraft style pixel art item icon. Antenna tower with signal waves. Chunky square pixels. Gray pixel vertical pole in center. Gray pixel wide base at bottom. Three curved arcs of pixels going outward from top: green inner, blue middle, light blue outer. Red pixel dot at antenna tip. Transparent background. 16x16 pixel grid, each pixel is a large visible square block.',
   },
   {
     name: 'jobs',
-    description: 'Classic briefcase front view. Dark navy blue rectangular body. Light blue handle arch on top center. Gold horizontal divider line across the middle. Small gold latch clasp at center of divider. Subtle 3D depth on right side darker. Black transparent background.',
+    description: 'Minecraft style pixel art item icon. Briefcase viewed from front. Chunky square pixels. Dark navy blue pixel rectangle body. Lighter blue pixel arch handle on top. Gold pixel horizontal line across middle. Gold pixel small clasp at center. Dark right edge for 3D depth. Transparent background. 16x16 pixel grid, each pixel is a large visible square block.',
   },
   {
     name: 'freelancers',
-    description: 'Two person silhouettes. Front person larger and centered: round head with dark hair, skin tone face, blue shirt shoulders. Back person smaller offset to the upper left: full purple silhouette at lower opacity suggesting depth. Both use classic rounded head plus shoulder shape. Black transparent background.',
+    description: 'Minecraft style pixel art item icon. Two person silhouettes side by side. Chunky square pixels. Front person: brown pixel hair, skin pixel face, blue pixel shirt. Back person offset left: purple pixel silhouette. Classic blocky head and shoulder shape like Minecraft character. Transparent background. 16x16 pixel grid, each pixel is a large visible square block.',
   },
 ];
 
@@ -41,7 +41,7 @@ async function generateIcon(icon) {
     },
     body: JSON.stringify({
       description: icon.description,
-      image_size: { width: 48, height: 48 },
+      image_size: { width: 32, height: 32 },
       text_guidance_scale: 10,
       no_background: true,
     }),

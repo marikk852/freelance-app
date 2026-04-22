@@ -5,6 +5,7 @@ import { CoinBurst } from '../components/CoinBurst';
 import { useTelegram } from '../hooks/useTelegram';
 import { useCountUp } from '../hooks/useCountUp';
 import { users } from '../utils/api';
+import { FlameIcon } from '../components/FlameIcon';
 import dealsImg      from '../assets/icons/deals.png';
 import newdealImg    from '../assets/icons/newdeal.png';
 import liveImg       from '../assets/icons/live.png';
@@ -158,7 +159,9 @@ export function Home() {
         </div>
         <div className="stat gl-sm" style={{ borderColor: 'rgba(170,0,255,0.3)' }}>
           <div className="pxgrid" />
-          <span className="stat-n" style={{ color: '#cc44ff', fontSize: '11px' }}>🔥{countStreak}</span>
+          <span className="stat-n" style={{ color: '#cc44ff', display: 'flex', alignItems: 'center', gap: '2px' }}>
+            <FlameIcon size={18} />{countStreak}
+          </span>
           <span className="stat-l">STREAK</span>
         </div>
       </div>
@@ -166,7 +169,7 @@ export function Home() {
       {/* Navigation cards 2x2 */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '4px' }}>
         <NavCard
-          icon={<img src={dealsImg} width={48} height={48} style={{ imageRendering: 'pixelated' }} />}
+          icon={<img src={dealsImg} width={64} height={64} style={{ imageRendering: 'pixelated' }} />}
           title="MY DEALS"
           subtitle={activeCount > 0 ? `${activeCount} active` : 'all quests'}
           accent="#00ff88"
@@ -174,7 +177,7 @@ export function Home() {
           stagger={4}
         />
         <NavCard
-          icon={<img src={newdealImg} width={48} height={48} style={{ imageRendering: 'pixelated' }} />}
+          icon={<img src={newdealImg} width={64} height={64} style={{ imageRendering: 'pixelated' }} />}
           title="NEW DEAL"
           subtitle="create quest"
           accent="#ffaa00"
@@ -182,7 +185,7 @@ export function Home() {
           stagger={4}
         />
         <NavCard
-          icon={<img src={liveImg} width={48} height={48} style={{ imageRendering: 'pixelated' }} />}
+          icon={<img src={liveImg} width={64} height={64} style={{ imageRendering: 'pixelated' }} />}
           title="LIVE FEED"
           subtitle="deals on air"
           accent="#0088ff"
@@ -190,7 +193,7 @@ export function Home() {
           stagger={5}
         />
         <NavCard
-          icon={<img src={jobsImg} width={48} height={48} style={{ imageRendering: 'pixelated' }} />}
+          icon={<img src={jobsImg} width={64} height={64} style={{ imageRendering: 'pixelated' }} />}
           title="JOB BOARD"
           subtitle="find a job"
           accent="#cc44ff"
@@ -198,7 +201,7 @@ export function Home() {
           stagger={5}
         />
         <NavCard
-          icon={<img src={freelancerImg} width={48} height={48} style={{ imageRendering: 'pixelated' }} />}
+          icon={<img src={freelancerImg} width={64} height={64} style={{ imageRendering: 'pixelated' }} />}
           title="FREELANCERS"
           subtitle="find a pro"
           accent="#0088ff"

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>SafeDeal — Icons Preview</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #050508;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-family: 'Courier New', monospace;
+  padding: 40px 20px;
+}
+h1 {
+  color: #00ff88;
+  font-size: 10px;
+  letter-spacing: 4px;
+  margin-bottom: 48px;
+  text-transform: uppercase;
+}
+.grid {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 32px 28px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 20px;
+  min-width: 120px;
+}
+.label {
+  font-size: 7px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+@keyframes rock {
+  0%   { transform: perspective(320px) rotateY(-22deg) rotateX(7deg); }
+  50%  { transform: perspective(320px) rotateY(22deg)  rotateX(-7deg); }
+  100% { transform: perspective(320px) rotateY(-22deg) rotateX(7deg); }
+}
+.spin   { animation: rock 4s ease-in-out infinite; display: block; }
+.static { display: block; }
+</style>
+</head>
+<body>
+<h1>SAFEDEAL — HOME ICONS</h1>
+<div class="grid" id="root"></div>
+
+<script>
+const DEPTH = 1;
+
+function renderSVG(grid, palette) {
+  const rows = grid.length;
+  const cols = grid[0].length;
+  const VW = cols + DEPTH;
+  const VH = rows + DEPTH;
+
+  const filled = new Map();
+  grid.forEach((row, y) =>
+    [...row].forEach((c, x) => { if (c !== '.') filled.set(`${x},${y}`, c); })
+  );
+  const has = (x, y) => filled.has(`${x},${y}`);
+  const getC = c => palette[c] || '#ffffff';
+
+  let rects = '';
+  grid.forEach((row, y) => {
+    [...row].forEach((c, x) => {
+      if (c === '.') return;
+      const col = getC(c);
+      // Back shadow
+      rects += `<rect x="${x+DEPTH}" y="${y+DEPTH}" width="1" height="1" fill="${col}" opacity="0.15"/>`;
+      // Right face
+      if (!has(x+1, y))
+        rects += `<rect x="${x+1}" y="${y}" width="${DEPTH}" height="1" fill="${col}" opacity="0.48"/>`;
+      // Bottom face
+      if (!has(x, y+1))
+        rects += `<rect x="${x}" y="${y+1}" width="1" height="${DEPTH}" fill="${col}" opacity="0.36"/>`;
+      // Front face
+      rects += `<rect x="${x}" y="${y}" width="1" height="1" fill="${col}"/>`;
+    });
+  });
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="112" height="112"
+    viewBox="0 0 ${VW} ${VH}"
+    style="image-rendering:pixelated;shape-rendering:crispEdges;display:block">
+    ${rects}
+  </svg>`;
+}
+
+const ICONS = [
+  // ── MY DEALS — green circle with checkmark ────────────────
+  {
+    label: 'MY DEALS',
+    accent: '#00ff88',
+    palette: {
+      '1': '#00ff88',  // circle fill green
+      'd': '#00aa55',  // circle border dark green
+      'w': '#ffffff',  // checkmark white
+    },
+    grid: [
+      '..............',
+      '....dddddd....',
+      '...d111111d...',
+      '..d11111111d..',
+      '..d111111w1d..',
+      '..d1w111w11d..',
+      '..d11w1w111d..',
+      '..d111w1111d..',
+      '..d11111111d..',
+      '...d111111d...',
+      '....dddddd....',
+      '..............',
+      '..............',
+      '..............',
+    ],
+  },
+
+  // ── NEW DEAL — contract scroll ─────────────────────────────
+  {
+    label: 'NEW DEAL',
+    accent: '#ffaa00',
+    palette: {
+      '1': '#ffaa00',  // scroll body
+      'd': '#cc7700',  // text lines
+      'w': '#ffffff',  // shine
+      'r': '#ffdd88',  // roll highlight
+    },
+    grid: [
+      '..............',
+      '....r11111r...',
+      '...1w......1..',
+      '...1.dddddd1..',
+      '...1......1...',
+      '...1.dddddd1..',
+      '...1......1...',
+      '...1.dddddd1..',
+      '...1......1...',
+      '...1.dddddd1..',
+      '...1......1...',
+      '....r11111r...',
+      '..............',
+      '..............',
+    ],
+  },
+
+  // ── LIVE FEED — broadcast antenna + signal arcs ────────────
+  {
+    label: 'LIVE FEED',
+    accent: '#0088ff',
+    palette: {
+      '1': '#0088ff',  // pole blue
+      'G': '#00ff88',  // outer arc green
+      'B': '#44aaff',  // inner arc light blue
+      'r': '#ff3333',  // live red dot
+    },
+    grid: [
+      '.......r......',
+      '.....G...G....',
+      '....G.....G...',
+      '...B.......B..',
+      '.......1......',
+      '.......1......',
+      '.......1......',
+      '.......1......',
+      '.......1......',
+      '.......1......',
+      '.......1......',
+      '.....11111....',
+      '....1111111...',
+      '..............',
+    ],
+  },
+
+  // ── JOB BOARD — briefcase ─────────────────────────────────
+  {
+    label: 'JOB BOARD',
+    accent: '#cc44ff',
+    palette: {
+      '1': '#cc44ff',  // case body
+      'h': '#9922cc',  // handle
+      'd': '#8800cc',  // dark edge
+    },
+    grid: [
+      '..............',
+      '.....hhh......',
+      '.....h.h......',
+      '..d111111111..',
+      '..d1.......1..',
+      '..d1.......1..',
+      '..d111111111..',
+      '..d1.......1..',
+      '..d1.......1..',
+      '..d111111111..',
+      '..............',
+      '..............',
+      '..............',
+      '..............',
+    ],
+  },
+
+  // ── STREAK — fire flame (JS pixel animation) ───────────────
+  {
+    label: 'STREAK',
+    accent: '#ff8800',
+    animClass: 'static',
+    id: 'flame-wrap',
+    palette: {
+      'w': '#ffffff',
+      'y': '#ffee00',
+      'o': '#ff8800',
+      'r': '#ff3300',
+    },
+    grid: [
+      '..............',
+      '.......w......',
+      '......yyy.....',
+      '.....yyyyy....',
+      '....yooooy....',
+      '....yoooooy...',
+      '...yoooooooy..',
+      '...roooooory..',
+      '..rrooooorrr..',
+      '..rrrrrrrrr...',
+      '..rrrrrrrrrr..',
+      '...rrrrrrrr...',
+      '..............',
+      '..............',
+    ],
+  },
+
+  // ── FREELANCERS — magnifying glass (find a pro) ──────────
+  {
+    label: 'FREELANCERS',
+    accent: '#0088ff',
+    palette: {
+      'd': '#0088ff',  // blue lens border + handle
+      '1': '#001833',  // dark glass fill
+    },
+    grid: [
+      '..............',
+      '....dddd......',
+      '...d1111d.....',
+      '..d111111d....',
+      '..d111111d....',
+      '..d111111d....',
+      '...d1111d.....',
+      '....ddddd.....',
+      '.........dd...',
+      '..........dd..',
+      '...........dd.',
+      '..............',
+      '..............',
+      '..............',
+    ],
+  },
+];
+
+const root = document.getElementById('root');
+ICONS.forEach((icon, i) => {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.style.borderColor = icon.accent + '44';
+  card.style.background = `linear-gradient(135deg, rgba(0,0,0,0.6) 0%, ${icon.accent}0d 100%)`;
+
+  const wrap = document.createElement('div');
+  wrap.className = icon.animClass || 'spin';
+  if (icon.id) wrap.id = icon.id;
+  if (icon.animClass !== 'static') wrap.style.animationDelay = `${i * -0.75}s`;
+  wrap.innerHTML = renderSVG(icon.grid, icon.palette);
+
+  const label = document.createElement('div');
+  label.className = 'label';
+  label.textContent = icon.label;
+  label.style.color = icon.accent;
+
+  card.appendChild(wrap);
+  card.appendChild(label);
+  root.appendChild(card);
+});
+
+// ── Flame pixel animation ─────────────────────────────────────
+// Base rows identical in all frames — only tip (rows 0-3) changes subtly
+const BASE = [
+  '....yoooooy...',
+  '...yoooooooy..',
+  '...roooooory..',
+  '..rrooooorrr..',
+  '..rrrrrrrrr...',
+  '..rrrrrrrrrr..',
+  '...rrrrrrrr...',
+  '..............',
+  '..............',
+];
+
+const TIPS = [
+  // 0 — centred, full
+  ['..............','.......w......','......yyy.....', '.....yyyyy....','....yooooy....'],
+  // 1 — 1px left, same height
+  ['..............','......w.......', '.....yyy......','.....yyyyy....','....yooooy....'],
+  // 2 — no white, slightly dimmer
+  ['..............','..............','......yyy.....', '.....yyyy.....','....yooooy....'],
+  // 3 — 1px right
+  ['..............','........w.....', '.......yyy....', '.....yyyyy....','....yooooy....'],
+  // 4 — centred again
+  ['..............','.......w......','......yyy.....', '.....yyyyy....','....yooooy....'],
+];
+
+const FLAME_FRAMES = TIPS.map(tip => [...tip, ...BASE]);
+
+function randomFlame() {
+  return {
+    'w': Math.random() > 0.3  ? '#ffffff' : '#ffffaa',
+    'y': Math.random() > 0.45 ? '#ffee00' : (Math.random() > 0.5 ? '#ffcc00' : '#ffdd55'),
+    'o': Math.random() > 0.5  ? '#ff8800' : (Math.random() > 0.5 ? '#ffaa00' : '#ff6600'),
+    'r': Math.random() > 0.45 ? '#ff3300' : (Math.random() > 0.5 ? '#ff5500' : '#dd2200'),
+  };
+}
+
+const flameWrap = document.getElementById('flame-wrap');
+if (flameWrap) {
+  let fi = 0;
+  setInterval(() => {
+    fi = (fi + 1) % FLAME_FRAMES.length;
+    flameWrap.innerHTML = renderSVG(FLAME_FRAMES[fi], randomFlame());
+  }, 140);
+}
+</script>
+</body>
+</html>
