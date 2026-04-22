@@ -5,7 +5,11 @@ import { CoinBurst } from '../components/CoinBurst';
 import { useTelegram } from '../hooks/useTelegram';
 import { useCountUp } from '../hooks/useCountUp';
 import { users } from '../utils/api';
-import { DealsIcon, NewDealIcon, LiveFeedIcon, JobBoardIcon, FreelancerIcon } from '../components/HomeNavIcons';
+import dealsImg      from '../assets/icons/deals.png';
+import newdealImg    from '../assets/icons/newdeal.png';
+import liveImg       from '../assets/icons/live.png';
+import jobsImg       from '../assets/icons/jobs.png';
+import freelancerImg from '../assets/icons/freelancers.png';
 
 // ============================================================
 // Screen 01: HOME — main screen with navigation cards
@@ -162,7 +166,7 @@ export function Home() {
       {/* Navigation cards 2x2 */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '4px' }}>
         <NavCard
-          icon={<DealsIcon size={48} />}
+          icon={<img src={dealsImg} width={48} height={48} style={{ imageRendering: 'pixelated' }} />}
           title="MY DEALS"
           subtitle={activeCount > 0 ? `${activeCount} active` : 'all quests'}
           accent="#00ff88"
@@ -170,7 +174,7 @@ export function Home() {
           stagger={4}
         />
         <NavCard
-          icon={<NewDealIcon size={48} />}
+          icon={<img src={newdealImg} width={48} height={48} style={{ imageRendering: 'pixelated' }} />}
           title="NEW DEAL"
           subtitle="create quest"
           accent="#ffaa00"
@@ -178,7 +182,7 @@ export function Home() {
           stagger={4}
         />
         <NavCard
-          icon={<LiveFeedIcon size={48} />}
+          icon={<img src={liveImg} width={48} height={48} style={{ imageRendering: 'pixelated' }} />}
           title="LIVE FEED"
           subtitle="deals on air"
           accent="#0088ff"
@@ -186,7 +190,7 @@ export function Home() {
           stagger={5}
         />
         <NavCard
-          icon={<JobBoardIcon size={48} />}
+          icon={<img src={jobsImg} width={48} height={48} style={{ imageRendering: 'pixelated' }} />}
           title="JOB BOARD"
           subtitle="find a job"
           accent="#cc44ff"
@@ -194,7 +198,7 @@ export function Home() {
           stagger={5}
         />
         <NavCard
-          icon={<FreelancerIcon size={48} />}
+          icon={<img src={freelancerImg} width={48} height={48} style={{ imageRendering: 'pixelated' }} />}
           title="FREELANCERS"
           subtitle="find a pro"
           accent="#0088ff"
