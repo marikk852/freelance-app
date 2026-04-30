@@ -88,8 +88,11 @@ router.post('/login', (req, res) => {
 
   // Constant-time comparison to prevent timing attacks
   const crypto = require('crypto');
+  const pwdBuf = Buffer.from(password || '');
+  const secBuf = Buffer.from(secret);
   const valid = secret.length > 0 &&
-    crypto.timingSafeEqual(Buffer.from(password || ''), Buffer.from(secret));
+    pwdBuf.length === secBuf.length &&
+    crypto.timingSafeEqual(pwdBuf, secBuf);
 
   if (!valid) {
     record.count++;
