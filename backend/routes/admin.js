@@ -9,10 +9,17 @@ const escrowService = require('../services/escrowService');
 // Admin Panel — /admark
 // ============================================================
 
+// In-memory session store (resets on server restart — acceptable for admin panel)
+const adminSessions = new Map();
+
 const adminAuth = (req, res, next) => {
   const token = req.headers['x-admin-token'];
-  if (!token || token !== process.env.ADMIN_SECRET) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+  const expiry = adminSessions.get(token);
+  if (!expiry || Date.now() > expiry) {
+    adminSessions.delete(token);
+    return res.status(401).json({ error: 'Session expired or invalid' });
   }
   next();
 };
@@ -62,12 +69,40 @@ router.get('/', (req, res) => {
 });
 
 // ---- Login ----
+// Simple brute-force protection: track failed attempts per IP
+const loginAttempts = new Map();
 router.post('/login', (req, res) => {
+  const ip = req.ip || 'unknown';
+  const now = Date.now();
+  const record = loginAttempts.get(ip) || { count: 0, resetAt: now + 15 * 60 * 1000 };
+
+  // Reset counter after 15 minutes
+  if (now > record.resetAt) { record.count = 0; record.resetAt = now + 15 * 60 * 1000; }
+
+  if (record.count >= 10) {
+    return res.status(429).json({ error: 'Too many login attempts. Try again in 15 minutes.' });
+  }
+
   const { password } = req.body;
-  if (!password || password !== process.env.ADMIN_SECRET) {
+  const secret = process.env.ADMIN_SECRET || '';
+
+  // Constant-time comparison to prevent timing attacks
+  const crypto = require('crypto');
+  const valid = secret.length > 0 &&
+    crypto.timingSafeEqual(Buffer.from(password || ''), Buffer.from(secret));
+
+  if (!valid) {
+    record.count++;
+    loginAttempts.set(ip, record);
     return res.status(401).json({ error: 'Invalid password' });
   }
-  res.json({ token: process.env.ADMIN_SECRET });
+
+  loginAttempts.delete(ip);
+  // Return a session token, not the secret itself
+  const sessionToken = crypto.randomBytes(32).toString('hex');
+  // Store token with 8-hour expiry
+  adminSessions.set(sessionToken, Date.now() + 8 * 60 * 60 * 1000);
+  res.json({ token: sessionToken });
 });
 
 router.use('/api', adminAuth);
@@ -297,7 +332,9 @@ router.get('/api/contracts', async (req, res) => {
   try {
     const { status = '', limit = 50, offset = 0 } = req.query;
     const params = [Number(limit), Number(offset)];
-    const where  = status ? `AND c.status='${status.replace(/'/g,"''")}'` : '';
+    // Parameterized status filter — prevents SQL injection
+    let statusWhere = '';
+    if (status) { params.push(status); statusWhere = `AND c.status = $${params.length}`; }
     const { rows } = await query(`
       SELECT c.id, c.title, c.amount_usd, c.currency, c.status,
              c.created_at, c.deadline,
@@ -309,7 +346,7 @@ router.get('/api/contracts', async (req, res) => {
       JOIN users uc ON uc.id=r.client_id
       LEFT JOIN users uf ON uf.id=r.freelancer_id
       LEFT JOIN escrow e ON e.contract_id=c.id
-      WHERE 1=1 ${where}
+      WHERE 1=1 ${statusWhere}
       ORDER BY c.created_at DESC
       LIMIT $1 OFFSET $2
     `, params);

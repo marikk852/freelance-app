@@ -27,6 +27,12 @@ describe('SafeDeal Escrow Contract', () => {
   const FEE_PERCENT    = 2;
   const FUTURE_DEADLINE = Math.floor(Date.now() / 1000) + 86400 * 7; // +7 дней
 
+  // Очищаем окружение после каждого теста
+  afterEach(async () => {
+    // @ts-ignore — явный сброс ссылок для GC
+    blockchain = null as any;
+  });
+
   // Создаём свежее окружение перед каждым тестом
   beforeEach(async () => {
     blockchain = await Blockchain.create();

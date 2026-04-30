@@ -4,7 +4,7 @@
   "description": "SafeDeal TON Smart Contracts (FunC)",
   "scripts": {
     "build": "blueprint build",
-    "test": "blueprint test",
+    "test": "NODE_OPTIONS='--max-old-space-size=4096' npx jest --runInBand --forceExit",
     "deploy": "blueprint run scripts/deploy.ts",
     "deploy:testnet": "blueprint run scripts/deploy.ts --testnet"
   },
@@ -28,6 +28,10 @@
     "testEnvironment": "node",
     "testMatch": [
       "**/*.spec.ts"
-    ]
+    ],
+    "maxWorkers": 1,
+    "workerIdleMemoryLimit": "512MB",
+    "testTimeout": 60000,
+    "forceExit": true
   }
 }

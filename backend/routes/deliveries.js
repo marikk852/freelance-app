@@ -114,7 +114,7 @@ router.post('/', upload.array('files', 10), async (req, res) => {
           size        : f.size,
           fileType    : f.fileType,
         }))),
-        links ? JSON.stringify(JSON.parse(links)) : '[]',
+        (() => { try { return links ? JSON.stringify(JSON.parse(links)) : '[]'; } catch { return '[]'; } })(),
         attemptNumber,
       ]
     );
@@ -165,15 +165,35 @@ router.post('/', upload.array('files', 10), async (req, res) => {
 
 /**
  * GET /api/deliveries/preview/:fileId
- * Send file preview to client for review.
+ * Send file preview — only to contract participants.
  */
 router.get('/preview/:fileId', async (req, res) => {
   try {
     const { fileId } = req.params;
+    const { telegramId } = req.user;
+
     // Validate fileId to prevent path traversal
     if (!UUID_RE.test(fileId)) {
       return res.status(400).json({ error: 'Invalid fileId format' });
     }
+
+    // SECURITY: verify that the requesting user is a participant in the contract
+    const { rows } = await query(
+      `SELECT uc.telegram_id AS client_tg_id, uf.telegram_id AS freelancer_tg_id
+       FROM deliveries d
+       JOIN contracts c ON c.id = d.contract_id
+       JOIN rooms r ON r.id = c.room_id
+       JOIN users uc ON uc.id = r.client_id
+       JOIN users uf ON uf.id = r.freelancer_id
+       WHERE d.files::jsonb @> $1::jsonb`,
+      [JSON.stringify([{ fileId }])]
+    );
+
+    if (!rows[0]) return res.status(404).json({ error: 'Preview not found' });
+
+    const isParticipant = [rows[0].client_tg_id, rows[0].freelancer_tg_id]
+      .map(Number).includes(Number(telegramId));
+    if (!isParticipant) return res.status(403).json({ error: 'Access denied' });
 
     const fs   = require('fs');
     const path = require('path');

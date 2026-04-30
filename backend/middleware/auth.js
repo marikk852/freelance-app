@@ -42,7 +42,7 @@ function verifyTelegramInitData(initData, botToken) {
     const authDate = Number(params.get('auth_date'));
     const now = Math.floor(Date.now() / 1000);
     const age = now - authDate;
-    if (age > 86400 * 7) {
+    if (age > 86400) { // 24 hours — Telegram recommendation
       console.warn('[Auth] initData too old:', age, 'seconds');
       return { valid: false };
     }
@@ -62,10 +62,11 @@ function verifyTelegramInitData(initData, botToken) {
 function authMiddleware(req, res, next) {
   const initData = req.headers['x-telegram-init-data'];
 
-  // Dev bypass: skip verification outside production
-  if (process.env.NODE_ENV !== 'production') {
+  // Dev bypass: ONLY when explicitly enabled via DEV_BYPASS=true AND not in production
+  if (process.env.DEV_BYPASS === 'true' && process.env.NODE_ENV !== 'production') {
     if (!initData) {
-      req.user = { telegramId: 1, username: 'dev', firstName: 'Dev', lastName: '' };
+      const devTelegramId = Number(process.env.DEV_TELEGRAM_ID) || 999999999;
+      req.user = { telegramId: devTelegramId, username: 'dev', firstName: 'Dev', lastName: '' };
       return next();
     }
   }

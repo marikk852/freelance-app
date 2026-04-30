@@ -308,6 +308,29 @@ async function refundEscrow(contractId, requestedBy) {
     throw new Error(`[Escrow] Неверный статус для refund: ${escrowRow.status}`);
   }
 
+  // Симуляционный режим
+  if (process.env.SIMULATE_PAYMENTS === 'true') {
+    const txHash = `sim_refund_${Date.now()}`;
+    await transaction(async (client) => {
+      await client.query(
+        `UPDATE escrow SET status = 'refunded', tx_hash_out = $2, released_at = NOW()
+         WHERE contract_id = $1`,
+        [contractId, txHash]
+      );
+      await client.query(
+        `UPDATE contracts SET status = 'refunded', updated_at = NOW() WHERE id = $1`,
+        [contractId]
+      );
+      await client.query(
+        `INSERT INTO audit_log (contract_id, action, performed_by, details, tx_hash)
+         VALUES ($1, 'refund_simulated', $2, $3, $4)`,
+        [contractId, requestedBy, JSON.stringify({ simulated: true }), txHash]
+      );
+    });
+    console.log(`[Escrow] 🧪 Simulated refund. Контракт: ${contractId}`);
+    return txHash;
+  }
+
   const body = beginCell().storeUint(OP.REFUND, 32).endCell();
   const txHash = await tonService.sendArbitratorMessage(
     escrowRow.ton_contract_address,
@@ -363,6 +386,29 @@ async function splitEscrow(contractId, freelancerPercent, resolvedBy) {
   if (!escrowRow) throw new Error(`[Escrow] Эскроу не найден: ${contractId}`);
   if (escrowRow.status !== 'frozen') {
     throw new Error(`[Escrow] Неверный статус для split: ${escrowRow.status}`);
+  }
+
+  // Симуляционный режим
+  if (process.env.SIMULATE_PAYMENTS === 'true') {
+    const txHash = `sim_split_${Date.now()}`;
+    await transaction(async (client) => {
+      await client.query(
+        `UPDATE escrow SET status = 'refunded', tx_hash_out = $2, released_at = NOW()
+         WHERE contract_id = $1`,
+        [contractId, txHash]
+      );
+      await client.query(
+        `UPDATE contracts SET status = 'refunded', updated_at = NOW() WHERE id = $1`,
+        [contractId]
+      );
+      await client.query(
+        `INSERT INTO audit_log (contract_id, action, performed_by, details, tx_hash)
+         VALUES ($1, 'split_simulated', $2, $3, $4)`,
+        [contractId, resolvedBy, JSON.stringify({ simulated: true, freelancerPercent }), txHash]
+      );
+    });
+    console.log(`[Escrow] 🧪 Simulated split. Контракт: ${contractId}`);
+    return txHash;
   }
 
   const body = beginCell()

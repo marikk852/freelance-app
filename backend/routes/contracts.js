@@ -136,22 +136,43 @@ router.post('/:id/sign', async (req, res) => {
 
     const { telegramId } = req.user;
 
-    // If freelancer — attach them to the room
+    // Fetch room and participants to verify role
+    const { rows: contractRows } = await query(
+      `SELECT c.room_id,
+              uc.telegram_id AS client_tg_id,
+              r.freelancer_id
+       FROM contracts c
+       JOIN rooms r ON r.id = c.room_id
+       JOIN users uc ON uc.id = r.client_id
+       WHERE c.id = $1`,
+      [req.params.id]
+    );
+    if (!contractRows[0]) return res.status(404).json({ error: 'Contract not found' });
+
+    const cr = contractRows[0];
+
+    if (role === 'client') {
+      // SECURITY: only the actual client can sign as client
+      if (Number(cr.client_tg_id) !== Number(telegramId)) {
+        return res.status(403).json({ error: 'Only the contract client can sign as client' });
+      }
+    }
+
     if (role === 'freelancer') {
       const { rows: userRows } = await query(
         'SELECT id FROM users WHERE telegram_id = $1', [telegramId]
       );
       if (!userRows[0]) return res.status(404).json({ error: 'User not found' });
 
-      const { rows: contractRows } = await query(
-        'SELECT room_id FROM contracts WHERE id = $1', [req.params.id]
-      );
-      if (!contractRows[0]) return res.status(404).json({ error: 'Contract not found' });
+      // SECURITY: client cannot sign as freelancer on their own contract
+      if (Number(cr.client_tg_id) === Number(telegramId)) {
+        return res.status(403).json({ error: 'The client cannot sign as freelancer' });
+      }
 
       await query(
         `UPDATE rooms SET freelancer_id = $1, status = 'active'
          WHERE id = $2 AND freelancer_id IS NULL`,
-        [userRows[0].id, contractRows[0].room_id]
+        [userRows[0].id, cr.room_id]
       );
     }
 
