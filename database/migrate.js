@@ -71,7 +71,9 @@ async function runMigrations() {
   }
 }
 
-runMigrations().catch(err => {
+runMigrations().then(() => {
+  process.exit(0);
+}).catch(err => {
   console.error('Ошибка миграции:', err.message);
   process.exit(1);
 });
