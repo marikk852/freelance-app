@@ -24,7 +24,8 @@ export const contracts = {
   get:    (id: string)            => api.get(`/contracts/${id}`),
   sign:   (id: string, role: string) => api.post(`/contracts/${id}/sign`, { role }),
   deploy: (id: string, data: any) => api.post(`/contracts/${id}/deploy`, data),
-  approve:(id: string)            => api.post(`/contracts/${id}/approve`),
+  approve:         (id: string)   => api.post(`/contracts/${id}/approve`),
+  simulatePayment: (id: string)   => api.post(`/contracts/${id}/simulate-payment`),
 };
 
 // ---- Сдача работы ----

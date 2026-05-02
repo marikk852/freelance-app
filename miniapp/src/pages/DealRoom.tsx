@@ -86,6 +86,20 @@ export function DealRoom() {
     navigate(path);
   };
 
+  const handleSimulatePayment = async () => {
+    tg?.HapticFeedback?.impactOccurred('medium');
+    try {
+      await contractsApi.simulatePayment(id!);
+      tg?.HapticFeedback?.notificationOccurred('success');
+      toast.success('Payment simulated!');
+      const r = await contractsApi.get(id!);
+      setDeal(r.data);
+    } catch (e: any) {
+      tg?.HapticFeedback?.notificationOccurred('error');
+      toast.error(e.response?.data?.error || 'Error');
+    }
+  };
+
   return (
     <div className="page fade-in">
       <PixelScene scene="deal_room" width={252} height={56} />
@@ -182,6 +196,11 @@ export function DealRoom() {
         {isClient && deal.status === 'signed' && (
           <button className="btn btn-y btn-full" onClick={() => go(`/payment/${id}`)}>
             [ 💳 PAY ]
+          </button>
+        )}
+        {isClient && deal.status === 'awaiting_payment' && (
+          <button className="btn btn-y btn-full" onClick={handleSimulatePayment}>
+            [ 🧪 SIMULATE PAYMENT ]
           </button>
         )}
         {isClient && deal.status === 'in_progress' && (
