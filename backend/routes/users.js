@@ -291,9 +291,9 @@ router.patch('/me/wallet', async (req, res) => {
     if (!walletAddress) return res.status(400).json({ error: 'walletAddress is required' });
 
     // Validate TON address format
-    const TON_ADDRESS_RE = /^(UQ|EQ)[A-Za-z0-9_-]{46}$/;
+    const TON_ADDRESS_RE = /^(UQ|EQ|kQ|0Q)[A-Za-z0-9_-]{46}$/;
     if (!TON_ADDRESS_RE.test(walletAddress)) {
-      return res.status(400).json({ error: 'Invalid TON address format (expected UQ... or EQ...)' });
+      return res.status(400).json({ error: 'Invalid TON address format (expected UQ.../EQ.../kQ.../0Q...)' });
     }
 
     const user = await User.setWallet(req.user.telegramId, walletAddress);

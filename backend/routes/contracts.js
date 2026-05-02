@@ -12,7 +12,7 @@ const { getBotUsername } = require('../services/botInfo');
 // ============================================================
 
 // TON address validation (UQ.../EQ... format)
-const TON_ADDRESS_RE = /^(UQ|EQ)[A-Za-z0-9_-]{46}$/;
+const TON_ADDRESS_RE = /^(UQ|EQ|kQ|0Q)[A-Za-z0-9_-]{46}$/;
 
 // New contract validation schema
 const createContractSchema = Joi.object({
