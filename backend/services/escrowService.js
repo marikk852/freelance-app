@@ -467,16 +467,16 @@ async function splitEscrow(contractId, freelancerPercent, resolvedBy) {
 async function loadContractCode() {
   const fs   = require('fs');
   const path = require('path');
-  const bocPath = path.join(__dirname, '../../contracts/build/escrow.boc');
+  const jsonPath = path.join(__dirname, '../../contracts/build/escrow.compiled.json');
 
-  if (!fs.existsSync(bocPath)) {
+  if (!fs.existsSync(jsonPath)) {
     throw new Error(
       '[Escrow] Контракт не скомпилирован. Запусти: cd contracts && npm run build'
     );
   }
 
-  const boc = fs.readFileSync(bocPath);
-  return Cell.fromBoc(boc)[0];
+  const { hex } = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+  return Cell.fromBoc(Buffer.from(hex, 'hex'))[0];
 }
 
 /**
