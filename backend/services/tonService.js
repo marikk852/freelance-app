@@ -69,22 +69,23 @@ async function getAccountState(address) {
  * @param {Cell}   body        - тело сообщения (op code + данные)
  * @returns {Promise<string>}  - хэш транзакции
  */
-async function sendArbitratorMessage(toAddress, value, body) {
+async function sendArbitratorMessage(toAddress, value, body, init = null) {
   if (!_wallet || !_keyPair) throw new Error('[TON] Кошелёк арбитра не инициализирован');
 
   const seqno = await _wallet.getSeqno();
 
+  const msg = {
+    to    : Address.parse(toAddress),
+    value,
+    body,
+    bounce: init ? false : true,
+  };
+  if (init) msg.init = init;
+
   await _wallet.sendTransfer({
     secretKey  : _keyPair.secretKey,
     seqno,
-    messages   : [
-      internal({
-        to    : Address.parse(toAddress),
-        value,
-        body,
-        bounce: true,
-      }),
-    ],
+    messages   : [internal(msg)],
   });
 
   // Ждём подтверждения транзакции (до 30 секунд)

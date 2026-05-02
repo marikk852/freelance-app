@@ -499,24 +499,14 @@ function buildInitData({ clientAddr, freelancerAddr, arbitratorAddr, amountNano,
  * @returns {string} хэш деплой-транзакции
  */
 async function deployStateInit(tonAddress, code, data) {
-  const { internal } = require('@ton/ton');
-
-  const stateInit = beginCell()
-    .storeBit(0)  // split_depth: none
-    .storeBit(0)  // special: none
-    .storeBit(1)  // code: present
-    .storeRef(code)
-    .storeBit(1)  // data: present
-    .storeRef(data)
-    .storeBit(0)  // library: none
-    .endCell();
-
-  const body = beginCell().endCell(); // пустое тело при деплое
+  const body     = beginCell().endCell(); // пустое тело при деплое
+  const stateInit = { code, data };       // StateInit для деплоя контракта
 
   const txHash = await tonService.sendArbitratorMessage(
     tonAddress,
-    toNano('0.05'),  // газ для деплоя
-    body
+    toNano('0.05'),
+    body,
+    stateInit,
   );
 
   return txHash;
