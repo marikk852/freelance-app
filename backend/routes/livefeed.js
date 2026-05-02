@@ -19,7 +19,7 @@ router.get('/', async (req, res) => {
       SELECT
         COUNT(*) FILTER (WHERE c.status = 'completed')                          AS completed,
         COALESCE(SUM(c.amount_usd) FILTER (WHERE c.status = 'completed'), 0)    AS volume_usdt,
-        COUNT(*) FILTER (WHERE c.status IN ('active','signed','payment_pending','frozen')) AS active,
+        COUNT(*) FILTER (WHERE c.status IN ('signed','awaiting_payment','in_progress','under_review')) AS active,
         COUNT(*) FILTER (WHERE c.status = 'disputed')                           AS disputes
       FROM contracts c
     `);
@@ -38,17 +38,17 @@ router.get('/', async (req, res) => {
         u.username   AS client_username
       FROM contracts c
       LEFT JOIN users u ON u.telegram_id = c.client_id
-      WHERE c.status IN ('completed','frozen','active','disputed','signed')
+      WHERE c.status IN ('completed','in_progress','under_review','disputed','signed','awaiting_payment')
       ORDER BY c.created_at DESC
       LIMIT 20
     `);
 
     const TYPE_MAP = {
       completed     : 'completed',
-      frozen        : 'frozen',
-      active        : 'new',
+      in_progress   : 'frozen',
+      under_review  : 'frozen',
+      awaiting_payment: 'new',
       signed        : 'new',
-      payment_pending: 'new',
       disputed      : 'disputed',
     };
 
