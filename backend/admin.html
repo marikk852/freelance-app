@@ -606,10 +606,11 @@ function nav(s){
   if(s==='settings')loadSettings();
 }
 
-function get(url){return fetch(BASE+url,{headers:{'X-Admin-Token':TOKEN}}).then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||r.statusText);return d})})}
-function post(url,body){return fetch(BASE+url,{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Token':TOKEN},body:JSON.stringify(body)}).then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||r.statusText);return d})})}
-function patch(url,body){return fetch(BASE+url,{method:'PATCH',headers:{'Content-Type':'application/json','X-Admin-Token':TOKEN},body:JSON.stringify(body)}).then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||r.statusText);return d})})}
-function del(url){return fetch(BASE+url,{method:'DELETE',headers:{'X-Admin-Token':TOKEN}}).then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||r.statusText);return d})})}
+function _handleResp(r){if(r.status===401){logout();return Promise.reject(new Error('Session expired'))}return r.json().then(function(d){if(!r.ok)throw new Error(d.error||r.statusText);return d})}
+function get(url){return fetch(BASE+url,{headers:{'X-Admin-Token':TOKEN}}).then(_handleResp)}
+function post(url,body){return fetch(BASE+url,{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Token':TOKEN},body:JSON.stringify(body)}).then(_handleResp)}
+function patch(url,body){return fetch(BASE+url,{method:'PATCH',headers:{'Content-Type':'application/json','X-Admin-Token':TOKEN},body:JSON.stringify(body)}).then(_handleResp)}
+function del(url){return fetch(BASE+url,{method:'DELETE',headers:{'X-Admin-Token':TOKEN}}).then(_handleResp)}
 
 function toast(msg,type){
   type=type||'ok';
