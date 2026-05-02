@@ -70,6 +70,36 @@ async function deployContract({
 
   const deadline = Math.floor(deadlineDate.getTime() / 1000);
 
+  // Симуляционный режим — не деплоим реальный контракт
+  if (process.env.SIMULATE_PAYMENTS === 'true') {
+    const fakeAddress = `EQ${'S'.repeat(46)}`;
+    await transaction(async (client) => {
+      await client.query(
+        `UPDATE contracts
+         SET ton_contract_address = $2, crypto_amount = $3,
+             status = 'awaiting_payment', updated_at = NOW()
+         WHERE id = $1`,
+        [contractId, fakeAddress, cryptoAmount]
+      );
+      const platformFee = currency === 'TON'
+        ? cryptoAmount * feePercent / 100
+        : amountUsd * feePercent / 100;
+      await client.query(
+        `INSERT INTO escrow
+           (contract_id, currency, amount, amount_usd, platform_fee, ton_contract_address)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [contractId, currency, cryptoAmount, amountUsd, platformFee, fakeAddress]
+      );
+      await client.query(
+        `INSERT INTO audit_log (contract_id, action, details, tx_hash)
+         VALUES ($1, 'deploy_simulated', $2, $3)`,
+        [contractId, JSON.stringify({ simulated: true, fakeAddress, currency, cryptoAmount }), 'sim_deploy']
+      );
+    });
+    console.log(`[Escrow] 🧪 Simulated deploy. Контракт: ${contractId}, адрес: ${fakeAddress}`);
+    return { tonContractAddress: fakeAddress, cryptoAmount };
+  }
+
   // Загружаем скомпилированный код контракта
   const contractCode = await loadContractCode();
 
