@@ -32,6 +32,33 @@ async function init() {
   const balance = await _wallet.getBalance();
   console.log(`[TON] Арбитр-кошелёк: ${_wallet.address.toString()}`);
   console.log(`[TON] Баланс арбитра: ${fromNano(balance)} TON`);
+
+  // Инициализируем кошелёк если он ещё не развёрнут (uninit)
+  if (balance > 0n) {
+    try {
+      const seqno = await _wallet.getSeqno();
+      if (seqno === 0) {
+        console.log('[TON] Кошелёк арбитра не инициализирован. Отправляю init транзакцию...');
+        await _wallet.sendTransfer({
+          secretKey : _keyPair.secretKey,
+          seqno     : 0,
+          messages  : [
+            internal({
+              to    : _wallet.address,
+              value : toNano('0.01'),
+              body  : 'init',
+              bounce: false,
+            }),
+          ],
+        });
+        // Ждём подтверждения
+        await sleep(5000);
+        console.log('[TON] ✅ Кошелёк арбитра инициализирован');
+      }
+    } catch (e) {
+      console.warn('[TON] Не удалось инициализировать кошелёк:', e.message);
+    }
+  }
 }
 
 /**
