@@ -71,6 +71,7 @@ async function getAccountState(address) {
  */
 async function sendArbitratorMessage(toAddress, value, body, init = null) {
   if (!_wallet || !_keyPair) throw new Error('[TON] Кошелёк арбитра не инициализирован');
+  console.log(`[TON] sendArbitratorMessage → ${toAddress}, value=${value}, init=${!!init}`);
 
   const seqno = await _wallet.getSeqno();
 
@@ -115,8 +116,8 @@ async function waitForTransaction(walletAddress, oldSeqno, timeoutMs = 30000) {
           return txs[0].hash().toString('hex');
         }
       }
-    } catch {
-      // продолжаем ждать
+    } catch (e) {
+      console.log('[TON] waitForTransaction polling error:', e.response?.data ?? e.message);
     }
   }
   throw new Error('[TON] Таймаут ожидания транзакции');

@@ -221,8 +221,9 @@ router.post('/:id/deploy', async (req, res) => {
 
     res.json(result);
   } catch (err) {
-    console.error('[API] POST /contracts/:id/deploy error:', err.message);
-    res.status(500).json({ error: err.message });
+    const detail = err.response?.data ?? err.stack ?? err.message;
+    console.error('[API] POST /contracts/:id/deploy error:', JSON.stringify(detail));
+    res.status(500).json({ error: err.message, detail });
   }
 });
 
