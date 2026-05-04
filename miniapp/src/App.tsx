@@ -13,9 +13,10 @@ import { LiveDeals }   from './pages/LiveDeals';
 import { Profile }     from './pages/Profile';
 import { JobBoard }    from './pages/JobBoard';
 import { JoinDeal }    from './pages/JoinDeal';
-import { MyDeals }     from './pages/MyDeals';
-import { PublicProfile }  from './pages/PublicProfile';
-import { FreelancerList } from './pages/FreelancerList';
+import { MyDeals }        from './pages/MyDeals';
+import { PublicProfile }   from './pages/PublicProfile';
+import { FreelancerList }  from './pages/FreelancerList';
+import { Notifications }   from './pages/Notifications';
 import './styles/globals.css';
 
 // ============================================================
@@ -144,6 +145,7 @@ export default function App() {
         <Route path="/jobs"        element={<JobBoard />} />
         <Route path="/my-deals"      element={<MyDeals />} />
         <Route path="/freelancers"   element={<FreelancerList />} />
+        <Route path="/notifications" element={<Notifications />} />
       </Routes>
 
       <BottomNav />

@@ -148,10 +148,34 @@ select.inp{cursor:pointer}
 .modal-close{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px 8px}
 .modal-close:hover{color:var(--red)}
 .modal-body{padding:18px 20px}
-.broadcast-wrap{max-width:600px}
-.broadcast-wrap textarea{width:100%;min-height:130px;padding:12px;background:var(--textarea-bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--font);font-size:12px;resize:vertical;outline:none;margin-bottom:10px;line-height:1.6}
+.broadcast-wrap{max-width:660px}
+.broadcast-wrap textarea{width:100%;min-height:110px;padding:12px;background:var(--textarea-bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--font);font-size:12px;resize:vertical;outline:none;margin-bottom:10px;line-height:1.6;box-sizing:border-box}
 .broadcast-wrap textarea:focus{border-color:var(--green)}
+.broadcast-wrap input[type=text],.broadcast-wrap input[type=datetime-local]{width:100%;padding:10px 12px;background:var(--inp-bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--font);font-size:12px;outline:none;box-sizing:border-box;margin-bottom:10px}
+.broadcast-wrap input:focus{border-color:var(--green)}
+.bc-tabs{display:flex;gap:6px;margin-bottom:12px}
+.bc-tab{padding:6px 14px;border-radius:5px;border:1px solid var(--border2);background:var(--card2);color:var(--muted);font-family:var(--font);font-size:11px;cursor:pointer;transition:all .15s}
+.bc-tab.active{border-color:var(--green);color:var(--green);background:rgba(0,204,106,.08)}
+.bc-preview-img{width:100%;max-height:180px;object-fit:cover;border-radius:6px;margin-bottom:10px;display:none}
+.bc-schedule-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.bc-schedule-row input[type=checkbox]{accent-color:var(--green);width:14px;height:14px;cursor:pointer}
+.bc-schedule-row label{font-size:11px;color:var(--muted);cursor:pointer}
+.bc-push-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.bc-push-row input[type=checkbox]{accent-color:var(--purple);width:14px;height:14px;cursor:pointer}
+.bc-push-row label{font-size:11px;color:var(--muted);cursor:pointer}
 .broadcast-result{margin-top:12px;padding:12px;border-radius:6px;background:var(--broadcast-result-bg);border:1px solid var(--broadcast-result-border);font-size:12px;color:var(--green)}
+.bc-queue-wrap{margin-top:26px}
+.bc-queue-title{font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;text-transform:uppercase}
+.bc-queue-item{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:6px;background:var(--card2);margin-bottom:6px}
+.bc-queue-item .bq-msg{font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}
+.bc-queue-item .bq-meta{color:var(--muted);font-size:10px;margin-top:3px}
+.bc-queue-item .bq-right{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
+.bq-status{padding:2px 8px;border-radius:4px;font-size:10px}
+.bq-status.pending{color:var(--gold);border:1px solid rgba(230,149,0,.3)}
+.bq-status.sent{color:var(--green);border:1px solid rgba(0,204,106,.3)}
+.bq-status.cancelled{color:var(--muted);border:1px solid var(--border)}
+.bq-status.sending{color:var(--blue);border:1px solid rgba(0,119,238,.3)}
+.bq-status.failed{color:var(--red);border:1px solid rgba(224,51,85,.3)}
 .pager{display:flex;gap:8px;align-items:center;margin-top:12px}
 .toast{position:fixed;bottom:22px;right:22px;z-index:9999;padding:11px 16px;border-radius:7px;font-size:12px;background:var(--card);border:1px solid var(--border2);color:var(--text);box-shadow:0 8px 32px rgba(0,0,0,.5);animation:slide-in .2s ease;max-width:300px}
 .toast.ok{border-color:rgba(0,255,136,.4);color:var(--green)}
@@ -382,12 +406,50 @@ select.inp{cursor:pointer}
     </section>
 
     <section id="s-broadcast" class="section">
-      <div class="page-title" data-i18n="nav_broadcast">Broadcast</div><div class="page-sub" data-i18n="sub_broadcast">Message to all users (except banned)</div>
+      <div class="page-title" data-i18n="nav_broadcast">Broadcast</div>
+      <div class="page-sub" data-i18n="sub_broadcast">Message to all users (except banned)</div>
       <div class="broadcast-wrap">
-        <div style="font-size:10px;color:var(--muted);margin-bottom:8px">HTML: &lt;b&gt;, &lt;i&gt;, &lt;code&gt;, &lt;a href=...&gt;</div>
-        <textarea id="broadcast-msg" data-i18n-placeholder="broadcast_ph" placeholder="Message text..."></textarea>
+
+        <!-- Segment tabs -->
+        <div style="font-size:10px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Audience</div>
+        <div class="bc-tabs">
+          <button class="bc-tab active" onclick="setBcSeg('all',this)" data-i18n="bc_seg_all">All users</button>
+          <button class="bc-tab" onclick="setBcSeg('clients',this)" data-i18n="bc_seg_clients">Clients only</button>
+          <button class="bc-tab" onclick="setBcSeg('freelancers',this)" data-i18n="bc_seg_freelancers">Freelancers only</button>
+        </div>
+        <input type="hidden" id="bc-segment" value="all" />
+
+        <!-- Photo / GIF URL -->
+        <div style="font-size:10px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Photo / GIF URL (optional)</div>
+        <input type="text" id="bc-photo" placeholder="https://example.com/image.gif" oninput="onBcPhotoChange()" />
+        <img id="bc-preview-img" class="bc-preview-img" alt="preview" />
+
+        <!-- Message -->
+        <div style="font-size:10px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Message text <span style="text-transform:none;color:var(--muted)">(HTML: &lt;b&gt;, &lt;i&gt;, &lt;a href=...&gt;)</span></div>
+        <textarea id="broadcast-msg" placeholder="Message text..."></textarea>
+
+        <!-- Schedule -->
+        <div class="bc-schedule-row">
+          <input type="checkbox" id="bc-schedule-check" onchange="toggleBcSchedule()" />
+          <label for="bc-schedule-check" data-i18n="bc_schedule_lbl">Schedule send</label>
+        </div>
+        <input type="datetime-local" id="bc-schedule-dt" style="display:none" />
+
+        <!-- Push to Mini App -->
+        <div class="bc-push-row">
+          <input type="checkbox" id="bc-push" checked />
+          <label for="bc-push" data-i18n="bc_push_lbl">Also push to Mini App (in-app notification)</label>
+        </div>
+
+        <!-- Send button -->
         <button class="btn btn-green" onclick="sendBroadcast()" id="broadcast-btn" data-i18n="broadcast_btn">📢 SEND TO ALL</button>
         <div id="broadcast-result" style="display:none" class="broadcast-result"></div>
+
+        <!-- Scheduled queue -->
+        <div class="bc-queue-wrap">
+          <div class="bc-queue-title" data-i18n="bc_queue_title">Scheduled Broadcasts</div>
+          <div id="bc-queue"><div style="font-size:11px;color:var(--muted)" data-i18n="loading">Loading...</div></div>
+        </div>
       </div>
     </section>
 
@@ -446,6 +508,10 @@ const LANGS={
     comm_new_pct:'NEW PERCENTAGE',comm_preview_title:'EARNINGS AT DIFFERENT DEAL AMOUNTS',
     comm_save:'SAVE FEE',comm_history:'CHANGE HISTORY',
     save_btn:'💾 SAVE',broadcast_ph:'Message text...',broadcast_btn:'📢 SEND TO ALL',
+    bc_seg_all:'All users',bc_seg_clients:'Clients only',bc_seg_freelancers:'Freelancers only',
+    bc_schedule_lbl:'Schedule send',bc_push_lbl:'Also push to Mini App (in-app notification)',
+    bc_queue_title:'Scheduled Broadcasts',bc_queue_empty:'No scheduled broadcasts',
+    bc_sched_confirm:'Schedule this broadcast?',
     // dynamic
     today:'today',active:'active',no_data:'No data',nothing_found:'Nothing found',none:'None',
     no_disputes:'No disputes',page_lbl:'page',
@@ -505,6 +571,10 @@ const LANGS={
     comm_new_pct:'НОВЫЙ ПРОЦЕНТ',comm_preview_title:'ЗАРАБОТОК ПРИ РАЗНЫХ СУММАХ СДЕЛКИ',
     comm_save:'СОХРАНИТЬ КОМИССИЮ',comm_history:'ИСТОРИЯ ИЗМЕНЕНИЙ',
     save_btn:'💾 СОХРАНИТЬ',broadcast_ph:'Текст сообщения...',broadcast_btn:'📢 ОТПРАВИТЬ ВСЕМ',
+    bc_seg_all:'Все',bc_seg_clients:'Только клиенты',bc_seg_freelancers:'Только фрилансеры',
+    bc_schedule_lbl:'Запланировать отправку',bc_push_lbl:'Также в Mini App (push-уведомление)',
+    bc_queue_title:'Запланированные рассылки',bc_queue_empty:'Нет запланированных рассылок',
+    bc_sched_confirm:'Запланировать эту рассылку?',
     // dynamic
     today:'сегодня',active:'активных',no_data:'Нет данных',nothing_found:'Ничего не найдено',none:'Нет',
     no_disputes:'Нет споров',page_lbl:'стр.',
@@ -604,6 +674,7 @@ function nav(s){
   if(s==='finance')loadFinance();
   if(s==='commission')loadCommission();
   if(s==='settings')loadSettings();
+  if(s==='broadcast')loadBcQueue();
 }
 
 function _handleResp(r){if(r.status===401){logout();return Promise.reject(new Error('Session expired'))}return r.json().then(function(d){if(!r.ok)throw new Error(d.error||r.statusText);return d})}
@@ -851,19 +922,106 @@ function saveSettings(){
   }).then(function(){toast('Settings saved ✅')}).catch(function(e){toast('Error: '+e.message,'err')});
 }
 
-// BROADCAST
+// ── BROADCAST ──────────────────────────────────────────────
+
+var _bcSegment='all';
+
+function setBcSeg(seg,el){
+  _bcSegment=seg;
+  document.querySelectorAll('.bc-tab').forEach(function(b){b.classList.remove('active')});
+  if(el)el.classList.add('active');
+}
+
+function toggleBcSchedule(){
+  var chk=document.getElementById('bc-schedule-check');
+  var dt=document.getElementById('bc-schedule-dt');
+  dt.style.display=chk.checked?'block':'none';
+  if(chk.checked && !dt.value){
+    // default: 1 hour from now
+    var d=new Date(Date.now()+3600000);
+    dt.value=d.toISOString().slice(0,16);
+  }
+  var btn=document.getElementById('broadcast-btn');
+  btn.textContent=chk.checked?'🗓 SCHEDULE':'📢 '+t('broadcast_btn').replace('📢 ','');
+}
+
+function onBcPhotoChange(){
+  var url=document.getElementById('bc-photo').value.trim();
+  var img=document.getElementById('bc-preview-img');
+  if(url){img.src=url;img.style.display='block';}
+  else{img.style.display='none';}
+}
+
 function sendBroadcast(){
   var msg=document.getElementById('broadcast-msg').value.trim();
+  var photoUrl=(document.getElementById('bc-photo').value||'').trim();
+  var pushApp=document.getElementById('bc-push').checked;
+  var isScheduled=document.getElementById('bc-schedule-check').checked;
+  var scheduledAt=isScheduled?document.getElementById('bc-schedule-dt').value:'';
+
   if(!msg)return toast(t('enter_msg'),'err');
-  if(!confirm(t('send_confirm')))return;
+  if(!confirm(isScheduled?t('bc_sched_confirm'):t('send_confirm')))return;
+
   var btn=document.getElementById('broadcast-btn');
   btn.textContent=t('sending');btn.disabled=true;
-  post('/admark/api/broadcast',{message:msg}).then(function(r){
-    var res=document.getElementById('broadcast-result');res.style.display='block';
-    res.innerHTML=t('sent_result')+': <b>'+r.sent+'</b> · '+t('failed_lbl')+': <b>'+r.failed+'</b> · '+t('total_lbl')+': <b>'+r.total+'</b>';
-    toast('Broadcast: '+r.sent+' '+t('broadcast_delivered'));
+
+  var payload={message:msg,segment:_bcSegment,pushApp:pushApp};
+  if(photoUrl)payload.photoUrl=photoUrl;
+  if(isScheduled&&scheduledAt)payload.scheduledAt=scheduledAt;
+
+  post('/admark/api/broadcast',payload).then(function(r){
+    var res=document.getElementById('broadcast-result');
+    res.style.display='block';
+    if(r.scheduled){
+      res.innerHTML='🗓 <b>Scheduled!</b> Will send at: '+new Date(r.scheduledAt).toLocaleString();
+      toast('Broadcast scheduled');
+      loadBcQueue();
+    } else {
+      res.innerHTML=t('sent_result')+': <b>'+r.sent+'</b> · '+t('failed_lbl')+': <b>'+r.failed+'</b> · '+t('total_lbl')+': <b>'+r.total+'</b>';
+      toast('Broadcast: '+r.sent+' '+t('broadcast_delivered'));
+    }
   }).catch(function(e){toast('Error: '+e.message,'err')})
-  .finally(function(){btn.textContent=t('broadcast_btn');btn.disabled=false});
+  .finally(function(){
+    var isS=document.getElementById('bc-schedule-check').checked;
+    btn.textContent=isS?'🗓 SCHEDULE':'📢 SEND';
+    btn.disabled=false;
+  });
+}
+
+function loadBcQueue(){
+  var el=document.getElementById('bc-queue');
+  if(!el)return;
+  get('/admark/api/broadcast/queue').then(function(rows){
+    if(!rows||!rows.length){
+      el.innerHTML='<div style="font-size:11px;color:var(--muted)">'+t('bc_queue_empty')+'</div>';
+      return;
+    }
+    el.innerHTML=rows.map(function(b){
+      var dt=new Date(b.scheduled_at).toLocaleString();
+      var seg=b.segment==='all'?'All':b.segment==='clients'?'Clients':'Freelancers';
+      var msgShort=(b.message||'').slice(0,60)+((b.message||'').length>60?'…':'');
+      var photoIcon=b.photo_url?'🖼 ':'';
+      var pushIcon=b.push_app?'📱 ':'';
+      var cancelBtn=b.status==='pending'
+        ?'<button class="btn" style="padding:3px 10px;font-size:10px;background:none;border:1px solid var(--border2);color:var(--muted)" onclick="cancelBc(\''+b.id+'\')">Cancel</button>'
+        :'';
+      var stats=b.status==='sent'?(' · ✅ '+b.sent_count+' / ❌ '+b.failed_count):'';
+      return '<div class="bc-queue-item">'
+        +'<div style="min-width:0"><div class="bq-msg">'+photoIcon+pushIcon+msgShort+'</div>'
+        +'<div class="bq-meta">'+dt+' · '+seg+stats+'</div></div>'
+        +'<div class="bq-right"><span class="bq-status '+b.status+'">'+b.status+'</span>'+cancelBtn+'</div>'
+        +'</div>';
+    }).join('');
+  }).catch(function(e){
+    el.innerHTML='<div style="font-size:11px;color:var(--red)">Error: '+(e&&e.message?e.message:'Failed to load')+'</div>';
+  });
+}
+
+function cancelBc(id){
+  if(!confirm('Cancel this broadcast?'))return;
+  del('/admark/api/broadcast/queue/'+id).then(function(){
+    toast('Cancelled');loadBcQueue();
+  }).catch(function(e){toast('Error: '+e.message,'err')});
 }
 
 // ── Commissions ───────────────────────────────────────────

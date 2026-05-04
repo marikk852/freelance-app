@@ -10,6 +10,7 @@ const { healthCheck, pool } = require('../database/db');
 const tonService = require('./services/tonService');
 const { startMonitoring } = require('./services/monitorService');
 const { authMiddleware } = require('./middleware/auth');
+const { processPendingBroadcasts } = require('./services/broadcastService');
 
 // ============================================================
 // SafeDeal Backend — Express API Server
@@ -105,9 +106,10 @@ app.use('/api/contracts',  require('./routes/contracts'));
 app.use('/api/deliveries', require('./routes/deliveries'));
 app.use('/api/disputes',   require('./routes/disputes'));
 app.use('/api/users',      require('./routes/users'));
-app.use('/api/jobs',       require('./routes/jobs'));
-app.use('/api/livefeed',   require('./routes/livefeed'));
-app.use('/api/marketing',  require('./routes/marketing'));
+app.use('/api/jobs',           require('./routes/jobs'));
+app.use('/api/livefeed',       require('./routes/livefeed'));
+app.use('/api/marketing',      require('./routes/marketing'));
+app.use('/api/notifications',  require('./routes/notifications'));
 
 // ---------- Webhook для бота (production) ----------
 if (process.env.NODE_ENV === 'production') {
@@ -216,6 +218,10 @@ async function start() {
 
   // Запускаем фоновый мониторинг
   startMonitoring();
+
+  // Планировщик рассылок — каждую минуту
+  setInterval(() => processPendingBroadcasts(), 60 * 1000);
+  console.log('[Server] Broadcast scheduler started (60s interval)');
 
   // Старт HTTP сервера
   app.listen(PORT, () => {

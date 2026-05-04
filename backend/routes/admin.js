@@ -3,7 +3,8 @@ const router   = express.Router();
 const path     = require('path');
 const axios    = require('axios');
 const { query } = require('../../database/db');
-const escrowService = require('../services/escrowService');
+const escrowService      = require('../services/escrowService');
+const broadcastService   = require('../services/broadcastService');
 
 // ============================================================
 // Admin Panel — /admark
@@ -57,6 +58,26 @@ async function initAdminTables() {
       ('maintenance_message', '')
     ON CONFLICT (key) DO NOTHING
   `);
+
+  // Broadcast queue — scheduled and immediate broadcasts
+  await query(`
+    CREATE TABLE IF NOT EXISTS broadcast_queue (
+      id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+      message      TEXT        NOT NULL,
+      photo_url    TEXT,
+      segment      VARCHAR(20) NOT NULL DEFAULT 'all',
+      push_app     BOOLEAN     NOT NULL DEFAULT true,
+      scheduled_at TIMESTAMPTZ NOT NULL,
+      status       VARCHAR(20) NOT NULL DEFAULT 'pending',
+      sent_at      TIMESTAMPTZ,
+      sent_count   INT         DEFAULT 0,
+      failed_count INT         DEFAULT 0,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  // Add photo_url column to notifications if it doesn't exist
+  await query(`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS photo_url TEXT`);
 }
 initAdminTables().catch(e => console.error('[Admin] init tables error:', e.message));
 
@@ -561,33 +582,71 @@ router.delete('/api/jobs/:id', async (req, res) => {
 });
 
 // ================================================================
-// BROADCAST MESSAGE
+// BROADCAST — send or schedule
 // ================================================================
-router.post('/api/broadcast', async (req, res) => {
+
+router.post('/api/broadcast', adminAuth, async (req, res) => {
   try {
-    const { message } = req.body;
+    const { message, photoUrl, segment = 'all', pushApp = true, scheduledAt } = req.body;
     if (!message || message.trim().length < 3)
       return res.status(400).json({ error: 'Message is too short' });
 
-    const { rows: users } = await query(
-      `SELECT u.telegram_id FROM users u
-       WHERE NOT EXISTS (SELECT 1 FROM banned_users b WHERE b.telegram_id=u.telegram_id)
-       ORDER BY u.created_at DESC`
-    );
-    const token = process.env.BOT_TOKEN;
-    if (!token) return res.status(500).json({ error: 'BOT_TOKEN is not configured' });
+    const validSegments = ['all', 'clients', 'freelancers'];
+    if (!validSegments.includes(segment))
+      return res.status(400).json({ error: 'Invalid segment' });
 
-    let sent=0, failed=0;
-    for (const u of users) {
-      try {
-        await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
-          chat_id: u.telegram_id, text: message, parse_mode: 'HTML',
-        });
-        sent++;
-      } catch { failed++; }
-      await new Promise(r => setTimeout(r, 40));
+    // Scheduled broadcast — save to queue
+    if (scheduledAt) {
+      const dt = new Date(scheduledAt);
+      if (isNaN(dt.getTime()) || dt <= new Date())
+        return res.status(400).json({ error: 'scheduledAt must be a future date' });
+
+      const { rows } = await query(
+        `INSERT INTO broadcast_queue (message, photo_url, segment, push_app, scheduled_at)
+         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+        [message.trim(), photoUrl || null, segment, pushApp !== false, dt]
+      );
+      return res.json({ scheduled: true, id: rows[0].id, scheduledAt: dt });
     }
-    res.json({ success: true, sent, failed, total: users.length });
+
+    // Immediate broadcast
+    const result = await broadcastService.sendBroadcast({
+      message : message.trim(),
+      photoUrl: photoUrl || null,
+      segment,
+      pushApp : pushApp !== false,
+    });
+    res.json({ success: true, ...result });
+  } catch (err) {
+    console.error('[Admin] broadcast error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET scheduled broadcast queue
+router.get('/api/broadcast/queue', adminAuth, async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT id, message, photo_url, segment, push_app, scheduled_at,
+              status, sent_at, sent_count, failed_count, created_at
+       FROM broadcast_queue
+       ORDER BY scheduled_at DESC
+       LIMIT 50`
+    );
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// DELETE (cancel) a scheduled broadcast
+router.delete('/api/broadcast/queue/:id', adminAuth, async (req, res) => {
+  try {
+    const { rowCount } = await query(
+      `UPDATE broadcast_queue SET status='cancelled'
+       WHERE id=$1 AND status='pending'`,
+      [req.params.id]
+    );
+    if (!rowCount) return res.status(404).json({ error: 'Not found or already sent' });
+    res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

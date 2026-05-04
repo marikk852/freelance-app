@@ -23,7 +23,7 @@ function setBot(bot) {
  * @param {string} message    - message text (Markdown)
  * @param {Object} payload    - additional data (for buttons)
  */
-async function notify(telegramId, type, message, payload = {}) {
+async function notify(telegramId, type, message, payload = {}, photoUrl = null) {
   // Save to DB
   try {
     const { rows } = await query(
@@ -32,9 +32,9 @@ async function notify(telegramId, type, message, payload = {}) {
     );
     if (rows[0]) {
       await query(
-        `INSERT INTO notifications (user_id, type, message, payload)
-         VALUES ($1, $2, $3, $4)`,
-        [rows[0].id, type, message, JSON.stringify(payload)]
+        `INSERT INTO notifications (user_id, type, message, photo_url, payload)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [rows[0].id, type, message, photoUrl || null, JSON.stringify(payload)]
       );
     }
   } catch (err) {
@@ -44,12 +44,22 @@ async function notify(telegramId, type, message, payload = {}) {
   // Send via Telegram
   if (_bot) {
     try {
-      await _bot.telegram.sendMessage(telegramId, message, {
-        parse_mode : 'Markdown',
-        reply_markup: payload.inlineKeyboard
-          ? { inline_keyboard: payload.inlineKeyboard }
-          : undefined,
-      });
+      if (photoUrl) {
+        await _bot.telegram.sendPhoto(telegramId, photoUrl, {
+          caption    : message,
+          parse_mode : 'Markdown',
+          reply_markup: payload.inlineKeyboard
+            ? { inline_keyboard: payload.inlineKeyboard }
+            : undefined,
+        });
+      } else {
+        await _bot.telegram.sendMessage(telegramId, message, {
+          parse_mode : 'Markdown',
+          reply_markup: payload.inlineKeyboard
+            ? { inline_keyboard: payload.inlineKeyboard }
+            : undefined,
+        });
+      }
     } catch (err) {
       console.error(`[Notify] Error sending to Telegram (${telegramId}):`, err.message);
     }

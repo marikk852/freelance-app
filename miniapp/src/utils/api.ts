@@ -76,6 +76,14 @@ export const rooms = {
   join: (inviteLink: string) => api.get(`/rooms/join/${inviteLink}`),
 };
 
+// ---- Уведомления ----
+export const notifications = {
+  list:        ()          => api.get('/notifications'),
+  unreadCount: ()          => api.get('/notifications/unread-count'),
+  readAll:     ()          => api.patch('/notifications/read-all'),
+  read:        (id: string) => api.patch(`/notifications/${id}/read`),
+};
+
 // ---- Live Feed ----
 export const livefeed = {
   get: () => api.get('/livefeed'),

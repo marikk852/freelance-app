@@ -4,7 +4,7 @@ import { PixelScene } from '../components/PixelScene';
 import { CoinBurst } from '../components/CoinBurst';
 import { useTelegram } from '../hooks/useTelegram';
 import { useCountUp } from '../hooks/useCountUp';
-import { users } from '../utils/api';
+import { users, notifications as notificationsApi } from '../utils/api';
 import { FlameIcon } from '../components/FlameIcon';
 import { DealsIcon, NewDealIcon, LiveFeedIcon, JobBoardIcon, FreelancerIcon } from '../components/HomeNavIcons';
 
@@ -70,18 +70,21 @@ export function Home() {
   const [profile,      setProfile]      = useState<any>(null);
   const [activeCount,  setActiveCount]  = useState(0);
   const [burst,        setBurst]        = useState(false);
+  const [unreadCount,  setUnreadCount]  = useState(0);
 
   useEffect(() => {
     (async () => {
       try {
-        const [meRes, dealsRes] = await Promise.all([
+        const [meRes, dealsRes, notifRes] = await Promise.all([
           users.me(),
           users.myDeals(),
+          notificationsApi.unreadCount().catch(() => ({ data: { count: 0 } })),
         ]);
         setProfile(meRes.data);
         const d = dealsRes.data;
         const all = [...(d.as_client || []), ...(d.as_freelancer || [])];
         setActiveCount(all.filter((x: any) => !['completed','refunded','cancelled'].includes(x.status)).length);
+        setUnreadCount(notifRes.data.count ?? 0);
       } catch { /* guest */ }
     })();
   }, []);
@@ -113,6 +116,25 @@ export function Home() {
         <div className="coins" onClick={() => setBurst(b => !b)} style={{ cursor: 'pointer' }}>
           <span className="pcoin" style={{ background: '#ffaa00', borderColor: '#ff8800' }} />
           {countCoins.toLocaleString()}
+        </div>
+        {/* Bell icon with unread badge */}
+        <div
+          onClick={() => go('/notifications')}
+          style={{ position: 'relative', cursor: 'pointer', marginLeft: '4px', lineHeight: 0 }}>
+          <span style={{ fontSize: '16px' }}>🔔</span>
+          {unreadCount > 0 && (
+            <span style={{
+              position: 'absolute', top: '-4px', right: '-6px',
+              minWidth: '14px', height: '14px',
+              background: '#ff4466', borderRadius: '7px',
+              fontSize: '7px', color: '#fff', fontFamily: '"Press Start 2P", monospace',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '0 2px', boxShadow: '0 0 6px rgba(255,68,102,0.7)',
+              lineHeight: 1,
+            }}>
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
         </div>
       </div>
 
