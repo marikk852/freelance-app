@@ -97,14 +97,30 @@ export function NotificationPopup() {
     ? JSON.parse(current.payload) : (current.payload || {});
 
   return (
+    {/* Backdrop overlay */}
+    <div
+      onClick={() => dismiss(true)}
+      style={{
+        position  : 'fixed',
+        inset     : 0,
+        zIndex    : 9998,
+        background: visible ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0)',
+        transition: 'background 0.3s ease',
+        backdropFilter: visible ? 'blur(2px)' : 'none',
+      }}
+    />
+
+    {/* Popup card — centered, 70% width */}
     <div
       style={{
         position  : 'fixed',
-        top       : '12px',
-        left      : '12px',
-        right     : '12px',
+        top       : '50%',
+        left      : '50%',
         zIndex    : 9999,
-        transform : visible ? 'translateY(0)' : 'translateY(-110%)',
+        width     : '70%',
+        transform : visible
+          ? 'translate(-50%, -50%) scale(1)'
+          : 'translate(-50%, -50%) scale(0.85)',
         opacity   : visible ? 1 : 0,
         transition: 'transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease',
         pointerEvents: visible ? 'auto' : 'none',
@@ -112,12 +128,12 @@ export function NotificationPopup() {
     >
       <div
         style={{
-          background   : 'rgba(8,8,8,0.97)',
+          background   : 'rgba(8,8,8,0.98)',
           border       : '1px solid rgba(204,68,255,0.5)',
-          borderRadius : '16px',
+          borderRadius : '18px',
           overflow     : 'hidden',
-          boxShadow    : '0 8px 40px rgba(0,0,0,0.8), 0 0 0 1px rgba(204,68,255,0.15), inset 0 1px 0 rgba(255,255,255,0.06)',
-          backdropFilter: 'blur(20px)',
+          boxShadow    : '0 12px 60px rgba(0,0,0,0.9), 0 0 0 1px rgba(204,68,255,0.15), inset 0 1px 0 rgba(255,255,255,0.06)',
+          backdropFilter: 'blur(24px)',
           position     : 'relative',
         }}
       >
@@ -143,76 +159,67 @@ export function NotificationPopup() {
             <img
               src={current.photo_url}
               alt=""
-              style={{
-                width: '100%',
-                maxHeight: '200px',
-                objectFit: 'cover',
-                display: 'block',
-              }}
+              style={{ width: '100%', maxHeight: '180px', objectFit: 'cover', display: 'block' }}
             />
-            {/* Gradient overlay at bottom of image */}
             <div style={{
-              position: 'absolute', bottom: 0, left: 0, right: 0, height: '60px',
-              background: 'linear-gradient(transparent, rgba(8,8,8,0.97))',
+              position: 'absolute', bottom: 0, left: 0, right: 0, height: '50px',
+              background: 'linear-gradient(transparent, rgba(8,8,8,0.98))',
             }} />
           </div>
         )}
 
-        {/* Content row */}
+        {/* Text content */}
         <div
           onClick={handleTap}
           style={{
-            padding: current.photo_url ? '10px 44px 14px 14px' : '14px 44px 14px 14px',
+            padding: '16px 16px 12px',
             cursor : payload?.contractId ? 'pointer' : 'default',
             position: 'relative', zIndex: 1,
+            textAlign: 'center',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-            <span style={{ fontSize: '20px', flexShrink: 0, lineHeight: 1.2 }}>{icon}</span>
-            <div style={{ minWidth: 0 }}>
-              <div style={{
-                fontSize  : '8px',
-                fontFamily: '"Press Start 2P", monospace',
-                color     : '#fff',
-                lineHeight: '1.9',
-                wordBreak : 'break-word',
-              }}>
-                {current.message}
-              </div>
-              {payload?.contractId && (
-                <div style={{ marginTop: '6px', fontSize: '7px', color: '#cc44ff', fontFamily: '"Press Start 2P", monospace' }}>
-                  TAP TO OPEN →
-                </div>
-              )}
-            </div>
+          <div style={{ fontSize: '22px', marginBottom: '10px' }}>{icon}</div>
+          <div style={{
+            fontSize  : '8px',
+            fontFamily: '"Press Start 2P", monospace',
+            color     : '#fff',
+            lineHeight: '2',
+            wordBreak : 'break-word',
+          }}>
+            {current.message}
           </div>
+          {payload?.contractId && (
+            <div style={{ marginTop: '8px', fontSize: '7px', color: '#cc44ff', fontFamily: '"Press Start 2P", monospace' }}>
+              TAP TO OPEN →
+            </div>
+          )}
         </div>
 
-        {/* Close button */}
-        <button
-          onClick={() => dismiss(true)}
-          style={{
-            position : 'absolute',
-            top      : current.photo_url ? '8px' : '10px',
-            right    : '10px',
-            zIndex   : 10,
-            width    : '28px',
-            height   : '28px',
-            borderRadius: '50%',
-            background: 'rgba(0,0,0,0.6)',
-            border   : '1px solid rgba(255,255,255,0.2)',
-            color    : 'rgba(255,255,255,0.8)',
-            fontSize : '14px',
-            cursor   : 'pointer',
-            display  : 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            lineHeight: 1,
-            backdropFilter: 'blur(8px)',
-          }}
-        >
-          ×
-        </button>
+        {/* Close button — bottom center */}
+        <div style={{ padding: '0 16px 16px', position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'center' }}>
+          <button
+            onClick={() => dismiss(true)}
+            style={{
+              width        : '36px',
+              height       : '36px',
+              borderRadius : '50%',
+              background   : 'rgba(255,255,255,0.07)',
+              border       : '1px solid rgba(255,255,255,0.2)',
+              color        : 'rgba(255,255,255,0.7)',
+              fontSize     : '18px',
+              cursor       : 'pointer',
+              display      : 'flex',
+              alignItems   : 'center',
+              justifyContent: 'center',
+              lineHeight   : 1,
+              transition   : 'background 0.15s, border-color 0.15s',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,68,102,0.2)', e.currentTarget.style.borderColor = 'rgba(255,68,102,0.5)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.07)', e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)')}
+          >
+            ×
+          </button>
+        </div>
       </div>
     </div>
   );
