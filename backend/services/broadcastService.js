@@ -147,4 +147,46 @@ async function processPendingBroadcasts() {
   }
 }
 
-module.exports = { sendBroadcast, processPendingBroadcasts };
+/**
+ * Send broadcast to a specific list of telegram_ids.
+ * @param {{ message: string, photoUrl?: string, telegramIds: number[], pushApp?: boolean }} opts
+ */
+async function sendToTargets({ message, photoUrl, telegramIds, pushApp = true }) {
+  const token = process.env.BOT_TOKEN;
+  if (!token) throw new Error('BOT_TOKEN not configured');
+
+  let sent = 0, failed = 0;
+  const notified = [];
+
+  for (const telegramId of telegramIds) {
+    try {
+      await sendToUser(token, telegramId, message, photoUrl);
+      sent++;
+      notified.push(telegramId);
+    } catch { failed++; }
+    await new Promise(r => setTimeout(r, 40));
+  }
+
+  if (pushApp && notified.length > 0) {
+    try {
+      const placeholders = notified.map((_, i) => `$${i + 1}`).join(',');
+      const { rows } = await query(
+        `SELECT id FROM users WHERE telegram_id IN (${placeholders})`,
+        notified
+      );
+      for (const u of rows) {
+        await query(
+          `INSERT INTO notifications (user_id, type, message, photo_url, payload)
+           VALUES ($1, 'broadcast', $2, $3, '{}')`,
+          [u.id, message, photoUrl || null]
+        );
+      }
+    } catch (err) {
+      console.error('[Broadcast] pushInApp (targets) error:', err.message);
+    }
+  }
+
+  return { sent, failed, total: telegramIds.length };
+}
+
+module.exports = { sendBroadcast, sendToTargets, processPendingBroadcasts };

@@ -176,6 +176,11 @@ select.inp{cursor:pointer}
 .bq-status.cancelled{color:var(--muted);border:1px solid var(--border)}
 .bq-status.sending{color:var(--blue);border:1px solid rgba(0,119,238,.3)}
 .bq-status.failed{color:var(--red);border:1px solid rgba(224,51,85,.3)}
+.bc-user-result{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:11px;transition:background .1s}
+.bc-user-result:hover{background:var(--tr-hover)}
+.bc-user-result:last-child{border-bottom:none}
+.bc-user-tag{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;background:rgba(170,51,221,.12);border:1px solid rgba(170,51,221,.3);font-size:10px;color:var(--purple);cursor:default}
+.bc-user-tag button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:0 0 0 4px;line-height:1}
 .pager{display:flex;gap:8px;align-items:center;margin-top:12px}
 .toast{position:fixed;bottom:22px;right:22px;z-index:9999;padding:11px 16px;border-radius:7px;font-size:12px;background:var(--card);border:1px solid var(--border2);color:var(--text);box-shadow:0 8px 32px rgba(0,0,0,.5);animation:slide-in .2s ease;max-width:300px}
 .toast.ok{border-color:rgba(0,255,136,.4);color:var(--green)}
@@ -411,13 +416,24 @@ select.inp{cursor:pointer}
       <div class="broadcast-wrap">
 
         <!-- Segment tabs -->
-        <div style="font-size:10px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Audience</div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px" data-i18n="bc_audience_lbl">Audience</div>
         <div class="bc-tabs">
           <button class="bc-tab active" onclick="setBcSeg('all',this)" data-i18n="bc_seg_all">All users</button>
           <button class="bc-tab" onclick="setBcSeg('clients',this)" data-i18n="bc_seg_clients">Clients only</button>
           <button class="bc-tab" onclick="setBcSeg('freelancers',this)" data-i18n="bc_seg_freelancers">Freelancers only</button>
+          <button class="bc-tab" onclick="setBcSeg('specific',this)" data-i18n="bc_seg_specific">Specific users</button>
         </div>
         <input type="hidden" id="bc-segment" value="all" />
+
+        <!-- Specific user search (shown only for 'specific' segment) -->
+        <div id="bc-specific-wrap" style="display:none;margin-bottom:10px">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px" data-i18n="bc_search_lbl">Search user</div>
+          <div style="position:relative">
+            <input type="text" id="bc-user-search" placeholder="@username or Telegram ID..." oninput="onBcUserSearch()" autocomplete="off" style="margin-bottom:0" />
+            <div id="bc-user-results" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:1px solid var(--border2);border-radius:0 0 6px 6px;z-index:100;max-height:220px;overflow-y:auto"></div>
+          </div>
+          <div id="bc-selected-users" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px"></div>
+        </div>
 
         <!-- Photo / GIF URL -->
         <div style="font-size:10px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Photo / GIF URL (optional)</div>
@@ -508,7 +524,10 @@ const LANGS={
     comm_new_pct:'NEW PERCENTAGE',comm_preview_title:'EARNINGS AT DIFFERENT DEAL AMOUNTS',
     comm_save:'SAVE FEE',comm_history:'CHANGE HISTORY',
     save_btn:'💾 SAVE',broadcast_ph:'Message text...',broadcast_btn:'📢 SEND TO ALL',
-    bc_seg_all:'All users',bc_seg_clients:'Clients only',bc_seg_freelancers:'Freelancers only',
+    bc_audience_lbl:'Audience',
+    bc_seg_all:'All users',bc_seg_clients:'Clients only',bc_seg_freelancers:'Freelancers only',bc_seg_specific:'Specific users',
+    bc_search_lbl:'Search user',bc_no_targets:'Select at least one user',
+    bc_target_confirm:'Send to these users?',
     bc_schedule_lbl:'Schedule send',bc_push_lbl:'Also push to Mini App (in-app notification)',
     bc_queue_title:'Scheduled Broadcasts',bc_queue_empty:'No scheduled broadcasts',
     bc_sched_confirm:'Schedule this broadcast?',
@@ -571,7 +590,10 @@ const LANGS={
     comm_new_pct:'НОВЫЙ ПРОЦЕНТ',comm_preview_title:'ЗАРАБОТОК ПРИ РАЗНЫХ СУММАХ СДЕЛКИ',
     comm_save:'СОХРАНИТЬ КОМИССИЮ',comm_history:'ИСТОРИЯ ИЗМЕНЕНИЙ',
     save_btn:'💾 СОХРАНИТЬ',broadcast_ph:'Текст сообщения...',broadcast_btn:'📢 ОТПРАВИТЬ ВСЕМ',
-    bc_seg_all:'Все',bc_seg_clients:'Только клиенты',bc_seg_freelancers:'Только фрилансеры',
+    bc_audience_lbl:'Аудитория',
+    bc_seg_all:'Все',bc_seg_clients:'Только клиенты',bc_seg_freelancers:'Только фрилансеры',bc_seg_specific:'Конкретные пользователи',
+    bc_search_lbl:'Поиск пользователя',bc_no_targets:'Выберите хотя бы одного пользователя',
+    bc_target_confirm:'Отправить этим пользователям?',
     bc_schedule_lbl:'Запланировать отправку',bc_push_lbl:'Также в Mini App (push-уведомление)',
     bc_queue_title:'Запланированные рассылки',bc_queue_empty:'Нет запланированных рассылок',
     bc_sched_confirm:'Запланировать эту рассылку?',
@@ -925,12 +947,67 @@ function saveSettings(){
 // ── BROADCAST ──────────────────────────────────────────────
 
 var _bcSegment='all';
+var _bcTargetUsers=[];   // [{telegramId, username, name}]
+var _bcSearchTimer=null;
 
 function setBcSeg(seg,el){
   _bcSegment=seg;
   document.querySelectorAll('.bc-tab').forEach(function(b){b.classList.remove('active')});
   if(el)el.classList.add('active');
+  var wrap=document.getElementById('bc-specific-wrap');
+  if(wrap)wrap.style.display=seg==='specific'?'block':'none';
+  // hide schedule for specific (no queue support needed for individual)
+  var sched=document.getElementById('bc-schedule-check');
+  if(sched&&seg==='specific'){sched.checked=false;toggleBcSchedule();}
 }
+
+function onBcUserSearch(){
+  clearTimeout(_bcSearchTimer);
+  var q=document.getElementById('bc-user-search').value.trim();
+  var res=document.getElementById('bc-user-results');
+  if(q.length<1){res.style.display='none';return;}
+  _bcSearchTimer=setTimeout(function(){
+    get('/admark/api/broadcast/search-users?q='+encodeURIComponent(q)).then(function(users){
+      if(!users.length){res.innerHTML='<div style="padding:10px 12px;font-size:11px;color:var(--muted)">No users found</div>';res.style.display='block';return;}
+      res.innerHTML=users.map(function(u){
+        var name=(u.first_name||'')+(u.last_name?' '+u.last_name:'');
+        var already=_bcTargetUsers.some(function(t){return t.telegramId===u.telegram_id;});
+        return '<div class="bc-user-result" onclick="addBcTarget('+u.telegram_id+',\''+escHtml(u.username||'')
+          +'\',\''+escHtml(name)+'\')">'
+          +'<span>'+(u.username?'@'+u.username+' · ':'')+escHtml(name||String(u.telegram_id))+'</span>'
+          +'<span style="color:var(--muted);font-size:10px">'+(already?'✓ added':'ID '+u.telegram_id)+'</span>'
+          +'</div>';
+      }).join('');
+      res.style.display='block';
+    }).catch(function(){res.style.display='none';});
+  },300);
+}
+
+function addBcTarget(telegramId,username,name){
+  if(_bcTargetUsers.some(function(t){return t.telegramId===telegramId;}))return;
+  _bcTargetUsers.push({telegramId:telegramId,username:username,name:name});
+  document.getElementById('bc-user-search').value='';
+  document.getElementById('bc-user-results').style.display='none';
+  renderBcTargets();
+}
+
+function removeBcTarget(telegramId){
+  _bcTargetUsers=_bcTargetUsers.filter(function(t){return t.telegramId!==telegramId;});
+  renderBcTargets();
+}
+
+function renderBcTargets(){
+  var el=document.getElementById('bc-selected-users');
+  if(!el)return;
+  if(!_bcTargetUsers.length){el.innerHTML='<span style="font-size:10px;color:var(--muted)">No users selected yet</span>';return;}
+  el.innerHTML=_bcTargetUsers.map(function(u){
+    var label=u.username?'@'+u.username:(u.name||String(u.telegramId));
+    return '<span class="bc-user-tag">'+escHtml(label)
+      +'<button onclick="removeBcTarget('+u.telegramId+')" title="Remove">×</button></span>';
+  }).join('');
+}
+
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 function toggleBcSchedule(){
   var chk=document.getElementById('bc-schedule-check');
@@ -960,6 +1037,26 @@ function sendBroadcast(){
   var scheduledAt=isScheduled?document.getElementById('bc-schedule-dt').value:'';
 
   if(!msg)return toast(t('enter_msg'),'err');
+
+  // Specific users mode
+  if(_bcSegment==='specific'){
+    if(!_bcTargetUsers.length)return toast(t('bc_no_targets'),'err');
+    var names=_bcTargetUsers.map(function(u){return u.username?'@'+u.username:String(u.telegramId);}).join(', ');
+    if(!confirm(t('bc_target_confirm')+'\n\n'+names))return;
+    var btn=document.getElementById('broadcast-btn');
+    btn.textContent=t('sending');btn.disabled=true;
+    var payload={message:msg,pushApp:pushApp,targetUsers:_bcTargetUsers.map(function(u){return u.telegramId;})};
+    if(photoUrl)payload.photoUrl=photoUrl;
+    post('/admark/api/broadcast',payload).then(function(r){
+      var res=document.getElementById('broadcast-result');
+      res.style.display='block';
+      res.innerHTML=t('sent_result')+': <b>'+r.sent+'</b> · '+t('failed_lbl')+': <b>'+r.failed+'</b> · '+t('total_lbl')+': <b>'+r.total+'</b>';
+      toast('Sent to '+r.sent+' user(s)');
+    }).catch(function(e){toast('Error: '+e.message,'err')})
+    .finally(function(){btn.textContent='📢 SEND';btn.disabled=false;});
+    return;
+  }
+
   if(!confirm(isScheduled?t('bc_sched_confirm'):t('send_confirm')))return;
 
   var btn=document.getElementById('broadcast-btn');

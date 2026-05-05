@@ -4,7 +4,7 @@ const path     = require('path');
 const axios    = require('axios');
 const { query } = require('../../database/db');
 const escrowService      = require('../services/escrowService');
-const broadcastService   = require('../services/broadcastService');
+const { sendBroadcast, sendToTargets, processPendingBroadcasts } = require('../services/broadcastService');
 
 // ============================================================
 // Admin Panel — /admark
@@ -585,12 +585,45 @@ router.delete('/api/jobs/:id', async (req, res) => {
 // BROADCAST — send or schedule
 // ================================================================
 
+// Search users for targeted broadcast
+router.get('/api/broadcast/search-users', adminAuth, async (req, res) => {
+  try {
+    const q = (req.query.q || '').trim();
+    if (q.length < 1) return res.json([]);
+
+    const { rows } = await query(
+      `SELECT telegram_id, username, first_name, last_name, deals_count, rating
+       FROM users
+       WHERE (username ILIKE $1 OR CAST(telegram_id AS TEXT) LIKE $2)
+         AND NOT EXISTS (SELECT 1 FROM banned_users b WHERE b.telegram_id = users.telegram_id)
+       ORDER BY deals_count DESC
+       LIMIT 15`,
+      [`%${q}%`, `${q}%`]
+    );
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 router.post('/api/broadcast', adminAuth, async (req, res) => {
   try {
-    const { message, photoUrl, segment = 'all', pushApp = true, scheduledAt } = req.body;
+    const { message, photoUrl, segment = 'all', pushApp = true, scheduledAt, targetUsers } = req.body;
     if (!message || message.trim().length < 3)
       return res.status(400).json({ error: 'Message is too short' });
 
+    // ── Targeted send to specific users ────────────────────────
+    if (Array.isArray(targetUsers) && targetUsers.length > 0) {
+      const ids = targetUsers.map(Number).filter(Boolean);
+      if (!ids.length) return res.status(400).json({ error: 'No valid telegram IDs provided' });
+      const result = await sendToTargets({
+        message : message.trim(),
+        photoUrl: photoUrl || null,
+        telegramIds: ids,
+        pushApp : pushApp !== false,
+      });
+      return res.json({ success: true, ...result });
+    }
+
+    // ── Segment broadcast ───────────────────────────────────────
     const validSegments = ['all', 'clients', 'freelancers'];
     if (!validSegments.includes(segment))
       return res.status(400).json({ error: 'Invalid segment' });
@@ -610,7 +643,7 @@ router.post('/api/broadcast', adminAuth, async (req, res) => {
     }
 
     // Immediate broadcast
-    const result = await broadcastService.sendBroadcast({
+    const result = await sendBroadcast({
       message : message.trim(),
       photoUrl: photoUrl || null,
       segment,
