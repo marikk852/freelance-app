@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { BottomNav }   from './components/BottomNav';
 import { FloatingParticles } from './components/FloatingParticles';
+import { NotificationPopup } from './components/NotificationPopup';
 import { Home }        from './pages/Home';
 import { NewDeal }     from './pages/NewDeal';
 import { DealRoom }    from './pages/DealRoom';
@@ -131,6 +132,7 @@ export default function App() {
         }}
       />
 
+      <NotificationPopup />
       <Routes>
         <Route path="/"            element={<Home />} />
         <Route path="/new-deal"    element={<NewDeal />} />
