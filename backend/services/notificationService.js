@@ -31,11 +31,20 @@ async function notify(telegramId, type, message, payload = {}, photoUrl = null) 
       [telegramId]
     );
     if (rows[0]) {
-      await query(
-        `INSERT INTO notifications (user_id, type, message, photo_url, payload)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [rows[0].id, type, message, photoUrl || null, JSON.stringify(payload)]
-      );
+      try {
+        await query(
+          `INSERT INTO notifications (user_id, type, message, photo_url, payload)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [rows[0].id, type, message, photoUrl || null, JSON.stringify(payload)]
+        );
+      } catch {
+        // Fallback: insert without photo_url (column may not exist yet)
+        await query(
+          `INSERT INTO notifications (user_id, type, message, payload)
+           VALUES ($1, $2, $3, $4)`,
+          [rows[0].id, type, message, JSON.stringify(payload)]
+        );
+      }
     }
   } catch (err) {
     console.error('[Notify] Error saving notification to DB:', err.message);

@@ -18,14 +18,27 @@ router.get('/', async (req, res) => {
     );
     if (!uRows[0]) return res.json([]);
 
-    const { rows } = await query(
-      `SELECT id, type, message, photo_url, is_read, payload, created_at
-       FROM notifications
-       WHERE user_id = $1
-       ORDER BY created_at DESC
-       LIMIT 50`,
-      [uRows[0].id]
-    );
+    let rows;
+    try {
+      ({ rows } = await query(
+        `SELECT id, type, message, photo_url, is_read, payload, created_at
+         FROM notifications
+         WHERE user_id = $1
+         ORDER BY created_at DESC
+         LIMIT 50`,
+        [uRows[0].id]
+      ));
+    } catch {
+      // photo_url column may not exist yet — fallback without it
+      ({ rows } = await query(
+        `SELECT id, type, message, NULL AS photo_url, is_read, payload, created_at
+         FROM notifications
+         WHERE user_id = $1
+         ORDER BY created_at DESC
+         LIMIT 50`,
+        [uRows[0].id]
+      ));
+    }
     res.json(rows);
   } catch (err) {
     console.error('[Notifications] GET /:', err.message);

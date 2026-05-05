@@ -76,8 +76,7 @@ async function initAdminTables() {
     )
   `);
 
-  // Add photo_url column to notifications if it doesn't exist
-  await query(`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS photo_url TEXT`);
+  // photo_url column is added via migration 018_notifications_photo_url.sql
 }
 initAdminTables().catch(e => console.error('[Admin] init tables error:', e.message));
 
