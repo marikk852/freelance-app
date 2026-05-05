@@ -97,6 +97,7 @@ export function NotificationPopup() {
     ? JSON.parse(current.payload) : (current.payload || {});
 
   return (
+    <>
     {/* Backdrop overlay */}
     <div
       onClick={() => dismiss(true)}
@@ -222,5 +223,6 @@ export function NotificationPopup() {
         </div>
       </div>
     </div>
+    </>
   );
 }
