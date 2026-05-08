@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import { TonConnectUIProvider } from '@tonconnect/ui-react';
 import { Toaster } from 'react-hot-toast';
 import { BottomNav }   from './components/BottomNav';
 import { FloatingParticles } from './components/FloatingParticles';
@@ -112,6 +113,7 @@ export default function App() {
   }
 
   return (
+    <TonConnectUIProvider manifestUrl="https://freelance-app-production.up.railway.app/tonconnect-manifest.json">
     <BrowserRouter>
       <InviteHandler />
       <FloatingParticles />
@@ -154,5 +156,6 @@ export default function App() {
 
       <BottomNav />
     </BrowserRouter>
+    </TonConnectUIProvider>
   );
 }

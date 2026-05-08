@@ -4,6 +4,7 @@ import { DataRow } from '../components/GlassCard';
 import { users as usersApi } from '../utils/api';
 import { useTelegram } from '../hooks/useTelegram';
 import { useCountUp } from '../hooks/useCountUp';
+import { useTonWalletConnect } from '../hooks/useTonWallet';
 import toast from 'react-hot-toast';
 
 // ============================================================
@@ -56,6 +57,7 @@ function SectionLabel({ label }: { label: string }) {
 
 export function Profile() {
   const { user, tg } = useTelegram();
+  const { address: tonAddress, isConnected: walletConnected, connect: connectWallet, disconnect: disconnectWallet } = useTonWalletConnect();
   const [profile,   setProfile]   = useState<any>(null);
   const [portfolio, setPortfolio] = useState<any[]>([]);
   const [reviews,   setReviews]   = useState<any[]>([]);
@@ -409,14 +411,46 @@ export function Profile() {
           {/* TON Wallet */}
           <div className="gl card-stagger-5">
             <div className="pxgrid" /><div className="sh" />
-            <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginBottom: '10px' }}>
+            <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginBottom: '12px' }}>
               💎 TON WALLET
             </div>
-            <input className="input" value={wallet} onChange={e => setWallet(e.target.value)}
-              placeholder="UQ..." style={{ marginBottom: '8px' }} />
-            <button className="btn btn-b btn-full" onClick={handleSaveWallet} disabled={loading}>
-              {loading ? '[ ⏳ ]' : '[ 💾 SAVE ]'}
-            </button>
+            {walletConnected && tonAddress ? (
+              <>
+                <div style={{
+                  fontSize: '7px',
+                  color: '#00FF88',
+                  background: 'rgba(0,255,136,0.08)',
+                  border: '1px solid rgba(0,255,136,0.2)',
+                  borderRadius: '10px',
+                  padding: '10px 12px',
+                  marginBottom: '10px',
+                  wordBreak: 'break-all',
+                  lineHeight: '1.8',
+                }}>
+                  ✅ {tonAddress.slice(0, 8)}...{tonAddress.slice(-6)}
+                </div>
+                <button className="btn btn-full" onClick={disconnectWallet}
+                  style={{ fontSize: '7px', background: 'rgba(255,68,102,0.1)', border: '1px solid rgba(255,68,102,0.3)', color: '#FF4466' }}>
+                  [ 🔌 DISCONNECT ]
+                </button>
+              </>
+            ) : (
+              <>
+                {(profile?.ton_wallet_address) && (
+                  <div style={{
+                    fontSize: '7px',
+                    color: 'rgba(255,255,255,0.4)',
+                    marginBottom: '10px',
+                    wordBreak: 'break-all',
+                  }}>
+                    Saved: {profile.ton_wallet_address.slice(0, 8)}...{profile.ton_wallet_address.slice(-6)}
+                  </div>
+                )}
+                <button className="btn btn-b btn-full" onClick={connectWallet}>
+                  [ 💎 CONNECT TONKEEPER ]
+                </button>
+              </>
+            )}
           </div>
         </>
       )}
