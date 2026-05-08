@@ -18,6 +18,7 @@ import { MyDeals }        from './pages/MyDeals';
 import { PublicProfile }   from './pages/PublicProfile';
 import { FreelancerList }  from './pages/FreelancerList';
 import { Notifications }   from './pages/Notifications';
+import { Quests }          from './pages/Quests';
 import './styles/globals.css';
 
 // ============================================================
@@ -148,6 +149,7 @@ export default function App() {
         <Route path="/my-deals"      element={<MyDeals />} />
         <Route path="/freelancers"   element={<FreelancerList />} />
         <Route path="/notifications" element={<Notifications />} />
+        <Route path="/quests"        element={<Quests />} />
       </Routes>
 
       <BottomNav />

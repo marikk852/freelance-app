@@ -146,7 +146,28 @@ const PROFILE_GRID = [
   '0000000000000000',
 ];
 
+// ── QUESTS — scroll with a star ─────────────────────────────
+const QUESTS_GRID = [
+  '0000000000000000',
+  '0000001111000000', // star top
+  '0000011111100000',
+  '0001111111111000', // star wide
+  '0000111111110000',
+  '0000011111100000', // star bottom
+  '0000001001000000', // gap
+  '0001111111111000', // scroll top
+  '0001100000011000', // scroll sides
+  '0001100000011000',
+  '0001100000011000',
+  '0001111111111000', // scroll bottom
+  '0000000000000000',
+  '0000000000000000',
+  '0000000000000000',
+  '0000000000000000',
+];
+
 export const HomeIcon    = ({ size }: { size?: number }) => <Pixel3DIcon grid={HOME_GRID}    size={size} />;
 export const LiveIcon    = ({ size }: { size?: number }) => <Pixel3DIcon grid={LIVE_GRID}    size={size} />;
 export const JobsIcon    = ({ size }: { size?: number }) => <Pixel3DIcon grid={JOBS_GRID}    size={size} />;
 export const ProfileIcon = ({ size }: { size?: number }) => <Pixel3DIcon grid={PROFILE_GRID} size={size} />;
+export const QuestsIcon  = ({ size }: { size?: number }) => <Pixel3DIcon grid={QUESTS_GRID}  size={size} />;

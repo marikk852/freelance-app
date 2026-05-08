@@ -98,4 +98,10 @@ export const jobs = {
   applications: (id: string)            => api.get(`/jobs/${id}/applications`),
 };
 
+// ---- Квесты ----
+export const quests = {
+  list:  ()            => api.get('/quests'),
+  claim: (key: string) => api.post(`/quests/${key}/claim`),
+};
+
 export default api;

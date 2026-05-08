@@ -110,6 +110,7 @@ app.use('/api/jobs',           require('./routes/jobs'));
 app.use('/api/livefeed',       require('./routes/livefeed'));
 app.use('/api/marketing',      require('./routes/marketing'));
 app.use('/api/notifications',  require('./routes/notifications'));
+app.use('/api/quests',         require('./routes/quests'));
 
 // ---------- Webhook для бота (production) ----------
 if (process.env.NODE_ENV === 'production') {
