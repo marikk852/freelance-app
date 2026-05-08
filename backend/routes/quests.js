@@ -160,8 +160,8 @@ async function checkQuestEligibility(key, userId, user) {
       return !!rows[0]?.ton_wallet_address;
     }
     case 'complete_profile': {
-      const { rows } = await query(`SELECT bio, country FROM users WHERE id = $1`, [userId]);
-      return !!(rows[0]?.bio && rows[0]?.country);
+      const { rows } = await query(`SELECT profile_completed FROM users WHERE id = $1`, [userId]);
+      return rows[0]?.profile_completed === true;
     }
     case 'first_deal': {
       const { rows } = await query(
