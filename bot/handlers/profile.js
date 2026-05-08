@@ -19,6 +19,10 @@ async function handleProfile(ctx) {
       : 'No reviews';
 
     const verifiedBadge = profile.is_verified ? ' ✅' : '';
+    const botUsername   = ctx.botInfo?.username || process.env.BOT_USERNAME;
+    const refLink       = `https://t.me/${botUsername}?start=ref_${ctx.from.id}`;
+    const refCount      = profile.referral_count || 0;
+    const nextMilestone = 5 - (refCount % 5);
 
     await ctx.reply(
       `👤 *${profile.first_name || profile.username}${verifiedBadge}*\n` +
@@ -32,6 +36,8 @@ async function handleProfile(ctx) {
       `• Rating: ${ratingStr}\n` +
       `• 🔥 Streak: ${profile.streak_days} days\n` +
       `• 🪙 SafeCoins: ${profile.safe_coins}\n\n` +
+      `👥 *Referrals: ${refCount}* (${nextMilestone} more for +100 bonus coins)\n` +
+      `🔗 Your link: \`${refLink}\`\n\n` +
       (profile.ton_wallet_address
         ? `💎 Wallet: \`${profile.ton_wallet_address.slice(0, 12)}...\``
         : `💎 No wallet linked\n/wallet <address>`),
@@ -41,6 +47,7 @@ async function handleProfile(ctx) {
           inline_keyboard: [
             [{ text: '📁 Portfolio',    callback_data: 'portfolio' },
              { text: '⭐ Reviews',       callback_data: 'my_reviews' }],
+            [{ text: '👥 Share referral link', callback_data: 'share_ref' }],
             [{ text: '🌐 Open profile', web_app: { url: `${process.env.WEBAPP_URL}?screen=profile` } }],
           ],
         },
@@ -50,6 +57,24 @@ async function handleProfile(ctx) {
     console.error('[Bot] handleProfile error:', err.message);
     await ctx.reply('Error loading profile.');
   }
+}
+
+/**
+ * Handle "Share referral link" button — sends a ready-to-forward message.
+ */
+async function handleShareRef(ctx) {
+  const botUsername = ctx.botInfo?.username || process.env.BOT_USERNAME;
+  const refLink     = `https://t.me/${botUsername}?start=ref_${ctx.from.id}`;
+
+  await ctx.answerCbQuery();
+  await ctx.reply(
+    `👥 *Your referral link:*\n\n` +
+    `${refLink}\n\n` +
+    `Share this link with friends.\n` +
+    `• You earn *+50 SafeCoins* per referral\n` +
+    `• Every 5 referrals: *+100 bonus coins*`,
+    { parse_mode: 'Markdown' }
+  );
 }
 
 /**
@@ -95,4 +120,4 @@ function buildXpBar(xp, level) {
   return `[${bar}] ${progress}/${xpPerLevel}`;
 }
 
-module.exports = { handleProfile, handleSetWallet };
+module.exports = { handleProfile, handleSetWallet, handleShareRef };

@@ -3,7 +3,7 @@ require('dotenv').config({ path: '../.env' });
 const { Telegraf, session } = require('telegraf');
 const { handleStart }    = require('./handlers/start');
 const { handleMyDeals, handlePayment } = require('./handlers/deals');
-const { handleProfile, handleSetWallet } = require('./handlers/profile');
+const { handleProfile, handleSetWallet, handleShareRef } = require('./handlers/profile');
 const { handleCallback } = require('./handlers/callbacks');
 const { handleMessage }  = require('./handlers/messages');
 const notificationService = require('../backend/services/notificationService');
@@ -83,6 +83,29 @@ bot.command('newdeal', async (ctx) => {
 });
 
 /**
+ * /app — direct link to the Mini App (for sharing outside Telegram)
+ */
+bot.command('app', async (ctx) => {
+  const botUsername = process.env.BOT_USERNAME;
+  const appLink     = `https://t.me/${botUsername}?start=app`;
+
+  await ctx.reply(
+    `📱 *Open SafeDeal App:*\n\n` +
+    `Share this link — works from any app or browser:\n` +
+    `\`${appLink}\``,
+    {
+      parse_mode  : 'Markdown',
+      reply_markup: {
+        inline_keyboard: [[{
+          text   : '🚀 Open SafeDeal',
+          web_app: { url: process.env.WEBAPP_URL },
+        }]],
+      },
+    }
+  );
+});
+
+/**
  * /jobboard — биржа заказов (открывает Mini App)
  */
 bot.command('jobboard', async (ctx) => {
@@ -117,6 +140,9 @@ bot.command('help', async (ctx) => {
   );
 });
 
+// ---- Referral share button ----
+bot.action('share_ref', handleShareRef);
+
 // ---- Callback Query (нажатия inline-кнопок) ----
 bot.on('callback_query', handleCallback);
 
@@ -141,6 +167,7 @@ async function startBot() {
     { command: 'newdeal',  description: 'Создать сделку' },
     { command: 'profile',  description: 'Профиль' },
     { command: 'wallet',   description: 'Привязать TON кошелёк' },
+    { command: 'app',      description: 'Open Mini App' },
     { command: 'jobboard', description: 'Биржа заказов' },
     { command: 'help',     description: 'Помощь' },
   ]);

@@ -37,6 +37,63 @@ const User = {
   },
 
   /**
+   * Register a new user via referral link.
+   * Awards 50 coins to referrer per referral.
+   * Milestone bonus: +100 extra coins every 5 referrals.
+   * Returns { newUser, referrer, isNew }.
+   */
+  async registerWithReferral({ telegram_id, username, first_name, last_name, referrer_telegram_id }) {
+    const existing = await User.findByTelegramId(telegram_id);
+    if (existing) {
+      return { newUser: existing, referrer: null, isNew: false };
+    }
+
+    const { rows: newRows } = await query(
+      `INSERT INTO users (telegram_id, username, first_name, last_name, referred_by)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (telegram_id) DO NOTHING
+       RETURNING *`,
+      [telegram_id, username, first_name, last_name, referrer_telegram_id]
+    );
+    const newUser = newRows[0];
+    if (!newUser) {
+      return { newUser: await User.findByTelegramId(telegram_id), referrer: null, isNew: false };
+    }
+
+    const { rows: refRows } = await query(
+      `UPDATE users
+       SET referral_count = referral_count + 1,
+           safe_coins     = safe_coins + 50,
+           updated_at     = NOW()
+       WHERE telegram_id = $1
+       RETURNING *`,
+      [referrer_telegram_id]
+    );
+    const referrer = refRows[0] || null;
+
+    // Every 5 referrals => milestone bonus +100 coins
+    if (referrer && referrer.referral_count % 5 === 0) {
+      await query(
+        `UPDATE users SET safe_coins = safe_coins + 100, updated_at = NOW() WHERE telegram_id = $1`,
+        [referrer_telegram_id]
+      );
+    }
+
+    return { newUser, referrer, isNew: true };
+  },
+
+  /**
+   * Get referral stats for a user.
+   */
+  async getReferralStats(telegramId) {
+    const { rows } = await query(
+      `SELECT referral_count, safe_coins FROM users WHERE telegram_id = $1`,
+      [telegramId]
+    );
+    return rows[0] || null;
+  },
+
+  /**
    * Сохранить TON кошелёк пользователя.
    * @param {number} telegramId
    * @param {string} walletAddress
