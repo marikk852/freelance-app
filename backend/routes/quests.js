@@ -13,7 +13,11 @@ const { authMiddleware } = require('../middleware/auth');
  */
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const { rows: userRows } = await query(
+      'SELECT id FROM users WHERE telegram_id = $1', [req.user.telegramId]
+    );
+    if (!userRows[0]) return res.status(404).json({ error: 'User not found' });
+    const userId = userRows[0].id;
 
     const { rows } = await query(
       `SELECT q.*,
@@ -57,7 +61,11 @@ router.get('/', authMiddleware, async (req, res) => {
  */
 router.post('/:key/claim', authMiddleware, async (req, res) => {
   try {
-    const userId   = req.user.id;
+    const { rows: userRows } = await query(
+      'SELECT id FROM users WHERE telegram_id = $1', [req.user.telegramId]
+    );
+    if (!userRows[0]) return res.status(404).json({ error: 'User not found' });
+    const userId = userRows[0].id;
     const { key }  = req.params;
 
     // Get quest
