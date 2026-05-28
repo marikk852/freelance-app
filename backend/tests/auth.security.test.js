@@ -123,7 +123,7 @@ describe('🛡️ Проверка безопасности Express middleware',
     const serverSource = require('fs').readFileSync(
       require('path').join(__dirname, '../server.js'), 'utf8'
     );
-    expect(serverSource).toContain('helmet()');
+    expect(serverSource).toContain('helmet(');
     expect(serverSource).toContain('express-rate-limit');
     expect(serverSource).toContain('cors(');
   });

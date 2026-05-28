@@ -2,6 +2,11 @@ const cron = require('node-cron');
 const { query } = require('../../database/db');
 const escrowService = require('./escrowService');
 const notificationService = require('./notificationService');
+const tonService = require('./tonService');
+const { fromNano, toNano } = require('@ton/ton');
+
+// Порог баланса арбитра — алерт если меньше
+const ARBITRATOR_LOW_BALANCE_TON = 1; // TON
 
 // ============================================================
 // Monitor Service — фоновый мониторинг смарт-контрактов
@@ -21,6 +26,9 @@ function startMonitoring() {
 
   // Напоминания о дедлайне каждый час
   cron.schedule('0 * * * *', sendDeadlineReminders);
+
+  // FIX #4: Мониторинг баланса кошелька арбитра каждые 5 минут
+  cron.schedule('*/5 * * * *', checkArbitratorBalance);
 
   console.log('[Monitor] Фоновый мониторинг запущен');
 }
@@ -145,6 +153,39 @@ async function sendDeadlineReminders() {
     }
   } catch (err) {
     console.error('[Monitor] Ошибка sendDeadlineReminders:', err.message);
+  }
+}
+
+/**
+ * FIX #4: Проверить баланс кошелька арбитра.
+ * Если < ARBITRATOR_LOW_BALANCE_TON — уведомить ARBITRATOR_TELEGRAM_ID.
+ * Без баланса на газ все release/refund/split будут падать.
+ */
+async function checkArbitratorBalance() {
+  try {
+    const balanceNano = await tonService.getArbitratorBalance();
+    const balanceTon  = parseFloat(fromNano(balanceNano));
+
+    if (balanceTon < ARBITRATOR_LOW_BALANCE_TON) {
+      const arbitratorTgId = process.env.ARBITRATOR_TELEGRAM_ID;
+      const msg = `🚨 *НИЗКИЙ БАЛАНС АРБИТРА*\n\nТекущий баланс: *${balanceTon.toFixed(4)} TON*\nМинимум: *${ARBITRATOR_LOW_BALANCE_TON} TON*\n\nПополни кошелёк арбитра — иначе release/refund/split будут падать!`;
+
+      console.error(`[Monitor] 🚨 Критически низкий баланс арбитра: ${balanceTon} TON`);
+
+      if (arbitratorTgId) {
+        await notificationService.notify(
+          Number(arbitratorTgId),
+          'system_alert',
+          msg,
+          { balanceTon, threshold: ARBITRATOR_LOW_BALANCE_TON }
+        );
+      }
+    } else {
+      console.log(`[Monitor] Баланс арбитра: ${balanceTon.toFixed(4)} TON ✅`);
+    }
+  } catch (err) {
+    // Не крашим мониторинг если TON API временно недоступен
+    console.error('[Monitor] Ошибка checkArbitratorBalance:', err.message);
   }
 }
 

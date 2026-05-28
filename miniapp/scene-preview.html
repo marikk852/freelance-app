@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>SafeDeal — Scene Variants</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #050508;
+  min-height: 100vh;
+  padding: 40px 20px;
+  font-family: 'Courier New', monospace;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+h1 { color: #00ff88; font-size: 10px; letter-spacing: 4px; margin-bottom: 40px; text-transform: uppercase; }
+.scenes { display: flex; flex-direction: column; gap: 28px; width: 100%; max-width: 580px; }
+.card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  padding: 20px;
+}
+.num  { font-size: 7px; letter-spacing: 2px; color: #00ff8866; margin-bottom: 4px; }
+.name { font-size: 9px; letter-spacing: 1px; color: rgba(255,255,255,0.5); margin-bottom: 14px; }
+canvas {
+  width: 504px; height: 112px;
+  image-rendering: pixelated;
+  display: block;
+  border-radius: 8px;
+}
+</style>
+</head>
+<body>
+<h1>SAFEDEAL — HOME SCENE VARIANTS</h1>
+<div class="scenes">
+  <div class="card" style="border-color:#00ff8833">
+    <div class="num">VARIANT 06</div>
+    <div class="name">РУКОПОЖАТИЕ ЧЕРЕЗ ЭКРАН</div>
+    <canvas id="c6" width="252" height="56"></canvas>
+  </div>
+  <div class="card" style="border-color:#ffaa0033">
+    <div class="num">VARIANT 09</div>
+    <div class="name">ДОМ + РЫЦАРЬ + ЗВЁЗДЫ</div>
+    <canvas id="c9" width="252" height="56"></canvas>
+  </div>
+  <div class="card" style="border-color:#00ff8833">
+    <div class="num">VARIANT 11</div>
+    <div class="name">ПИКСЕЛЬНЫЙ ТЕРМИНАЛ</div>
+    <canvas id="c11" width="252" height="56"></canvas>
+  </div>
+  <div class="card" style="border-color:#0088ff33">
+    <div class="num">VARIANT 12</div>
+    <div class="name">КАРТА МИРА</div>
+    <canvas id="c12" width="252" height="56"></canvas>
+  </div>
+</div>
+
+<script>
+const S = 3, W = 252, H = 56, GW = 84, GH = 18;
+
+function px(ctx, x, y, c) {
+  if (x < 0 || y < 0 || x >= GW || y >= GH) return;
+  ctx.fillStyle = c; ctx.fillRect(x*S, y*S, S, S);
+}
+function bk(ctx, x, y, w, h, c) {
+  if (x >= GW || y >= GH) return;
+  ctx.fillStyle = c; ctx.fillRect(x*S, y*S, w*S, h*S);
+}
+function circ(ctx, cx, cy, r, c) {
+  for (let dy = -r; dy <= r; dy++)
+    for (let dx = -r; dx <= r; dx++)
+      if (dx*dx+dy*dy <= r*r) px(ctx, cx+dx, cy+dy, c);
+}
+const STARS = [[3,1],[13,3],[24,1],[36,2],[47,1],[58,3],[69,1],[77,2],[82,1],[8,3],[19,1],[31,3],[52,2],[64,1],[73,3],[80,1]];
+function stars(ctx) { STARS.forEach(([x,y]) => px(ctx, x, y, '#ffffff33')); }
+
+// ── Draw elliptical coin: cx/cy = centre, a = horiz radius (spin), b = vert radius ──
+function drawCoin(ctx, cx, cy, a, b) {
+  cx = Math.round(cx); cy = Math.round(cy);
+  if (a < 0.55) {
+    // Edge-on: thin vertical strip
+    for (let dy = -(b-1); dy <= b; dy++)
+      px(ctx, cx, cy+dy, dy === b ? '#3a2000' : '#996600');
+    return;
+  }
+  // Filled ellipse row by row
+  for (let dy = -b; dy <= b; dy++) {
+    const xr = Math.round(a * Math.sqrt(Math.max(0, 1 - (dy*dy)/((b+0.01)*(b+0.01)))));
+    if (xr === 0) continue;
+    for (let dx = -xr; dx <= xr; dx++) {
+      let col;
+      if      (dy ===  b)             col = '#5a3800'; // 3D bottom (darker)
+      else if (dy === -b)             col = '#cc9900'; // top outline
+      else if (Math.abs(dx) === xr)   col = '#aa7700'; // side outline
+      else if (dy === -b+1)           col = '#ffee55'; // highlight band
+      else                            col = '#ffcc00'; // face
+      px(ctx, cx+dx, cy+dy, col);
+    }
+  }
+  // Extra 3D thickness below
+  const ew = Math.round(a * 0.88);
+  for (let dx = -ew; dx <= ew; dx++) px(ctx, cx+dx, cy+b+1, '#2e1800');
+  // White shine dot
+  if (a > 1.2) px(ctx, Math.round(cx - a*0.42 + 0.5), cy-b+1, '#ffffff');
+}
+
+// ══════════════════════════════════════════════════════════
+// SCENE 6 — Рукопожатие через экран
+// ══════════════════════════════════════════════════════════
+function scene6(ctx, t) {
+  ctx.fillStyle = '#04040e'; ctx.fillRect(0,0,W,H);
+  stars(ctx);
+  bk(ctx, 0, 16, GW, 2, '#0d0d20');
+
+  // Left person
+  bk(ctx, 3, 2, 2, 2, '#ffcc88'); // head
+  bk(ctx, 3, 4, 2, 5, '#224488'); // body
+  bk(ctx, 3, 9, 1, 3, '#1a3366'); bk(ctx, 4, 9, 1, 3, '#1a3366'); // legs
+
+  // Right person
+  bk(ctx, 79, 2, 2, 2, '#ffcc88');
+  bk(ctx, 79, 4, 2, 5, '#882244');
+  bk(ctx, 79, 9, 1, 3, '#661133'); bk(ctx, 80, 9, 1, 3, '#661133');
+
+  // Portal / screen (centre)
+  const sx = 36, sy = 2, sw = 12, sh = 13;
+  bk(ctx, sx, sy, sw, sh, '#001122');
+  // border glow
+  for (let x = sx; x < sx+sw; x++) { px(ctx, x, sy, '#0055ff'); px(ctx, x, sy+sh-1, '#0055ff'); }
+  for (let y = sy; y < sy+sh; y++) { px(ctx, sx, y, '#0055ff'); px(ctx, sx+sw-1, y, '#0055ff'); }
+  // inner blue glow
+  ctx.fillStyle = '#0033ff08'; ctx.fillRect((sx+1)*S, (sy+1)*S, (sw-2)*S, (sh-2)*S);
+
+  // Animated arms
+  const ext = (Math.sin(t * 1.1) + 1) / 2;
+  const lTip = Math.round(5  + ext * 30);
+  const rTip = Math.round(78 - ext * 30);
+
+  // left arm
+  for (let x = 5; x <= Math.min(lTip, GW-1); x++) px(ctx, x, 6, '#ffcc88');
+  // right arm
+  for (let x = Math.max(rTip, 0); x <= 78; x++) px(ctx, x, 6, '#ffcc88');
+
+  // Glow when hands meet inside portal
+  if (ext > 0.82) {
+    const g = (ext - 0.82) / 0.18;
+    ctx.fillStyle = `rgba(255,200,80,${g * 0.35})`; ctx.fillRect(40*S, 4*S, 4*S, 6*S);
+    if (g > 0.6) {
+      px(ctx, 41, 4, '#ffffaa'); px(ctx, 43, 8, '#ffffaa');
+      px(ctx, 42, 3, '#ffffff'); px(ctx, 42, 9, '#ffffff');
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// SCENE 9 — Дом + Рыцарь + Звёзды
+// ══════════════════════════════════════════════════════════
+
+// Twinkling star positions for scene9 (avoid house area x>55)
+const S9_STARS = [
+  [3,1],[10,2],[20,1],[30,3],[5,3],[15,1],[25,2],[38,1],[46,3],[50,1],[43,2],[35,1],[8,2],[28,3]
+];
+
+function scene9(ctx, t) {
+  ctx.fillStyle = '#04040e'; ctx.fillRect(0,0,W,H);
+
+  // Ground
+  bk(ctx, 0, 16, GW, 1, '#1a1a2e');
+  bk(ctx, 0, 17, GW, 1, '#12121e');
+
+  // Twinkling stars
+  S9_STARS.forEach(([sx, sy], i) => {
+    const br = (Math.sin(t * 1.4 + i * 0.85) + 1) / 2;
+    const a  = Math.round((0.12 + br * 0.85) * 255).toString(16).padStart(2,'0');
+    px(ctx, sx, sy, '#ffffff' + a);
+    if (br > 0.8) px(ctx, sx, sy, '#ffffee'); // bright peak
+  });
+
+  // ── HOUSE ──────────────────────────────────────────────────
+  const hpx = 69; // peak x
+
+  // Chimney (draw first, roof overlaps bottom)
+  bk(ctx, 72, 3, 3, 7, '#2a3a4a');
+  bk(ctx, 72, 3, 3, 1, '#3a4a5a'); // chimney top
+  bk(ctx, 72, 3, 1, 7, '#3a4a5a'); // chimney left shine
+  // Animated smoke puffs
+  for (let s = 0; s < 3; s++) {
+    const rise = (t * 1.4 + s * 1.1) % 3.5;
+    const op   = Math.max(0, (1 - rise / 3) * 0.55);
+    const sx2  = 73 + Math.round(Math.sin(t * 0.9 + s) * 0.8);
+    const sy2  = Math.round(2 - rise);
+    if (sy2 >= 0 && op > 0.05) {
+      const hex = Math.round(op * 255).toString(16).padStart(2,'0');
+      px(ctx, sx2, sy2, '#aabbcc' + hex);
+    }
+  }
+
+  // Roof triangle
+  for (let row = 0; row <= 5; row++) {
+    for (let dx = -row; dx <= row; dx++) {
+      const edge = Math.abs(dx) === row;
+      px(ctx, hpx+dx, 3+row, edge ? '#5c2e18' : (row < 2 ? '#8a4422' : '#7a3a1a'));
+    }
+  }
+  // Eave overhang
+  bk(ctx, hpx-7, 8, 15, 1, '#5c2e18');
+  px(ctx, hpx-7, 8, '#7a3a1a'); px(ctx, hpx+7, 8, '#3a1a0a');
+
+  // Walls
+  bk(ctx, hpx-6, 9, 13, 7, '#1e2e3e');
+  bk(ctx, hpx-6, 9, 13, 1, '#28384a'); // top shine
+  bk(ctx, hpx-6, 9,  1, 7, '#253545'); // left shine
+  bk(ctx, hpx+6, 9,  1, 7, '#141e28'); // right shadow
+
+  // Windows with warm pulsing glow
+  const wg = (Math.sin(t * 0.65) + 1) / 2;
+  const wAlpha = 0.55 + wg * 0.4;
+  [hpx-4, hpx+2].forEach(wx => {
+    // Warm glow fill
+    ctx.fillStyle = `rgba(255,190,50,${wAlpha})`;
+    ctx.fillRect((wx)*S, 10*S, 3*S, 3*S);
+    // Frame
+    bk(ctx, wx,   10, 3, 1, '#33485e');
+    bk(ctx, wx,   10, 1, 3, '#33485e');
+    bk(ctx, wx+2, 10, 1, 3, '#33485e');
+    bk(ctx, wx,   12, 3, 1, '#33485e');
+    // Cross-pane
+    px(ctx, wx+1, 11, '#33485e');
+    // Inner shine
+    px(ctx, wx+1, 10, '#ffffcc');
+    // Glow spill on ground below window
+    ctx.fillStyle = `rgba(255,190,50,${0.05 + wg*0.07})`;
+    ctx.fillRect(wx*S, 15*S, 3*S, 2*S);
+  });
+
+  // Door
+  bk(ctx, hpx-1, 12, 3, 4, '#111820');
+  bk(ctx, hpx-1, 12, 3, 1, '#1c2530'); // door top arch
+  bk(ctx, hpx-1, 12, 1, 4, '#181f2a'); // door left shade
+  px(ctx, hpx+1, 14, '#ffaa00');         // doorknob
+
+  // Stone path
+  for (let i = -1; i <= 1; i++) px(ctx, hpx+i, 16, '#1c2a38');
+
+  // ── KNIGHT ─────────────────────────────────────────────────
+  // Walks x=3..50, loops; 2-frame walk cycle at 5fps
+  const kx    = Math.round(3 + ((t * 5.5) % 47));
+  const frame  = Math.floor(t * 5) % 2;
+
+  const KS  = '#aabbcc'; // silver armor
+  const KH3 = '#ccdde8'; // highlight
+  const KD  = '#55677a'; // dark armor
+  const KV3 = '#2e4055'; // very dark / visor
+  const KG  = '#ffaa00'; // gold
+  const KBL = '#1a44bb'; // shield blue
+
+  // Ground shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect((kx-1)*S, 16*S, 9*S, S);
+
+  // Legs (frame-dependent walk)
+  if (frame === 0) {
+    // Left leg back, right leg forward
+    bk(ctx, kx+1, 12, 2, 3, KD);       // left leg straight
+    bk(ctx, kx+1, 14, 2, 2, KD);       // left foot
+    bk(ctx, kx+3, 11, 2, 2, KD);       // right thigh (raised)
+    bk(ctx, kx+4, 13, 2, 3, KD);       // right shin + foot (forward)
+  } else {
+    // Left leg forward, right leg back
+    bk(ctx, kx+1, 11, 2, 2, KD);       // left thigh (raised)
+    bk(ctx, kx+0, 13, 2, 3, KD);       // left shin + foot (forward)
+    bk(ctx, kx+3, 12, 2, 3, KD);       // right leg straight
+    bk(ctx, kx+3, 14, 2, 2, KD);       // right foot
+  }
+  // Shin highlight
+  px(ctx, kx+1, 12, '#66788a'); px(ctx, kx+3, 12, '#66788a');
+
+  // Belt
+  bk(ctx, kx+1, 11, 4, 1, KG);
+
+  // Torso
+  bk(ctx, kx+1, 8, 4, 3, KD);
+  bk(ctx, kx+1, 8, 1, 3, KH3); // chest plate shine
+  px(ctx, kx+2, 8, KH3);
+
+  // Pauldrons (shoulders)
+  bk(ctx, kx,   7, 6, 1, KS);
+  px(ctx, kx,   7, KH3); // left shine
+  px(ctx, kx+5, 7, KV3); // right shadow
+
+  // Helmet
+  bk(ctx, kx+2, 4, 3, 1, KS);  // dome top
+  bk(ctx, kx+1, 5, 5, 2, KS);  // helmet body
+  px(ctx, kx+1, 5, KH3);        // helmet shine
+  px(ctx, kx+5, 5, KV3);        // helmet right shadow
+  // Visor slits (facing right)
+  px(ctx, kx+3, 6, KV3); px(ctx, kx+4, 6, KV3);
+  // Cheekguard
+  bk(ctx, kx+1, 6, 2, 1, KV3);
+
+  // Plume (animated flicker)
+  const plumeCol = (Math.floor(t * 8) % 2 === 0) ? '#ff3355' : '#dd2244';
+  px(ctx, kx+2, 3, plumeCol);
+  px(ctx, kx+3, 3, plumeCol);
+  px(ctx, kx+2, 4, '#aa1133');
+  px(ctx, kx+3, 4, '#aa1133');
+
+  // Sword (held up, right side) — tip glints
+  bk(ctx, kx+6, 3, 1, 6, KS);  // blade
+  px(ctx, kx+6, 3, '#ffffff');   // tip flash
+  bk(ctx, kx+5, 9, 3, 1, KG);  // crossguard
+  bk(ctx, kx+6,10, 1, 1, KD);  // grip
+
+  // Shield (left arm, blue with gold cross)
+  bk(ctx, kx-1, 8, 2, 5, KBL);
+  bk(ctx, kx-1, 8, 2, 1, '#2255ee'); // shield top
+  bk(ctx, kx-1, 8, 1, 5, '#2255dd'); // shield left shine
+  px(ctx, kx-1,10, KG); // cross vertical top
+  px(ctx, kx-1,11, KG); // cross center
+  px(ctx, kx-1,12, KG); // cross vertical bottom
+  // shield swing with walk
+  // (no extra movement needed — looks natural)
+}
+
+// ══════════════════════════════════════════════════════════
+// SCENE 11 — Пиксельный терминал
+// ══════════════════════════════════════════════════════════
+const TLINES = [
+  { text: '> CONNECTING TO SAFEDEAL...', color: '#0088ff' },
+  { text: '> DEAL #8472 FOUND',          color: '#00cc55' },
+  { text: '> ESCROW LOCKED: $500 USDT',  color: '#ffaa00' },
+  { text: '> COUNTERPARTY: VERIFIED',    color: '#00cc55' },
+  { text: '> STATUS: SAFE \u2713',        color: '#00ff88' },
+];
+const TOTAL = TLINES.reduce((s,l) => s+l.text.length, 0);
+const SPEED = 18; // chars/sec
+const PAUSE = 3;  // sec pause after complete
+const CYCLE = TOTAL / SPEED + PAUSE;
+
+function scene11(ctx, t) {
+  ctx.fillStyle = '#000c03'; ctx.fillRect(0,0,W,H);
+  // scanlines
+  for (let y = 0; y < H; y += 2) { ctx.fillStyle='rgba(0,0,0,0.2)'; ctx.fillRect(0,y,W,1); }
+  // border glow
+  ctx.strokeStyle = '#00ff2218'; ctx.lineWidth = 4; ctx.strokeRect(0,0,W,H);
+
+  const elapsed = t % CYCLE;
+  const charIdx = Math.min(TOTAL, Math.floor(elapsed * SPEED));
+
+  ctx.font = 'bold 7px "Courier New"';
+  ctx.textBaseline = 'top';
+  const lh = 10, x0 = 6, y0 = 3;
+
+  let drawn = 0, curLine = 0, curChar = 0;
+  TLINES.forEach((line, li) => {
+    if (drawn >= charIdx) return;
+    const show = Math.min(line.text.length, charIdx - drawn);
+    ctx.fillStyle = line.color;
+    ctx.fillText(line.text.slice(0, show), x0, y0 + li * lh);
+    if (show < line.text.length || li === TLINES.length-1) { curLine = li; curChar = show; }
+    drawn += line.text.length;
+  });
+
+  // blinking cursor
+  if (charIdx < TOTAL && Math.floor(t * 2) % 2 === 0) {
+    const cx = x0 + curChar * 4.18;
+    ctx.fillStyle = '#00ff88';
+    ctx.fillRect(cx, y0 + curLine * lh, 4, 7);
+  }
+  // end cursor blink
+  if (charIdx >= TOTAL && Math.floor(t*2)%2===0) {
+    ctx.fillStyle = '#00ff88';
+    ctx.fillRect(x0, y0 + (TLINES.length)*lh, 4, 7);
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// SCENE 12 — Карта мира
+// ══════════════════════════════════════════════════════════
+const LAND = [
+  // N.America
+  [4,4,9,2],[4,6,11,3],[5,9,9,3],[6,12,6,2],
+  // Greenland
+  [14,2,3,3],
+  // S.America
+  [8,11,5,4],[9,15,3,1],
+  // Europe
+  [28,3,6,4],[27,7,5,3],
+  // Africa
+  [28,7,6,2],[27,9,7,5],[29,14,4,2],
+  // Asia
+  [35,2,20,3],[34,5,22,4],[36,9,17,3],[40,12,10,2],
+  // SE Asia
+  [52,10,5,3],[55,13,4,2],
+  // Australia
+  [57,12,7,3],[58,15,5,1],
+];
+
+function scene12(ctx, t) {
+  // Ocean
+  ctx.fillStyle = '#010f1e'; ctx.fillRect(0,0,W,H);
+  // Grid lines
+  for (let x = 0; x < GW; x += 7) for (let y = 0; y < GH; y += 5) px(ctx, x, y, '#ffffff05');
+
+  // Land
+  LAND.forEach(([x,y,w,h]) => bk(ctx, x, y, w, h, '#1e4d1e'));
+  // Land highlights
+  [[4,4],[35,2],[28,3],[14,2]].forEach(([x,y]) => bk(ctx, x, y, 2, 1, '#2a6a2a'));
+
+  // City A — North America
+  const A = {x:8, y:9};
+  // City B — Asia (Japan)
+  const B = {x:55, y:6};
+
+  // Pulse
+  const pulse = (Math.sin(t*2.5)+1)/2;
+  ctx.fillStyle = `rgba(0,136,255,${0.08+pulse*0.15})`; ctx.fillRect((A.x-2)*S,(A.y-2)*S,5*S,5*S);
+  px(ctx, A.x, A.y, '#44aaff'); px(ctx, A.x, A.y-1, '#0088ff');
+
+  ctx.fillStyle = `rgba(0,255,136,${0.08+pulse*0.15})`; ctx.fillRect((B.x-2)*S,(B.y-2)*S,5*S,5*S);
+  px(ctx, B.x, B.y, '#00ff88'); px(ctx, B.x, B.y-1, '#00cc66');
+
+  // Dotted path
+  for (let i = 0; i <= 20; i++) {
+    const p = i/20;
+    const lx = Math.round(A.x + (B.x-A.x)*p);
+    const ly = Math.round(A.y + (B.y-A.y)*p - Math.sin(Math.PI*p)*7);
+    if (i%2===0) px(ctx, lx, ly, '#ffffff18');
+  }
+
+  // Flying envelope A→B loop
+  const ep = (t*0.38) % 1;
+  const fx = A.x + (B.x-A.x)*ep;
+  const fy = A.y + (B.y-A.y)*ep - Math.sin(Math.PI*ep)*7;
+  const fix = Math.round(fx), fiy = Math.round(fy);
+
+  // envelope trail
+  const pep = Math.max(0, ep-0.06);
+  const pfx = Math.round(A.x+(B.x-A.x)*pep);
+  const pfy = Math.round(A.y+(B.y-A.y)*pep-Math.sin(Math.PI*pep)*7);
+  ctx.fillStyle='#ffaa0030'; ctx.fillRect(pfx*S,pfy*S,(fix-pfx+2)*S,S);
+
+  // envelope shape
+  if (ep < 0.96) {
+    bk(ctx, fix,   fiy,   3, 2, '#ffaa00');
+    bk(ctx, fix+1, fiy,   1, 1, '#ffee55');
+    px(ctx, fix,   fiy+1,    '#cc7700');
+    // envelope flap
+    px(ctx, fix+1, fiy-1, '#ffcc44');
+  }
+
+  // Stars
+  STARS.forEach(([x,y]) => px(ctx, x, y, '#ffffff22'));
+}
+
+// ══════════════════════════════════════════════════════════
+// Loop
+// ══════════════════════════════════════════════════════════
+const ctx6  = document.getElementById('c6').getContext('2d');
+const ctx9  = document.getElementById('c9').getContext('2d');
+const ctx11 = document.getElementById('c11').getContext('2d');
+const ctx12 = document.getElementById('c12').getContext('2d');
+
+let t0 = null;
+function loop(ts) {
+  if (!t0) t0 = ts;
+  const t = (ts - t0) / 1000;
+  scene6(ctx6, t);
+  scene9(ctx9, t);
+  scene11(ctx11, t);
+  scene12(ctx12, t);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

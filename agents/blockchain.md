@@ -17,4 +17,29 @@
 - split: разделение при споре (ТОЛЬКО арбитр)
 - get_state: чтение статуса
 
-## Статус: В РАБОТЕ 🔄
+## Реализованные файлы
+- contracts/escrow.fc — 234 строки FunC
+- contracts/escrow.spec.ts — 325 строк тестов (@ton/sandbox)
+- contracts/wrappers/ — TypeScript обёртки
+- contracts/scripts/deploy.ts — скрипт деплоя
+- contracts/build/escrow.compiled.json — СКОМПИЛИРОВАН
+
+## Op-коды (должны совпадать с escrowService.js)
+- OP.DEPOSIT = 1
+- OP.RELEASE = 2
+- OP.REFUND  = 3
+- OP.SPLIT   = 4
+
+## Состояния контракта
+- 0 = WAITING (депозит не получен)
+- 1 = FROZEN (деньги заморожены)
+- 2 = RELEASED (выплачено фрилансеру)
+- 3 = REFUNDED (возврат клиенту)
+
+## Компиляция
+```
+cd contracts && npm run build
+```
+Результат: contracts/build/escrow.compiled.json
+
+## Статус: ЗАВЕРШЁН ✅

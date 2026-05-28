@@ -19,37 +19,90 @@ function bk(ctx:Ctx,x:number,y:number,w:number,h:number,c:string){ctx.fillStyle=
 function rw(ctx:Ctx,y:number,xs:number[],c:string){xs.forEach(x=>px(ctx,x,y,c));}
 function star(ctx:Ctx,x:number,y:number,c:string){px(ctx,x,y,c);ctx.fillStyle=c+'55';ctx.fillRect((x-1)*S,y*S,S,S);ctx.fillRect((x+1)*S,y*S,S,S);ctx.fillRect(x*S,(y-1)*S,S,S);ctx.fillRect(x*S,(y+1)*S,S,S);}
 
-// ── HOME ──────────────────────────────────────────────────
-function drawHome(ctx:Ctx){
-  ctx.fillStyle=DK;ctx.fillRect(0,0,W,H);
-  [[2,1],[10,2],[20,1],[35,2],[55,1],[62,2],[72,1],[76,2],[80,1]].forEach(([x,y])=>px(ctx,x,y,'#ffffff33'));
-  bk(ctx,0,14,84,2,'#111122');
-  for(let i=0;i<84;i+=3)px(ctx,i,14,i%6<3?'#1a1a2e':'#111122');
-  bk(ctx,1,8,13,6,'#1e2d55');bk(ctx,1,8,13,1,'#2a3d6e');bk(ctx,1,13,13,1,'#141e3a');
-  bk(ctx,1,8,1,6,'#2a3d6e');bk(ctx,13,8,1,6,'#141e3a');
-  bk(ctx,2,9,3,3,'#2255aa');bk(ctx,3,9,1,1,BL5+'66');
-  bk(ctx,9,9,3,3,'#2255aa');bk(ctx,10,9,1,1,BL5+'66');
-  ctx.fillStyle=BL+'11';ctx.fillRect(2*S,9*S,3*S,3*S);ctx.fillRect(9*S,9*S,3*S,3*S);
-  bk(ctx,5,10,4,4,'#331100');bk(ctx,6,11,1,2,AU3);px(ctx,7,12,AU);
-  [[7,4],[6,5],[5,6],[4,7],[3,7],[8,5],[9,6],[10,7],[11,7],[12,7],[13,7],[2,7],[14,7]].forEach(([x,y])=>px(ctx,x,y,G3));
-  rw(ctx,7,[3,4,5,6,7,8,9,10,11,12,13,14],G4);px(ctx,7,3,G2);px(ctx,8,4,G2);
-  bk(ctx,11,4,2,4,'#662211');px(ctx,11,4,'#883322');
-  px(ctx,11,3,'#aaaaaa88');px(ctx,12,2,'#aaaaaa55');
-  bk(ctx,18,2,12,1,AU3);bk(ctx,18,13,12,1,AU3);
-  bk(ctx,18,3,12,10,'#2a1800');bk(ctx,19,4,10,8,'#332000');
-  rw(ctx,5,[20,21,22,23,24,25,26],AU+'55');rw(ctx,7,[20,21,22,23,24,25],AU+'44');
-  rw(ctx,9,[20,21,22,23,24,25,26],AU+'33');rw(ctx,11,[20,21,22,23],AU+'22');
-  px(ctx,20,5,G);px(ctx,20,7,G);
-  bk(ctx,18,3,1,10,AU2);bk(ctx,29,3,1,10,AU2);
-  bk(ctx,33,9,3,1,GR);bk(ctx,32,10,5,1,GR2);
-  bk(ctx,33,10,1,1,AU);bk(ctx,34,10,1,1,AU);
-  bk(ctx,32,11,5,3,GR2);bk(ctx,33,12,1,1,AU);
-  bk(ctx,31,12,1,2,GR3);bk(ctx,36,12,1,2,GR3);
-  bk(ctx,32,14,2,2,'#334455');bk(ctx,34,14,2,2,'#334455');
-  for(let y=8;y<=13;y++)px(ctx,37,y,GR2);
-  bk(ctx,36,11,3,1,AU);px(ctx,36,11,AU5);
-  star(ctx,45,3,G);star(ctx,55,8,AU);star(ctx,65,2,BL);
-  star(ctx,75,5,G);star(ctx,82,3,AU);
+// ── HOME — animated: house + knight + stars ────────────────
+const HOME_STARS: [number,number][] = [
+  [3,1],[10,2],[20,1],[30,3],[5,3],[15,1],[25,2],[38,1],[46,3],[50,1],[43,2],[35,1],[8,2],[28,3]
+];
+function drawHome(ctx:Ctx, t:number){
+  ctx.fillStyle='#04040e'; ctx.fillRect(0,0,W,H);
+  // Ground
+  bk(ctx,0,16,84,1,'#1a1a2e'); bk(ctx,0,17,84,1,'#12121e');
+  // Twinkling stars
+  HOME_STARS.forEach(([sx,sy],i)=>{
+    const br=(Math.sin(t*1.4+i*0.85)+1)/2;
+    const a=Math.round((0.12+br*0.85)*255).toString(16).padStart(2,'0');
+    px(ctx,sx,sy,'#ffffff'+a);
+    if(br>0.8) px(ctx,sx,sy,'#ffffee');
+  });
+  // ── House ─────────────────────────────────────
+  const hpx=69;
+  // Chimney
+  bk(ctx,72,3,3,7,'#2a3a4a'); bk(ctx,72,3,3,1,'#3a4a5a'); bk(ctx,72,3,1,7,'#3a4a5a');
+  // Smoke puffs (animated)
+  for(let s=0;s<3;s++){
+    const rise=(t*1.4+s*1.1)%3.5;
+    const op=Math.max(0,(1-rise/3)*0.55);
+    const sxx=73+Math.round(Math.sin(t*0.9+s)*0.8);
+    const syy=Math.round(2-rise);
+    if(syy>=0&&op>0.05) px(ctx,sxx,syy,'#aabbcc'+Math.round(op*255).toString(16).padStart(2,'0'));
+  }
+  // Roof triangle
+  for(let row=0;row<=5;row++)
+    for(let dx=-row;dx<=row;dx++)
+      px(ctx,hpx+dx,3+row,Math.abs(dx)===row?'#5c2e18':row<2?'#8a4422':'#7a3a1a');
+  bk(ctx,hpx-7,8,15,1,'#5c2e18');
+  px(ctx,hpx-7,8,'#7a3a1a'); px(ctx,hpx+7,8,'#3a1a0a');
+  // Walls
+  bk(ctx,hpx-6,9,13,7,'#1e2e3e');
+  bk(ctx,hpx-6,9,13,1,'#28384a'); bk(ctx,hpx-6,9,1,7,'#253545'); bk(ctx,hpx+6,9,1,7,'#141e28');
+  // Windows — warm pulsing glow
+  const wg=(Math.sin(t*0.65)+1)/2;
+  ([hpx-4,hpx+2] as number[]).forEach(wx=>{
+    ctx.fillStyle=`rgba(255,190,50,${0.55+wg*0.4})`; ctx.fillRect(wx*S,10*S,3*S,3*S);
+    bk(ctx,wx,10,3,1,'#33485e'); bk(ctx,wx,10,1,3,'#33485e');
+    bk(ctx,wx+2,10,1,3,'#33485e'); bk(ctx,wx,12,3,1,'#33485e');
+    px(ctx,wx+1,11,'#33485e'); px(ctx,wx+1,10,'#ffffcc');
+    ctx.fillStyle=`rgba(255,190,50,${0.05+wg*0.07})`; ctx.fillRect(wx*S,15*S,3*S,2*S);
+  });
+  // Door
+  bk(ctx,hpx-1,12,3,4,'#111820'); bk(ctx,hpx-1,12,3,1,'#1c2530');
+  bk(ctx,hpx-1,12,1,4,'#181f2a'); px(ctx,hpx+1,14,'#ffaa00');
+  // Stone path
+  px(ctx,hpx-1,16,'#1c2a38'); px(ctx,hpx,16,'#1c2a38'); px(ctx,hpx+1,16,'#1c2a38');
+  // ── Knight ────────────────────────────────────
+  const kx=Math.round(3+((t*5.5)%47));
+  const frame=Math.floor(t*5)%2;
+  // Shadow
+  ctx.fillStyle='rgba(0,0,0,0.22)'; ctx.fillRect((kx-1)*S,16*S,9*S,S);
+  // Legs (walk animation)
+  if(frame===0){
+    bk(ctx,kx+1,12,2,3,'#55677a'); bk(ctx,kx+1,14,2,2,'#55677a');
+    bk(ctx,kx+3,11,2,2,'#55677a'); bk(ctx,kx+4,13,2,3,'#55677a');
+  }else{
+    bk(ctx,kx+1,11,2,2,'#55677a'); bk(ctx,kx+0,13,2,3,'#55677a');
+    bk(ctx,kx+3,12,2,3,'#55677a'); bk(ctx,kx+3,14,2,2,'#55677a');
+  }
+  px(ctx,kx+1,12,'#66788a'); px(ctx,kx+3,12,'#66788a');
+  // Belt
+  bk(ctx,kx+1,11,4,1,'#ffaa00');
+  // Torso
+  bk(ctx,kx+1,8,4,3,'#55677a'); bk(ctx,kx+1,8,1,3,'#ccdde8'); px(ctx,kx+2,8,'#ccdde8');
+  // Pauldrons
+  bk(ctx,kx,7,6,1,'#aabbcc'); px(ctx,kx,7,'#ccdde8'); px(ctx,kx+5,7,'#2e4055');
+  // Helmet
+  bk(ctx,kx+2,4,3,1,'#aabbcc'); bk(ctx,kx+1,5,5,2,'#aabbcc');
+  px(ctx,kx+1,5,'#ccdde8'); px(ctx,kx+5,5,'#2e4055');
+  px(ctx,kx+3,6,'#2e4055'); px(ctx,kx+4,6,'#2e4055');
+  bk(ctx,kx+1,6,2,1,'#2e4055');
+  // Plume (flickers)
+  const pc=Math.floor(t*8)%2===0?'#ff3355':'#dd2244';
+  px(ctx,kx+2,3,pc); px(ctx,kx+3,3,pc); px(ctx,kx+2,4,'#aa1133'); px(ctx,kx+3,4,'#aa1133');
+  // Sword
+  bk(ctx,kx+6,3,1,6,'#aabbcc'); px(ctx,kx+6,3,'#ffffff');
+  bk(ctx,kx+5,9,3,1,'#ffaa00'); bk(ctx,kx+6,10,1,1,'#55677a');
+  // Shield
+  bk(ctx,kx-1,8,2,5,'#1a44bb'); bk(ctx,kx-1,8,2,1,'#2255ee'); bk(ctx,kx-1,8,1,5,'#2255dd');
+  px(ctx,kx-1,10,'#ffaa00'); px(ctx,kx-1,11,'#ffaa00'); px(ctx,kx-1,12,'#ffaa00');
 }
 
 // ── NEW DEAL ──────────────────────────────────────────────
@@ -390,18 +443,33 @@ function drawBoard(ctx:Ctx){
   ctx.fillStyle=AU+'44';ctx.font='4px monospace';ctx.textAlign='center';ctx.fillText('JOB BOARD',42*S,15*S+1);
 }
 
-const drawFns: Record<SceneName, (ctx: Ctx) => void> = {
-  home: drawHome, new_deal: drawNewDeal, deal_room: drawRoom,
+const staticFns: Partial<Record<SceneName, (ctx: Ctx) => void>> = {
+  new_deal: drawNewDeal, deal_room: drawRoom,
   payment: drawPayment, review: drawReview, dispute: drawDispute,
   live_deals: drawLive, profile: drawProfile, job_board: drawBoard,
+};
+const animatedFns: Partial<Record<SceneName, (ctx: Ctx, t: number) => void>> = {
+  home: drawHome,
 };
 
 export function PixelScene({ scene, width = 252, height = 56 }: { scene: SceneName; width?: number; height?: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
+  const rafRef = useRef<number>(0);
   useEffect(() => {
     const cv = ref.current; if (!cv) return;
     const ctx = cv.getContext('2d'); if (!ctx) return;
-    drawFns[scene](ctx);
+    const animFn = animatedFns[scene];
+    if (animFn) {
+      const t0 = performance.now();
+      const loop = (ts: number) => {
+        animFn(ctx, (ts - t0) / 1000);
+        rafRef.current = requestAnimationFrame(loop);
+      };
+      rafRef.current = requestAnimationFrame(loop);
+      return () => cancelAnimationFrame(rafRef.current);
+    }
+    const staticFn = staticFns[scene];
+    if (staticFn) staticFn(ctx);
   }, [scene]);
   return <canvas ref={ref} width={width} height={height} style={{ display:'block', margin:'0 auto 8px', imageRendering:'pixelated' }} />;
 }

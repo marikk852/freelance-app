@@ -261,17 +261,30 @@ deployContract(), monitorContract(), releaseEscrow(), refundEscrow(), splitEscro
 
 ## Текущий статус
 
-ГОТОВО:
-- Концепция и позиционирование
-- Финансовая модель (смарт-контракты TON без юрлица)
-- Дизайн 7 экранов
-- Логотип (пиксельный рыцарь, зелёный + золотой)
-- Полная схема БД
-- Архитектура агентов
+ЗАВЕРШЕНО (вся основная разработка):
+- Архитектура и структура проекта
+- TON смарт-контракт (escrow.fc, 234 строк FunC, СКОМПИЛИРОВАН)
+- Тесты контракта (escrow.spec.ts, 325 строк, @ton/sandbox)
+- PostgreSQL база данных (20 миграций, все таблицы)
+- Backend API (11 route файлов: contracts, deliveries, disputes, users, jobs, livefeed, marketing, notifications, quests, rooms, admin)
+- Эскроу сервис (deploy/monitor/release/refund/split + simulation mode)
+- Файловая защита (7 типов файлов, AES-256-CBC шифрование)
+- Telegram бот (8 команд, handlers, polling + webhook)
+- Mini App React (15 страниц, 9 компонентов, 3 хука)
+- Admin Panel (/admark — дашборд, аналитика, мониторинг, рассылки)
+- AI-маркетолог (marketingAgent.js, Claude API)
+- Broadcast система (сегменты, расписание, in-app push)
 
-В РАЗРАБОТКЕ:
-- TON смарт-контракт
-- Все 9 экранов Mini App
-- Backend сервисы
-- Telegram бот
-- Деплой
+ТРЕБУЕТ НАСТРОЙКИ ПЕРЕД ДЕПЛОЕМ:
+- Заполнить .env (BOT_TOKEN, DATABASE_URL, ENCRYPTION_KEY, ARBITRATOR_WALLET_SEED, WEBAPP_URL)
+- npm install в backend/, miniapp/, contracts/
+- cd contracts && npm run build (уже скомпилирован, но нужно при изменениях)
+- cd miniapp && npm run build
+- Настроить PostgreSQL и применить миграции (автоматически при старте сервера)
+- Настроить WEBAPP_URL для webhook в production
+
+ДОКУМЕНТАЦИЯ:
+- docs/API.md — полный REST API справочник
+- docs/DB_SCHEMA.md — схема базы данных
+- docs/MINIAPP.md — карта всех 15 страниц Mini App
+- docs/DEPLOY.md — руководство по деплою
