@@ -2,40 +2,54 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { PixelScene } from '../components/PixelScene';
 import { DataRow } from '../components/GlassCard';
-import { contracts as contractsApi } from '../utils/api';
+import { contracts as contractsApi, users as usersApi } from '../utils/api';
 import { useTelegram } from '../hooks/useTelegram';
+import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
+import { toNano } from '@ton/ton';
 import toast from 'react-hot-toast';
 
 // ============================================================
-// Screen 04: PAYMENT — TON/USDT currency selection, contract address
+// Screen 04: PAYMENT — deploy contract + pay via TonConnect
 // ============================================================
 
 export function Payment() {
   const { id }   = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { tg }   = useTelegram();
-  const [deal,    setDeal]    = useState<any>(null);
-  const [currency, setCurrency] = useState<'TON'|'USDT'>('USDT');
-  const [wallets, setWallets] = useState({ client: '', freelancer: '' });
-  const [loading, setLoading] = useState(false);
+
+  const [deal,     setDeal]     = useState<any>(null);
+  const [profile,  setProfile]  = useState<any>(null);
   const [deployed, setDeployed] = useState<any>(null);
+  const [loading,  setLoading]  = useState(false);
+  const [paying,   setPaying]   = useState(false);
+
+  const [tonConnectUI] = useTonConnectUI();
+  const wallet = useTonWallet();
 
   useEffect(() => {
-    if (id) contractsApi.get(id).then(r => setDeal(r.data));
+    if (!id) return;
+    contractsApi.get(id).then(r => setDeal(r.data));
+    usersApi.me().then(r => setProfile(r.data));
   }, [id]);
 
-  const handleDeploy = async () => {
-    if (!wallets.client || !wallets.freelancer) {
-      tg?.HapticFeedback?.notificationOccurred('error');
-      return toast.error('Enter both TON addresses');
+  // Check if contract already deployed (has ton_contract_address)
+  useEffect(() => {
+    if (deal?.ton_contract_address && deal?.crypto_amount) {
+      setDeployed({
+        tonContractAddress: deal.ton_contract_address,
+        cryptoAmount      : Number(deal.crypto_amount),
+      });
     }
+  }, [deal]);
+
+  const fee          = deal ? (Number(deal.amount_usd) * 0.02).toFixed(2) : '0';
+  const toFreelancer = deal ? (Number(deal.amount_usd) * 0.98).toFixed(2) : '0';
+
+  const handleDeploy = async () => {
     tg?.HapticFeedback?.impactOccurred('medium');
     setLoading(true);
     try {
-      const res = await contractsApi.deploy(id!, {
-        clientWallet     : wallets.client,
-        freelancerWallet : wallets.freelancer,
-      });
+      const res = await contractsApi.deploy(id!, {});
       setDeployed(res.data);
       tg?.HapticFeedback?.notificationOccurred('success');
       toast.success('Smart contract deployed!');
@@ -47,8 +61,41 @@ export function Payment() {
     }
   };
 
-  const fee          = deal ? (Number(deal.amount_usd) * 0.02).toFixed(2) : '0';
-  const toFreelancer = deal ? (Number(deal.amount_usd) * 0.98).toFixed(2) : '0';
+  const handlePay = async () => {
+    if (!deployed?.tonContractAddress || !deployed?.cryptoAmount) return;
+
+    if (!wallet) {
+      tonConnectUI.openModal();
+      return;
+    }
+
+    tg?.HapticFeedback?.impactOccurred('heavy');
+    setPaying(true);
+    try {
+      const nanotons = toNano(deployed.cryptoAmount.toFixed(9)).toString();
+      await tonConnectUI.sendTransaction({
+        validUntil: Math.floor(Date.now() / 1000) + 300,
+        messages: [{
+          address: deployed.tonContractAddress,
+          amount : nanotons,
+        }],
+      });
+      tg?.HapticFeedback?.notificationOccurred('success');
+      toast.success('Payment sent! Waiting for confirmation...');
+      setTimeout(() => navigate(`/deal/${id}`), 2000);
+    } catch (e: any) {
+      tg?.HapticFeedback?.notificationOccurred('error');
+      if (e?.message?.includes('User declined')) {
+        toast.error('Payment cancelled');
+      } else {
+        toast.error('Payment failed');
+      }
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  const hasWallet = !!profile?.ton_wallet_address;
 
   return (
     <div className="page fade-in">
@@ -71,15 +118,38 @@ export function Payment() {
           <div className="sec" style={{ margin: '0 0 10px', padding: 0, border: 'none', color: 'rgba(255,255,255,0.3)' }}>
             -- AMOUNT BREAKDOWN --
           </div>
-          <DataRow label="Deal amount"        value={`$${deal.amount_usd}`} color="#ffaa00" />
-          <DataRow label="Fee (2%)"           value={`-$${fee}`}           color="#ff4466" />
+          <DataRow label="Deal amount"         value={`$${deal.amount_usd}`}  color="#ffaa00" />
+          <DataRow label="Platform fee (2%)"   value={`-$${fee}`}             color="#ff4466" />
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', margin: '8px 0' }} />
-          <DataRow label="Freelancer receives" value={`$${toFreelancer}`}   color="#00ff88" />
+          <DataRow label="Freelancer receives"  value={`$${toFreelancer}`}    color="#00ff88" />
+          {deployed && (
+            <>
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', margin: '8px 0' }} />
+              <DataRow label={`Amount in ${deal.currency}`} value={`${deployed.cryptoAmount.toFixed(4)} ${deal.currency}`} color="#0088ff" />
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Wallet warning */}
+      {!hasWallet && (
+        <div className="gl card-stagger-3" style={{ borderColor: 'rgba(255,68,102,0.3)', background: 'rgba(255,68,102,0.05)' }}>
+          <div className="pxgrid" /><div className="sh" />
+          <div style={{ fontSize: '8px', color: '#FF4466', textAlign: 'center' }}>
+            ⚠️ NO WALLET LINKED
+          </div>
+          <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', marginTop: '8px', textAlign: 'center', lineHeight: '1.8' }}>
+            Add your TON wallet in Profile first
+          </div>
+          <button className="btn btn-full" style={{ marginTop: '10px', fontSize: '7px' }}
+            onClick={() => navigate('/profile')}>
+            [ 👤 GO TO PROFILE ]
+          </button>
         </div>
       )}
 
       {deployed ? (
-        /* Contract deployed — show address */
+        /* Contract deployed — show address + pay button */
         <div className="gl card-stagger-3" style={{ borderColor: 'rgba(0,255,136,0.3)', background: 'rgba(0,255,136,0.04)' }}>
           <div className="pxgrid" /><div className="sh" />
           <div style={{ fontSize: '9px', color: '#00ff88', marginBottom: '10px', textAlign: 'center' }}>
@@ -88,59 +158,67 @@ export function Payment() {
           <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px' }}>
             CONTRACT ADDRESS
           </div>
-          <div style={{ fontSize: '7px', color: '#0088ff', wordBreak: 'break-all', marginBottom: '10px',
+          <div style={{
+            fontSize: '7px', color: '#0088ff', wordBreak: 'break-all', marginBottom: '12px',
             padding: '8px', background: 'rgba(0,136,255,0.08)', borderRadius: '8px',
-            border: '1px solid rgba(0,136,255,0.2)' }}>
+            border: '1px solid rgba(0,136,255,0.2)',
+          }}>
             {deployed.tonContractAddress}
           </div>
-          <div style={{ fontSize: '8px', color: '#ffaa00', marginBottom: '12px', textAlign: 'center' }}>
-            Send <b>{deployed.cryptoAmount.toFixed(4)} {currency}</b> to this address
-          </div>
+
+          {/* Pay via TonConnect */}
           <button className="btn btn-g btn-full"
+            onClick={handlePay}
+            disabled={paying}
+            style={{ marginBottom: '8px', fontSize: '8px' }}>
+            {paying
+              ? '[ ⏳ SENDING... ]'
+              : wallet
+                ? `[ 💎 PAY ${deployed.cryptoAmount.toFixed(4)} ${deal?.currency || 'TON'} ]`
+                : '[ 💎 CONNECT WALLET & PAY ]'}
+          </button>
+
+          {/* Manual fallback */}
+          <button className="btn btn-full"
             onClick={() => {
               navigator.clipboard.writeText(deployed.tonContractAddress);
               tg?.HapticFeedback?.notificationOccurred('success');
               toast.success('Address copied!');
-            }}>
-            [ 📋 COPY ADDRESS ]
+            }}
+            style={{ fontSize: '7px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>
+            [ 📋 COPY ADDRESS (MANUAL) ]
           </button>
-          <button className="btn btn-gr btn-full" style={{ marginTop: '8px' }}
+
+          <button className="btn btn-gr btn-full" style={{ fontSize: '7px' }}
             onClick={() => navigate(`/deal/${id}`)}>
             [ ◀ BACK TO DEAL ]
           </button>
         </div>
       ) : (
-        <>
-          {/* Currency selection and wallets */}
+        /* Deploy button */
+        hasWallet && (
           <div className="gl card-stagger-3">
             <div className="pxgrid" /><div className="sh" />
-            <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', marginBottom: '10px' }}>CURRENCY</div>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
-              {(['TON','USDT'] as const).map(c => (
-                <button key={c} onClick={() => setCurrency(c)}
-                  className={`btn btn-full ${currency === c ? 'btn-b' : 'btn-gr'}`}>
-                  {c === 'TON' ? '💎 TON' : '💵 USDT'}
-                </button>
-              ))}
+            <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px' }}>YOUR WALLET</div>
+            <div style={{
+              fontSize: '7px', color: '#00ff88', wordBreak: 'break-all',
+              padding: '8px 10px', background: 'rgba(0,255,136,0.06)',
+              border: '1px solid rgba(0,255,136,0.15)', borderRadius: '8px',
+            }}>
+              ✅ {profile?.ton_wallet_address?.slice(0, 10)}...{profile?.ton_wallet_address?.slice(-6)}
             </div>
-            <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px' }}>
-              CLIENT TON WALLET
-            </div>
-            <input className="input" placeholder="UQ..." value={wallets.client}
-              onChange={e => setWallets(w => ({ ...w, client: e.target.value }))}
-              style={{ marginBottom: '10px' }} />
-            <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px' }}>
-              FREELANCER TON WALLET
-            </div>
-            <input className="input" placeholder="UQ..." value={wallets.freelancer}
-              onChange={e => setWallets(w => ({ ...w, freelancer: e.target.value }))} />
-          </div>
 
-          <button className="btn btn-y btn-full card-stagger-4"
-            onClick={handleDeploy} disabled={loading}>
-            {loading ? '[ ⏳ DEPLOYING... ]' : '[ 🚀 DEPLOY CONTRACT ]'}
-          </button>
-        </>
+            <button className="btn btn-y btn-full"
+              onClick={handleDeploy}
+              disabled={loading}
+              style={{ marginTop: '14px' }}>
+              {loading ? '[ ⏳ DEPLOYING... ]' : '[ 🚀 DEPLOY CONTRACT ]'}
+            </button>
+            <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.25)', textAlign: 'center', marginTop: '8px', lineHeight: '1.8' }}>
+              SMART CONTRACT WILL BE CREATED ON TON BLOCKCHAIN
+            </div>
+          </div>
+        )
       )}
     </div>
   );

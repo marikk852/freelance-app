@@ -200,15 +200,24 @@ router.post('/:id/deploy', async (req, res) => {
       return res.status(400).json({ error: 'Contract must be signed by both parties' });
     }
 
-    const { clientWallet, freelancerWallet } = req.body;
-    if (!clientWallet || !freelancerWallet) {
-      return res.status(400).json({ error: 'TON wallet addresses are required' });
-    }
+    // Получаем кошельки из профилей участников (через rooms)
+    const { rows: roomRows } = await query(
+      `SELECT r.client_id, r.freelancer_id,
+              uc.ton_wallet_address AS client_wallet,
+              uf.ton_wallet_address AS freelancer_wallet
+       FROM rooms r
+       JOIN users uc ON uc.id = r.client_id
+       JOIN users uf ON uf.id = r.freelancer_id
+       WHERE r.id = $1`,
+      [contract.room_id]
+    );
+    if (!roomRows[0]) return res.status(404).json({ error: 'Room not found' });
 
-    // Validate TON address format
-    if (!TON_ADDRESS_RE.test(clientWallet) || !TON_ADDRESS_RE.test(freelancerWallet)) {
-      return res.status(400).json({ error: 'Invalid TON address format' });
-    }
+    const clientWallet     = roomRows[0].client_wallet;
+    const freelancerWallet = roomRows[0].freelancer_wallet;
+
+    if (!clientWallet)     return res.status(400).json({ error: 'Клиент не привязал TON кошелёк. Добавьте кошелёк в профиле.' });
+    if (!freelancerWallet) return res.status(400).json({ error: 'Фрилансер не привязал TON кошелёк. Попросите его добавить кошелёк в профиле.' });
 
     const result = await escrowService.deployContract({
       contractId       : contract.id,
