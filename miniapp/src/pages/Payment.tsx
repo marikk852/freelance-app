@@ -18,9 +18,10 @@ export function Payment() {
 
   const [deal,     setDeal]     = useState<any>(null);
   const [profile,  setProfile]  = useState<any>(null);
-  const [deployed, setDeployed] = useState<any>(null);
-  const [loading,  setLoading]  = useState(false);
-  const [paying,   setPaying]   = useState(false);
+  const [deployed,   setDeployed]   = useState<any>(null);
+  const [loading,    setLoading]    = useState(false);
+  const [paying,     setPaying]     = useState(false);
+  const [simulating, setSimulating] = useState(false);
 
   const [tonConnectUI] = useTonConnectUI();
   const wallet = useTonWallet();
@@ -34,15 +35,33 @@ export function Payment() {
   // Check if contract already deployed (has ton_contract_address)
   useEffect(() => {
     if (deal?.ton_contract_address && deal?.crypto_amount) {
+      const addr = deal.ton_contract_address;
       setDeployed({
-        tonContractAddress: deal.ton_contract_address,
+        tonContractAddress: addr,
         cryptoAmount      : Number(deal.crypto_amount),
+        simulated         : addr.startsWith('EQ') && addr.includes('SSSSSS'),
       });
     }
   }, [deal]);
 
   const fee          = deal ? (Number(deal.amount_usd) * 0.02).toFixed(2) : '0';
   const toFreelancer = deal ? (Number(deal.amount_usd) * 0.98).toFixed(2) : '0';
+
+  const handleSimulate = async () => {
+    tg?.HapticFeedback?.impactOccurred('heavy');
+    setSimulating(true);
+    try {
+      await contractsApi.simulatePayment(id!);
+      tg?.HapticFeedback?.notificationOccurred('success');
+      toast.success('Payment simulated! Deal is now in progress.');
+      setTimeout(() => navigate(`/deal/${id}`), 1500);
+    } catch (e: any) {
+      tg?.HapticFeedback?.notificationOccurred('error');
+      toast.error(e.response?.data?.error || 'Simulation failed');
+    } finally {
+      setSimulating(false);
+    }
+  };
 
   const handleDeploy = async () => {
     tg?.HapticFeedback?.impactOccurred('medium');
@@ -165,28 +184,39 @@ export function Payment() {
             {deployed.tonContractAddress}
           </div>
 
-          {/* Pay via TonConnect */}
-          <button className="btn btn-g btn-full"
-            onClick={handlePay}
-            disabled={paying}
-            style={{ marginBottom: '8px', fontSize: '8px' }}>
-            {paying
-              ? '[ ⏳ SENDING... ]'
-              : wallet
-                ? `[ 💎 PAY ${deployed.cryptoAmount.toFixed(4)} ${deal?.currency || 'TON'} ]`
-                : '[ 💎 CONNECT WALLET & PAY ]'}
-          </button>
-
-          {/* Manual fallback */}
-          <button className="btn btn-full"
-            onClick={() => {
-              navigator.clipboard.writeText(deployed.tonContractAddress);
-              tg?.HapticFeedback?.notificationOccurred('success');
-              toast.success('Address copied!');
-            }}
-            style={{ fontSize: '7px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>
-            [ 📋 COPY ADDRESS (MANUAL) ]
-          </button>
+          {deployed.simulated ? (
+            /* Simulate mode — no real blockchain */
+            <button className="btn btn-y btn-full"
+              onClick={handleSimulate}
+              disabled={simulating}
+              style={{ marginBottom: '8px', fontSize: '8px' }}>
+              {simulating ? '[ ⏳ SIMULATING... ]' : '[ 🧪 SIMULATE PAYMENT ]'}
+            </button>
+          ) : (
+            <>
+              {/* Pay via TonConnect */}
+              <button className="btn btn-g btn-full"
+                onClick={handlePay}
+                disabled={paying}
+                style={{ marginBottom: '8px', fontSize: '8px' }}>
+                {paying
+                  ? '[ ⏳ SENDING... ]'
+                  : wallet
+                    ? `[ 💎 PAY ${deployed.cryptoAmount.toFixed(4)} ${deal?.currency || 'TON'} ]`
+                    : '[ 💎 CONNECT WALLET & PAY ]'}
+              </button>
+              {/* Manual fallback */}
+              <button className="btn btn-full"
+                onClick={() => {
+                  navigator.clipboard.writeText(deployed.tonContractAddress);
+                  tg?.HapticFeedback?.notificationOccurred('success');
+                  toast.success('Address copied!');
+                }}
+                style={{ fontSize: '7px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>
+                [ 📋 COPY ADDRESS (MANUAL) ]
+              </button>
+            </>
+          )}
 
           <button className="btn btn-gr btn-full" style={{ fontSize: '7px' }}
             onClick={() => navigate(`/deal/${id}`)}>

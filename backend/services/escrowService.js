@@ -97,7 +97,7 @@ async function deployContract({
       );
     });
     console.log(`[Escrow] 🧪 Simulated deploy. Контракт: ${contractId}, адрес: ${fakeAddress}`);
-    return { tonContractAddress: fakeAddress, cryptoAmount };
+    return { tonContractAddress: fakeAddress, cryptoAmount, simulated: true };
   }
 
   // Загружаем скомпилированный код контракта
