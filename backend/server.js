@@ -56,11 +56,19 @@ app.use(express.json({ limit: '10mb' }));
 // Admin panel — после express.json() чтобы req.body работал
 app.use('/admark', require('./routes/admin'));
 
-// Rate limiting: 100 запросов за 15 минут с одного IP
+// Rate limiting: общий лимит для API
 app.use('/api/', rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 500,
   message: { error: 'Слишком много запросов, попробуйте позже' },
+  skip: (req) => req.path.startsWith('/deliveries'), // загрузка файлов — отдельный лимит
+}));
+
+// Отдельный лимит для загрузки файлов (тяжёлые запросы)
+app.use('/api/deliveries', rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 50,
+  message: { error: 'Слишком много загрузок, попробуйте позже' },
 }));
 
 // ---------- Статика (превью + баннеры — публичные) ----------
