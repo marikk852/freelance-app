@@ -5,7 +5,6 @@ import { DataRow } from '../components/GlassCard';
 import { contracts as contractsApi, users as usersApi } from '../utils/api';
 import { useTelegram } from '../hooks/useTelegram';
 import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
-import { toNano } from '@ton/ton';
 import toast from 'react-hot-toast';
 
 // ============================================================
@@ -72,7 +71,7 @@ export function Payment() {
     tg?.HapticFeedback?.impactOccurred('heavy');
     setPaying(true);
     try {
-      const nanotons = toNano(deployed.cryptoAmount.toFixed(9)).toString();
+      const nanotons = BigInt(Math.round(deployed.cryptoAmount * 1e9)).toString();
       await tonConnectUI.sendTransaction({
         validUntil: Math.floor(Date.now() / 1000) + 300,
         messages: [{
