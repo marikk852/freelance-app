@@ -449,6 +449,38 @@ export function Profile() {
                 <button className="btn btn-b btn-full" onClick={connectWallet}>
                   [ 💎 CONNECT TONKEEPER ]
                 </button>
+                <div style={{ marginTop: '12px' }}>
+                  <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.3)', marginBottom: '6px', letterSpacing: '1px' }}>
+                    OR PASTE ADDRESS MANUALLY
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="UQ..."
+                    value={wallet}
+                    onChange={e => setWallet(e.target.value)}
+                    style={{
+                      width: '100%',
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(255,255,255,0.12)',
+                      borderRadius: '10px',
+                      padding: '10px 12px',
+                      color: '#fff',
+                      fontSize: '7px',
+                      fontFamily: 'inherit',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      marginBottom: '8px',
+                    }}
+                  />
+                  <button
+                    className="btn btn-full"
+                    onClick={handleSaveWallet}
+                    disabled={!wallet.trim() || loading}
+                    style={{ fontSize: '7px', opacity: wallet.trim() ? 1 : 0.4 }}
+                  >
+                    [ 💾 SAVE WALLET ]
+                  </button>
+                </div>
               </>
             )}
           </div>
