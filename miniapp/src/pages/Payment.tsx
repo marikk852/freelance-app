@@ -36,10 +36,12 @@ export function Payment() {
   useEffect(() => {
     if (deal?.ton_contract_address && deal?.crypto_amount) {
       const addr = deal.ton_contract_address;
+      // Fake addresses from simulate mode are all-same-char: EQ+46×'S' or EQ+46×'A'
+      const isSimulated = /^(EQ|kQ|0Q)[A-Z]{46}$/.test(addr) || /^(EQ|kQ|0Q)[a-z]{46}$/.test(addr);
       setDeployed({
         tonContractAddress: addr,
         cryptoAmount      : Number(deal.crypto_amount),
-        simulated         : addr.startsWith('EQ') && addr.includes('SSSSSS'),
+        simulated         : isSimulated,
       });
     }
   }, [deal]);
