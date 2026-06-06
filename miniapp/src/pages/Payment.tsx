@@ -5,6 +5,7 @@ import { DataRow } from '../components/GlassCard';
 import { contracts as contractsApi, users as usersApi } from '../utils/api';
 import { useTelegram } from '../hooks/useTelegram';
 import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
+import { beginCell } from '@ton/core';
 import toast from 'react-hot-toast';
 
 // ============================================================
@@ -85,6 +86,7 @@ export function Payment() {
     if (!deployed?.tonContractAddress || !deployed?.cryptoAmount) return;
 
     if (!wallet) {
+      toast('Connect your wallet to send payment', { icon: '💎' });
       tonConnectUI.openModal();
       return;
     }
@@ -93,11 +95,17 @@ export function Payment() {
     setPaying(true);
     try {
       const nanotons = BigInt(Math.round(deployed.cryptoAmount * 1e9)).toString();
+
+      // OP_DEPOSIT = 1 — обязательно, иначе контракт не зафиксирует депозит
+      const body    = beginCell().storeUint(1, 32).endCell();
+      const payload = body.toBoc().toString('base64');
+
       await tonConnectUI.sendTransaction({
-        validUntil: Math.floor(Date.now() / 1000) + 300,
+        validUntil: Math.floor(Date.now() / 1000) + 600,
         messages: [{
           address: deployed.tonContractAddress,
           amount : nanotons,
+          payload,
         }],
       });
       tg?.HapticFeedback?.notificationOccurred('success');
@@ -105,10 +113,10 @@ export function Payment() {
       setTimeout(() => navigate(`/deal/${id}`), 2000);
     } catch (e: any) {
       tg?.HapticFeedback?.notificationOccurred('error');
-      if (e?.message?.includes('User declined')) {
+      if (e?.message?.includes('User declined') || e?.message?.includes('Reject')) {
         toast.error('Payment cancelled');
       } else {
-        toast.error('Payment failed');
+        toast.error('Payment failed. Try again.');
       }
     } finally {
       setPaying(false);
@@ -197,6 +205,11 @@ export function Payment() {
           ) : (
             <>
               {/* Pay via TonConnect */}
+              {!wallet && (
+                <div style={{ fontSize: '7px', color: 'rgba(255,170,0,0.7)', textAlign: 'center', marginBottom: '8px', lineHeight: '1.8', padding: '6px 10px', background: 'rgba(255,170,0,0.06)', borderRadius: '8px', border: '1px solid rgba(255,170,0,0.15)' }}>
+                  ⚠️ Tap below to open TonKeeper/Tonhub and sign the transaction
+                </div>
+              )}
               <button className="btn btn-g btn-full"
                 onClick={handlePay}
                 disabled={paying}
@@ -205,7 +218,7 @@ export function Payment() {
                   ? '[ ⏳ SENDING... ]'
                   : wallet
                     ? `[ 💎 PAY ${deployed.cryptoAmount.toFixed(4)} ${deal?.currency || 'TON'} ]`
-                    : '[ 💎 CONNECT WALLET & PAY ]'}
+                    : `[ 💎 OPEN WALLET & PAY ${deployed.cryptoAmount.toFixed(4)} ${deal?.currency || 'TON'} ]`}
               </button>
               {/* Manual fallback */}
               <button className="btn btn-full"

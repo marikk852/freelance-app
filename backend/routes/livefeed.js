@@ -37,7 +37,8 @@ router.get('/', async (req, res) => {
         u.first_name AS client_name,
         u.username   AS client_username
       FROM contracts c
-      LEFT JOIN users u ON u.telegram_id = c.client_id
+      LEFT JOIN rooms r ON r.id = c.room_id
+      LEFT JOIN users u ON u.telegram_id = r.client_id
       WHERE c.status IN ('completed','in_progress','under_review','disputed','signed','awaiting_payment')
       ORDER BY c.created_at DESC
       LIMIT 20
