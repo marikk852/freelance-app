@@ -5,7 +5,6 @@ import { DataRow } from '../components/GlassCard';
 import { contracts as contractsApi, users as usersApi } from '../utils/api';
 import { useTelegram } from '../hooks/useTelegram';
 import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
-import { beginCell } from '@ton/core';
 import toast from 'react-hot-toast';
 
 // ============================================================
@@ -96,9 +95,8 @@ export function Payment() {
     try {
       const nanotons = BigInt(Math.round(deployed.cryptoAmount * 1e9)).toString();
 
-      // OP_DEPOSIT = 1 — обязательно, иначе контракт не зафиксирует депозит
-      const body    = beginCell().storeUint(1, 32).endCell();
-      const payload = body.toBoc().toString('base64');
+      // OP_DEPOSIT = 1, pre-encoded BOC: beginCell().storeUint(1,32).endCell().toBoc().toString('base64')
+      const payload = 'te6cckEBAQEABgAACAAAAAHgg8T9';
 
       await tonConnectUI.sendTransaction({
         validUntil: Math.floor(Date.now() / 1000) + 600,
