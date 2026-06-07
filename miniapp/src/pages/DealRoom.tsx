@@ -217,6 +217,15 @@ export function DealRoom() {
             </div>
           </div>
         )}
+        {isFreelancer && deal.status === 'awaiting_payment' && (
+          <div className="gl" style={{ textAlign: 'center', padding: '14px', borderColor: 'rgba(255,136,0,0.3)', background: 'rgba(255,136,0,0.04)' }}>
+            <div className="pxgrid" />
+            <div style={{ fontSize: '8px', color: '#ff8800', marginBottom: '4px' }}>💳 CLIENT IS SENDING PAYMENT</div>
+            <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.35)', lineHeight: 2 }}>
+              Smart contract deployed. Waiting for funds to be frozen.
+            </div>
+          </div>
+        )}
         {isFreelancer && deal.status === 'in_progress' && (
           <button className="btn btn-b btn-full" onClick={() => go(`/review/${id}`)}>
             [ 📦 SUBMIT WORK ]
@@ -234,6 +243,38 @@ export function DealRoom() {
           <button className="btn btn-gr btn-full" onClick={() => go(`/dispute/${id}`)}>
             [ ⚖️ OPEN DISPUTE ]
           </button>
+        )}
+
+        {/* Disputed — info for both */}
+        {deal.status === 'disputed' && (
+          <div className="gl" style={{ textAlign: 'center', padding: '14px', borderColor: 'rgba(255,68,102,0.35)', background: 'rgba(255,68,102,0.05)' }}>
+            <div className="pxgrid" />
+            <div style={{ fontSize: '8px', color: '#ff4466', marginBottom: '6px' }}>⚖️ DISPUTE IN PROGRESS</div>
+            <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.35)', lineHeight: 2 }}>
+              Arbitrator is reviewing the case.<br/>You will be notified of the decision.
+            </div>
+            <button className="btn btn-full" style={{ marginTop: '10px', fontSize: '7px', borderColor: 'rgba(255,68,102,0.35)', color: '#ff4466' }}
+              onClick={() => go(`/dispute/${id}`)}>
+              [ 📋 VIEW DISPUTE ]
+            </button>
+          </div>
+        )}
+
+        {/* Completed — congrats for both */}
+        {deal.status === 'completed' && (
+          <div className="gl" style={{ textAlign: 'center', padding: '20px 14px', borderColor: 'rgba(0,255,136,0.35)', background: 'rgba(0,255,136,0.05)' }}>
+            <div className="pxgrid" />
+            <div style={{ fontSize: '22px', marginBottom: '8px', animation: 'float 2s ease-in-out infinite' }}>🏆</div>
+            <div style={{ fontSize: '9px', color: '#00ff88', marginBottom: '6px' }}>QUEST COMPLETED!</div>
+            <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', lineHeight: 2 }}>
+              {isClient ? 'Funds have been released to the freelancer.' : 'Payment has been sent to your wallet.'}
+            </div>
+            {isFreelancer && deal.ton_contract_address && (
+              <div style={{ fontSize: '7px', color: 'rgba(255,170,0,0.7)', marginTop: '8px', lineHeight: 2 }}>
+                +{deal.crypto_amount ? `${(Number(deal.crypto_amount) * 0.98).toFixed(4)} ${deal.currency}` : 'funds'} sent to your wallet
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

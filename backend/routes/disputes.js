@@ -92,6 +92,49 @@ router.post('/', async (req, res) => {
 });
 
 /**
+ * GET /api/disputes/by-contract/:contractId
+ * Get active dispute for a contract — only participants can view.
+ */
+router.get('/by-contract/:contractId', async (req, res) => {
+  try {
+    const { contractId } = req.params;
+    const { telegramId } = req.user;
+
+    const { rows } = await query(
+      `SELECT d.*,
+              uc.telegram_id AS client_tg_id,
+              uf.telegram_id AS freelancer_tg_id
+       FROM disputes d
+       JOIN contracts c ON c.id = d.contract_id
+       JOIN rooms r ON r.id = c.room_id
+       JOIN users uc ON uc.id = r.client_id
+       JOIN users uf ON uf.id = r.freelancer_id
+       WHERE d.contract_id = $1
+       ORDER BY d.created_at DESC LIMIT 1`,
+      [contractId]
+    );
+
+    if (!rows[0]) return res.status(404).json({ error: 'No dispute found' });
+
+    const isParticipant = [rows[0].client_tg_id, rows[0].freelancer_tg_id]
+      .map(Number).includes(Number(telegramId));
+    if (!isParticipant) return res.status(403).json({ error: 'Access denied' });
+
+    res.json({
+      id        : rows[0].id,
+      reason    : rows[0].reason,
+      status    : rows[0].status,
+      decision  : rows[0].decision,
+      openedAt  : rows[0].created_at,
+      resolvedAt: rows[0].resolved_at,
+    });
+  } catch (err) {
+    console.error('[API] GET /disputes/by-contract error:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
  * POST /api/disputes/:id/resolve
  * Arbitrator resolves the dispute.
  * SECURITY: only the platform arbitrator (ARBITRATOR_TELEGRAM_ID) can resolve disputes.

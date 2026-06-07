@@ -42,8 +42,9 @@ export const deliveries = {
 
 // ---- Споры ----
 export const disputes = {
-  open:    (data: any)            => api.post('/disputes', data),
-  resolve: (id: string, data: any) => api.post(`/disputes/${id}/resolve`, data),
+  open:         (data: any)             => api.post('/disputes', data),
+  resolve:      (id: string, data: any) => api.post(`/disputes/${id}/resolve`, data),
+  byContract:   (contractId: string)    => api.get(`/disputes/by-contract/${contractId}`),
 };
 
 // ---- Пользователи ----

@@ -107,7 +107,9 @@ export function Review() {
       <div className="gl hud card-stagger-1">
         <div className="pxgrid" /><div className="sh" />
         <div className="logo" style={{ color: '#cc44ff' }}>
-          {isFreelancer && !delivery ? '📦 SUBMIT WORK' : '🔍 REVIEW'}
+          {isFreelancer && !delivery ? '📦 SUBMIT WORK'
+            : isFreelancer && delivery?.status === 'rejected' ? '🔄 REVISION'
+            : '🔍 REVIEW'}
         </div>
       </div>
 
@@ -192,8 +194,70 @@ export function Review() {
         </>
       )}
 
-      {/* ===== FREELANCER: work already submitted ===== */}
-      {isFreelancer && delivery && (
+      {/* ===== FREELANCER: work rejected — show revision form ===== */}
+      {isFreelancer && delivery?.status === 'rejected' && (
+        <>
+          {/* Rejection notice */}
+          <div className="gl card-stagger-2" style={{ borderColor: 'rgba(255,68,102,0.35)', background: 'rgba(255,68,102,0.05)' }}>
+            <div className="pxgrid" /><div className="sh" />
+            <div style={{ fontSize: '8px', color: '#ff4466', marginBottom: '8px' }}>🔄 REVISION REQUESTED</div>
+            {delivery.reviewComment && (
+              <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.6)', lineHeight: '1.9', padding: '10px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                "{delivery.reviewComment}"
+              </div>
+            )}
+          </div>
+
+          {/* Resubmit form */}
+          <div className="gl card-stagger-3">
+            <div className="pxgrid" /><div className="sh" />
+            <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.4)', marginBottom: '10px' }}>-- NEW DESCRIPTION --</div>
+            <textarea
+              className="input"
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Describe what was fixed..."
+              style={{ minHeight: '90px', resize: 'vertical' }}
+            />
+          </div>
+
+          <div className="gl card-stagger-4">
+            <div className="pxgrid" /><div className="sh" />
+            <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.4)', marginBottom: '10px' }}>-- LINKS (optional) --</div>
+            <input className="input" value={links} onChange={e => setLinks(e.target.value)} placeholder="https://..." />
+          </div>
+
+          <div className="gl card-stagger-4">
+            <div className="pxgrid" /><div className="sh" />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.4)' }}>-- FILES --</div>
+              <span className="gl-pill" style={{ fontSize: '7px', padding: '2px 8px', color: '#0088ff', border: '1px solid rgba(0,136,255,0.3)' }}>
+                {files.length} file{files.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <input ref={fileRef} type="file" multiple style={{ display: 'none' }}
+              onChange={e => { const picked = Array.from(e.target.files || []); setFiles(prev => [...prev, ...picked]); }} />
+            {files.map((f, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: i < files.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+                <span style={{ fontSize: '8px', color: 'rgba(255,255,255,0.7)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '75%' }}>{f.name}</span>
+                <button className="gl-pill" onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))} style={{ fontSize: '7px', color: '#ff4466', border: '1px solid rgba(255,68,102,0.35)', background: 'none', cursor: 'pointer', padding: '3px 8px' }}>✕</button>
+              </div>
+            ))}
+            <button className="btn btn-gr btn-full" style={{ marginTop: files.length > 0 ? '10px' : '0' }} onClick={() => fileRef.current?.click()}>
+              [ 📎 ADD FILES ]
+            </button>
+          </div>
+
+          <div className="card-stagger-5">
+            <button className="btn btn-y btn-full" onClick={handleSubmit} disabled={loading || !description.trim()}>
+              {loading ? '[ ⏳ UPLOADING... ]' : '[ 📤 RESUBMIT WORK ]'}
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* ===== FREELANCER: work submitted, awaiting review ===== */}
+      {isFreelancer && delivery && delivery.status === 'submitted' && (
         <div className="gl dc card-stagger-2" style={{ textAlign: 'center', padding: '32px 10px' }}>
           <div className="pxgrid" /><div className="sh" />
           <div style={{ fontSize: '28px', marginBottom: '10px', animation: 'float 3s ease-in-out infinite' }}>⏳</div>

@@ -55,6 +55,7 @@ function request(method, path, body, initData) {
 
     const req = lib.request({
       hostname: url.hostname,
+      port    : url.port || (isHttps ? 443 : 80),
       path    : url.pathname + url.search,
       method,
       headers,
