@@ -93,7 +93,10 @@ export function Payment() {
     tg?.HapticFeedback?.impactOccurred('heavy');
     setPaying(true);
     try {
-      const nanotons = BigInt(Math.round(deployed.cryptoAmount * 1e9)).toString();
+      // Gas buffer: 0.15 TON covers arbitrator costs (0.05 deploy + 0.05 release + 0.05 reserve)
+      // This prevents arbitrator wallet from draining on each deal
+      const GAS_BUFFER_NANO = BigInt(150_000_000); // 0.15 TON
+      const nanotons = (BigInt(Math.round(deployed.cryptoAmount * 1e9)) + GAS_BUFFER_NANO).toString();
 
       // OP_DEPOSIT = 1, pre-encoded BOC: beginCell().storeUint(1,32).endCell().toBoc().toString('base64')
       const payload = 'te6cckEBAQEABgAACAAAAAHgg8T9';
@@ -151,7 +154,10 @@ export function Payment() {
           {deployed && (
             <>
               <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', margin: '8px 0' }} />
-              <DataRow label={`Amount in ${deal.currency}`} value={`${deployed.cryptoAmount.toFixed(4)} ${deal.currency}`} color="#0088ff" />
+              <DataRow label={`Deal in ${deal.currency}`}  value={`${deployed.cryptoAmount.toFixed(4)} ${deal.currency}`} color="#0088ff" />
+              <DataRow label="Network gas"                 value={`+0.15 ${deal.currency}`}                              color="rgba(255,255,255,0.3)" />
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', margin: '8px 0' }} />
+              <DataRow label="TOTAL TO SEND"               value={`${(deployed.cryptoAmount + 0.15).toFixed(4)} ${deal.currency}`} color="#ffaa00" />
             </>
           )}
         </div>
@@ -215,8 +221,8 @@ export function Payment() {
                 {paying
                   ? '[ ⏳ SENDING... ]'
                   : wallet
-                    ? `[ 💎 PAY ${deployed.cryptoAmount.toFixed(4)} ${deal?.currency || 'TON'} ]`
-                    : `[ 💎 OPEN WALLET & PAY ${deployed.cryptoAmount.toFixed(4)} ${deal?.currency || 'TON'} ]`}
+                    ? `[ 💎 PAY ${(deployed.cryptoAmount + 0.15).toFixed(4)} ${deal?.currency || 'TON'} ]`
+                    : `[ 💎 OPEN WALLET & PAY ${(deployed.cryptoAmount + 0.15).toFixed(4)} ${deal?.currency || 'TON'} ]`}
               </button>
               {/* Manual fallback */}
               <button className="btn btn-full"
