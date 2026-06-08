@@ -359,17 +359,18 @@ canvas{image-rendering:pixelated;}
 
 /* ============================================================
    DESKTOP ADAPTATION — Telegram Desktop / expanded view
-   Breakpoints:
-     600px+  → wider single column, bigger fonts
-     900px+  → sidebar nav + content area
    ============================================================ */
+
+/* Mobile/desktop visibility toggles */
+.desktop-only { display: none !important; }
+.mobile-only  { display: block; }
+
+/* Home action row — flex-wrap on mobile */
+.home-action-row { display: flex; flex-wrap: wrap; gap: 10px; }
 
 /* ---------- 600px: wider, slightly larger ---------- */
 @media (min-width: 600px) {
-  .page {
-    max-width: 560px;
-    padding: 16px 20px 100px;
-  }
+  .page { max-width: 560px; padding: 16px 20px 100px; }
   .gl, .gl-sm { border-radius: 12px; margin-bottom: 10px; }
   .btn { font-size: 9px !important; padding: 15px; }
   .logo { font-size: 14px; }
@@ -382,97 +383,209 @@ canvas{image-rendering:pixelated;}
   .nav-item svg { width: 26px; height: 26px; }
 }
 
-/* ---------- 900px: sidebar layout ---------- */
+/* ---------- 900px: full sidebar layout ---------- */
 @media (min-width: 900px) {
-  /* Root becomes flex row */
-  #root {
-    display: flex;
-    flex-direction: row;
-    min-height: 100vh;
-  }
+  /* Generic desktop-only becomes block; grids override below */
+  .desktop-only { display: block !important; }
+  .mobile-only  { display: none !important; }
+  .home-hero-grid.desktop-only    { display: grid !important; }
+  .home-action-row.desktop-only   { display: grid !important; }
+  .home-bottom-grid.desktop-only  { display: grid !important; }
+  .desktop-topbar.desktop-only    { display: flex !important; }
 
-  /* Left sidebar nav */
+  /* Root → flex row */
+  #root { display: flex; flex-direction: row; min-height: 100vh; }
+
+  /* ── Left sidebar ── */
   .bottom-nav {
     position: fixed;
     left: 0; top: 0; bottom: 0; right: auto;
-    width: 200px;
+    width: 220px;
     flex-direction: column;
     justify-content: flex-start;
     align-items: stretch;
-    padding: 24px 12px;
+    padding: 0;
     border-top: none;
     border-right: 1px solid rgba(255,255,255,0.08);
-    gap: 4px;
+    gap: 0;
     overflow-y: auto;
+    background: rgba(255,255,255,0.022);
+    backdrop-filter: blur(24px);
   }
-
-  /* Sidebar logo */
   .bottom-nav::before {
-    content: '🔒 SAFE';
+    content: '\01F512  SAFEDEAL';
     display: block;
     font-family: 'Press Start 2P', monospace;
-    font-size: 10px;
+    font-size: 8px;
     color: #00ff88;
-    text-shadow: 0 0 12px rgba(0,255,136,0.6);
-    padding: 0 12px 24px;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-    margin-bottom: 16px;
+    text-shadow: 0 0 14px rgba(0,255,136,0.55);
+    padding: 22px 18px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
     letter-spacing: 1px;
   }
-
   .nav-item {
     flex-direction: row;
     justify-content: flex-start;
     gap: 12px;
-    padding: 12px 16px;
+    padding: 11px 14px;
     border-radius: 10px;
-    font-size: 8px;
-    width: 100%;
+    font-size: 7px;
+    margin: 2px 10px;
+    width: calc(100% - 20px);
+    border: 1px solid transparent;
+    color: rgba(255,255,255,0.4);
+    transition: background 0.15s, color 0.15s;
   }
-  .nav-item.active { background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.2); }
+  .nav-item:hover { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.8); }
+  .nav-item.active {
+    background: rgba(0,255,136,0.09);
+    border-color: rgba(0,255,136,0.22);
+    color: #00ff88;
+  }
   .nav-item.active::after { display: none; }
   .nav-item svg { width: 20px; height: 20px; flex-shrink: 0; }
 
-  /* Content area shifts right of sidebar */
+  /* ── Page wrapper ── */
   .page {
-    margin-left: 200px;
-    max-width: 680px;
-    padding: 24px 28px 40px;
+    margin-left: 220px;
+    width: calc(100% - 220px);
+    max-width: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
   }
 
-  /* Larger glass cards on desktop */
-  .gl, .gl-sm {
-    border-radius: 14px;
+  /* Desktop topbar */
+  .desktop-topbar {
+    display: flex !important;
+    align-items: center;
+    padding: 13px 28px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(20px);
+    position: sticky; top: 0; z-index: 50;
+    gap: 14px;
+    flex-shrink: 0;
+  }
+  .desktop-topbar-title {
+    font-size: 7px;
+    color: rgba(255,255,255,0.4);
+    margin-right: auto;
+    font-family: 'Press Start 2P', monospace;
+    letter-spacing: 0.5px;
+  }
+  .desktop-topbar-title span { color: #00ff88; }
+  .desktop-xp-label { font-size: 6px; color: #ffaa00; font-family: 'Press Start 2P', monospace; white-space: nowrap; }
+  .desktop-xp-track {
+    width: 110px; height: 6px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 100px; overflow: hidden;
+    border: 1px solid rgba(255,170,0,0.18);
+  }
+  .desktop-xp-fill { height: 100%; background: linear-gradient(90deg,#ffaa00,#ff6600); border-radius: 100px; }
+  .desktop-xp-lvl  { font-size: 5px; color: rgba(255,255,255,0.28); font-family: 'Press Start 2P', monospace; }
+  .desktop-bell    { font-size: 16px; cursor: pointer; position: relative; }
+
+  /* Page inner content area */
+  .page-inner { padding: 24px 28px 40px; flex: 1; }
+
+  /* ── Home hero grid (scene + 4 stat cards) ── */
+  .home-hero-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .home-hero-scene {
+    margin-bottom: 0;
+    min-height: 170px;
+    padding: 0;
+    overflow: hidden;
+  }
+  .home-hero-scene canvas { width: 100% !important; height: 170px !important; display: block; }
+  .home-hero-stat {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; gap: 8px;
+    margin-bottom: 0; min-height: 170px;
+  }
+  .home-hero-stat .stat-icon { font-size: 22px; }
+  .home-hero-stat .stat-n   { font-size: 22px !important; line-height: 1; }
+  .home-hero-stat .stat-l   { font-size: 5.5px !important; color: rgba(255,255,255,0.32); letter-spacing: 0.5px; }
+
+  /* ── Home action row (5 columns) ── */
+  .home-action-row {
+    display: grid !important;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .home-action-row > div {
+    flex: unset !important;
+    min-width: unset !important;
+    margin-bottom: 0;
+  }
+
+  /* ── Home bottom grid (2 columns) ── */
+  .home-bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .home-bottom-grid .gl { margin-bottom: 0; padding: 16px 18px; }
+  .home-list-header {
+    display: flex; align-items: center; justify-content: space-between;
     margin-bottom: 12px;
   }
+  .home-list-title { font-size: 7px; color: rgba(255,255,255,0.45); font-family: 'Press Start 2P', monospace; }
+  .home-list-badge {
+    font-size: 5px; padding: 3px 8px; border-radius: 100px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.3);
+    font-family: 'Press Start 2P', monospace;
+  }
+  .home-deal-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 11px; border-radius: 9px;
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.06);
+    margin-bottom: 6px; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .home-deal-item:hover { background: rgba(255,255,255,0.05); }
+  .home-deal-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .home-deal-info { flex: 1; min-width: 0; }
+  .home-deal-name { font-size: 5.5px; color: rgba(255,255,255,0.7); margin-bottom: 3px; font-family: 'Press Start 2P', monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .home-deal-meta { font-size: 4.5px; color: rgba(255,255,255,0.3); font-family: 'Press Start 2P', monospace; }
+  .home-deal-amt  { font-size: 6px; color: #ffaa00; flex-shrink: 0; font-family: 'Press Start 2P', monospace; }
+  .home-live-item {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 8px 10px; border-radius: 9px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.05);
+    margin-bottom: 6px;
+  }
+  .home-live-emoji { font-size: 14px; flex-shrink: 0; line-height: 1.4; }
+  .home-live-text  { font-size: 5px; color: rgba(255,255,255,0.4); line-height: 2; font-family: 'Press Start 2P', monospace; }
+  .home-live-time  { font-size: 4px; color: rgba(255,255,255,0.2); font-family: 'Press Start 2P', monospace; margin-top: 2px; }
 
-  /* Bigger fonts on desktop */
+  /* General desktop upscales */
+  .gl, .gl-sm { border-radius: 14px; margin-bottom: 12px; }
   .logo { font-size: 16px; }
   .btn { font-size: 10px !important; padding: 16px 20px; border-radius: 10px; }
   .input { font-size: 15px; padding: 15px 18px; }
   .dc-title { font-size: 11px; }
   .stat-n { font-size: 18px; }
   .sec { font-size: 12px; }
-
-  /* Buttons — keep full width inside content */
   .btn-full { width: 100%; }
-
-  /* Two-column stats grid */
   .stats { gap: 8px; }
   .stat { padding: 14px 8px; }
-
-  /* Pixel scenes wider on desktop */
   canvas { max-width: 100%; }
 }
 
-/* ---------- 1200px: generous wide desktop ---------- */
+/* ---------- 1200px: wide desktop ---------- */
 @media (min-width: 1200px) {
   .bottom-nav { width: 240px; }
-  .page {
-    margin-left: 240px;
-    max-width: 780px;
-    padding: 28px 36px 48px;
-  }
+  .page { margin-left: 240px; width: calc(100% - 240px); }
+  .page-inner { padding: 28px 36px 48px; }
 }
 
 /* Nav icon 3D bounce + spin */
