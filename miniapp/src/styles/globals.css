@@ -567,6 +567,13 @@ canvas{image-rendering:pixelated;}
   .home-live-text  { font-size: 5px; color: rgba(255,255,255,0.4); line-height: 2; font-family: 'Press Start 2P', monospace; }
   .home-live-time  { font-size: 4px; color: rgba(255,255,255,0.2); font-family: 'Press Start 2P', monospace; margin-top: 2px; }
 
+  /* Page inner padding (all pages except Home which handles its own) */
+  .page-inner { padding: 24px 28px 40px; flex: 1; }
+
+  /* Quests — 2-column card grid on desktop */
+  .quests-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .quests-grid > div { margin-bottom: 0 !important; }
+
   /* General desktop upscales */
   .gl, .gl-sm { border-radius: 14px; margin-bottom: 12px; }
   .logo { font-size: 16px; }

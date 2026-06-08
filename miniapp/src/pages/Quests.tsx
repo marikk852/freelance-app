@@ -29,11 +29,11 @@ const CATEGORIES = ['general', 'deals', 'social'];
 
 export function Quests() {
   const { tg }  = useTelegram();
-  const [quests,   setQuests]   = useState<Quest[]>([]);
-  const [loading,  setLoading]  = useState(true);
-  const [claiming, setClaiming] = useState<string | null>(null);
+  const [quests,    setQuests]    = useState<Quest[]>([]);
+  const [loading,   setLoading]   = useState(true);
+  const [claiming,  setClaiming]  = useState<string | null>(null);
   const [newlyDone, setNewlyDone] = useState<string[]>([]);
-  const [filter,   setFilter]   = useState<string>('all');
+  const [filter,    setFilter]    = useState<string>('all');
 
   useEffect(() => {
     tg?.BackButton?.hide();
@@ -76,115 +76,115 @@ export function Quests() {
     }
   }
 
-  const filtered = filter === 'all'
-    ? quests
-    : quests.filter(q => q.category === filter);
-
+  const filtered       = filter === 'all' ? quests : quests.filter(q => q.category === filter);
   const completedCount = quests.filter(q => q.completed).length;
   const totalCoins     = quests.filter(q => q.completed).reduce((s, q) => s + q.coins, 0);
   const maxCoins       = quests.reduce((s, q) => s + q.coins, 0);
+  const progressPct    = quests.length > 0 ? (completedCount / quests.length) * 100 : 0;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#000', paddingBottom: '90px' }}>
+    <div className="page fade-in">
 
-      {/* Header */}
-      <div style={{
-        padding: '20px 16px 0',
-        fontFamily: '"Press Start 2P", monospace',
-      }}>
-        <div style={{ fontSize: '13px', color: '#FFAA00', marginBottom: '4px', letterSpacing: '1px' }}>
-          QUESTS
+      {/* ── Desktop topbar ── */}
+      <div className="desktop-topbar desktop-only">
+        <div className="desktop-topbar-title">DASHBOARD / <span>QUESTS</span></div>
+        <div style={{ fontSize: '6px', color: '#ffaa00', fontFamily: '"Press Start 2P", monospace' }}>
+          🪙 {totalCoins}/{maxCoins} COINS
         </div>
-        <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', marginBottom: '20px' }}>
-          COMPLETE TASKS — EARN SAFECOINS
+        <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.3)', fontFamily: '"Press Start 2P", monospace' }}>
+          {completedCount}/{quests.length} DONE
         </div>
+      </div>
 
-        {/* Progress summary */}
-        <div style={{
-          background: 'rgba(255,255,255,0.045)',
-          border: '1px solid rgba(255,170,0,0.25)',
-          borderRadius: '16px',
-          padding: '14px 16px',
-          marginBottom: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}>
-          <div>
-            <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px' }}>COMPLETED</div>
-            <div style={{ fontSize: '18px', color: '#FFAA00' }}>{completedCount}<span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)' }}>/{quests.length}</span></div>
+      <div className="page-inner" style={{ fontFamily: '"Press Start 2P", monospace' }}>
+
+        {/* ── Mobile header ── */}
+        <div className="mobile-only">
+          <div style={{ fontSize: '13px', color: '#FFAA00', marginBottom: '4px', letterSpacing: '1px' }}>
+            QUESTS
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px' }}>COINS EARNED</div>
-            <div style={{ fontSize: '18px', color: '#00FF88' }}>🪙 {totalCoins}<span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)' }}>/{maxCoins}</span></div>
+          <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', marginBottom: '16px' }}>
+            COMPLETE TASKS — EARN SAFECOINS
           </div>
         </div>
 
-        {/* Progress bar */}
+        {/* ── Stats row ── */}
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+          {/* Progress card */}
+          <div className="gl" style={{
+            flex: 1, padding: '14px 16px',
+            borderColor: 'rgba(255,170,0,0.25)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          }}>
+            <div className="pxgrid" /><div className="sh" />
+            <div style={{ position: 'relative', zIndex: 2 }}>
+              <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px' }}>COMPLETED</div>
+              <div style={{ fontSize: '20px', color: '#FFAA00', lineHeight: 1 }}>
+                {completedCount}<span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)' }}>/{quests.length}</span>
+              </div>
+            </div>
+            <div style={{ textAlign: 'right', position: 'relative', zIndex: 2 }}>
+              <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px' }}>COINS EARNED</div>
+              <div style={{ fontSize: '20px', color: '#00FF88', lineHeight: 1 }}>
+                🪙 {totalCoins}<span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)' }}>/{maxCoins}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Progress bar ── */}
         <div style={{
-          height: '4px',
-          background: 'rgba(255,255,255,0.1)',
-          borderRadius: '2px',
-          marginBottom: '20px',
-          overflow: 'hidden',
+          height: '5px', background: 'rgba(255,255,255,0.08)',
+          borderRadius: '3px', marginBottom: '20px', overflow: 'hidden',
         }}>
           <div style={{
-            height: '100%',
-            width: `${quests.length > 0 ? (completedCount / quests.length) * 100 : 0}%`,
+            height: '100%', width: `${progressPct}%`,
             background: 'linear-gradient(90deg, #FFAA00, #00FF88)',
-            borderRadius: '2px',
-            transition: 'width 0.5s ease',
+            borderRadius: '3px', transition: 'width 0.6s ease',
           }} />
         </div>
 
-        {/* Category filter */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', overflowX: 'auto', paddingBottom: '4px' }}>
+        {/* ── Category filter ── */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
           {['all', ...CATEGORIES].map(cat => (
             <button
               key={cat}
               onClick={() => setFilter(cat)}
               style={{
                 fontFamily: '"Press Start 2P", monospace',
-                fontSize: '6px',
-                padding: '6px 12px',
-                borderRadius: '100px',
+                fontSize: '6px', padding: '7px 14px', borderRadius: '100px',
                 border: filter === cat ? '1px solid #FFAA00' : '1px solid rgba(255,255,255,0.15)',
                 background: filter === cat ? 'rgba(255,170,0,0.15)' : 'transparent',
                 color: filter === cat ? '#FFAA00' : 'rgba(255,255,255,0.5)',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
+                cursor: 'pointer', whiteSpace: 'nowrap',
               }}
             >
               {cat === 'all' ? '⚡ ALL' : CATEGORY_LABELS[cat]}
             </button>
           ))}
         </div>
-      </div>
 
-      {/* Quest list */}
-      <div style={{ padding: '0 16px', fontFamily: '"Press Start 2P", monospace' }}>
+        {/* ── Quest list ── */}
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px', fontSize: '8px', color: 'rgba(255,255,255,0.3)' }}>
+          <div style={{ textAlign: 'center', padding: '60px', fontSize: '8px', color: 'rgba(255,255,255,0.3)' }}>
             LOADING...
           </div>
         ) : filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px', fontSize: '8px', color: 'rgba(255,255,255,0.3)' }}>
+          <div style={{ textAlign: 'center', padding: '60px', fontSize: '8px', color: 'rgba(255,255,255,0.3)' }}>
             NO QUESTS
           </div>
         ) : (
-          filtered.map(quest => {
-            const isNew      = newlyDone.includes(quest.key);
-            const isClaiming = claiming === quest.key;
-            return (
+          <div className="quests-grid">
+            {filtered.map(quest => (
               <QuestCard
                 key={quest.key}
                 quest={quest}
-                isNew={isNew}
-                isClaiming={isClaiming}
+                isNew={newlyDone.includes(quest.key)}
+                isClaiming={claiming === quest.key}
                 onClaim={() => handleClaim(quest)}
               />
-            );
-          })
+            ))}
+          </div>
         )}
       </div>
     </div>
@@ -206,54 +206,46 @@ function QuestCard({
 
   return (
     <div style={{
-      background: done
-        ? 'rgba(0,255,136,0.04)'
-        : 'rgba(255,255,255,0.045)',
+      background: done ? 'rgba(0,255,136,0.04)' : 'rgba(255,255,255,0.045)',
       border: `1px solid ${done ? 'rgba(0,255,136,0.2)' : isNew ? 'rgba(255,170,0,0.4)' : 'rgba(255,255,255,0.1)'}`,
-      borderRadius: '14px',
-      padding: '14px',
-      marginBottom: '10px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '12px',
-      position: 'relative',
-      transition: 'border-color 0.3s',
+      borderRadius: '14px', padding: '14px', marginBottom: '10px',
+      display: 'flex', alignItems: 'center', gap: '12px',
+      position: 'relative', transition: 'border-color 0.3s',
     }}>
+      {/* Pixel grid */}
+      <div style={{
+        position: 'absolute', inset: 0, borderRadius: '14px',
+        backgroundImage: 'linear-gradient(rgba(255,255,255,0.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.018) 1px,transparent 1px)',
+        backgroundSize: '5px 5px', pointerEvents: 'none',
+      }} />
 
       {/* Icon */}
       <div style={{
-        width: '42px',
-        height: '42px',
-        borderRadius: '12px',
+        width: '44px', height: '44px', borderRadius: '12px',
         background: done ? 'rgba(0,255,136,0.12)' : 'rgba(255,255,255,0.06)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '20px',
-        flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: '22px', flexShrink: 0, position: 'relative', zIndex: 1,
       }}>
         {done ? '✅' : quest.icon}
       </div>
 
       {/* Text */}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0, position: 'relative', zIndex: 1 }}>
         <div style={{
-          fontSize: '8px',
-          color: done ? 'rgba(255,255,255,0.4)' : '#fff',
-          marginBottom: '5px',
-          textDecoration: done ? 'line-through' : 'none',
+          fontSize: '8px', color: done ? 'rgba(255,255,255,0.35)' : '#fff',
+          marginBottom: '5px', textDecoration: done ? 'line-through' : 'none',
+          fontFamily: '"Press Start 2P", monospace',
         }}>
           {quest.title}
         </div>
         <div style={{
-          fontSize: '6px',
-          color: 'rgba(255,255,255,0.35)',
-          lineHeight: '1.6',
-          marginBottom: '6px',
+          fontSize: '6px', color: 'rgba(255,255,255,0.35)',
+          lineHeight: '1.7', marginBottom: '6px',
+          fontFamily: '"Press Start 2P", monospace',
         }}>
           {quest.description}
         </div>
-        <div style={{ fontSize: '7px', color: '#FFAA00' }}>
+        <div style={{ fontSize: '7px', color: '#FFAA00', fontFamily: '"Press Start 2P", monospace' }}>
           🪙 +{quest.coins} coins
         </div>
       </div>
@@ -265,15 +257,12 @@ function QuestCard({
           disabled={isClaiming}
           style={{
             fontFamily: '"Press Start 2P", monospace',
-            fontSize: '6px',
-            padding: '7px 10px',
-            borderRadius: '8px',
+            fontSize: '6px', padding: '8px 12px', borderRadius: '8px',
             border: '1px solid rgba(0,255,136,0.4)',
             background: isClaiming ? 'rgba(0,255,136,0.05)' : 'rgba(0,255,136,0.12)',
             color: isClaiming ? 'rgba(0,255,136,0.4)' : '#00FF88',
             cursor: isClaiming ? 'not-allowed' : 'pointer',
-            flexShrink: 0,
-            whiteSpace: 'nowrap',
+            flexShrink: 0, whiteSpace: 'nowrap', position: 'relative', zIndex: 1,
           }}
         >
           {isClaiming ? '...' : 'CLAIM'}
@@ -283,14 +272,9 @@ function QuestCard({
       {/* NEW badge */}
       {isNew && !done && (
         <div style={{
-          position: 'absolute',
-          top: '-6px',
-          right: '10px',
-          background: '#FFAA00',
-          color: '#000',
-          fontSize: '5px',
-          padding: '2px 6px',
-          borderRadius: '4px',
+          position: 'absolute', top: '-6px', right: '10px',
+          background: '#FFAA00', color: '#000', fontSize: '5px',
+          padding: '2px 6px', borderRadius: '4px',
           fontFamily: '"Press Start 2P", monospace',
         }}>
           NEW
