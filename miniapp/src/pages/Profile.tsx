@@ -252,620 +252,369 @@ export function Profile() {
     </button>
   );
 
-  return (
-    <div className="page fade-in">
-      <PixelScene scene="profile" width={252} height={56} />
+  // Reusable upload label component
+  const UploadLabel = ({ text, color, borderColor, bg }: { text: string; color: string; borderColor: string; bg: string }) => (
+    <span style={{
+      display: 'block', textAlign: 'center', padding: '9px', borderRadius: '6px', cursor: 'pointer',
+      border: `1px dashed ${borderColor}`, background: bg, color, fontSize: '6px',
+      fontFamily: '"Press Start 2P", monospace',
+    }}>{text}</span>
+  );
 
-      {/* Banner */}
-      {profile?.banner_url && (
-        <div style={{
-          width: '100%', height: '90px', borderRadius: '14px',
-          overflow: 'hidden', marginBottom: '8px',
-          border: '1px solid rgba(255,255,255,0.08)',
-        }}>
-          <img src={profile.banner_url} alt="banner"
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-        </div>
-      )}
-
-      {/* Profile header */}
-      <div className="gl hud card-stagger-1">
-        <div className="pxgrid" /><div className="sh" />
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ marginBottom: '8px' }}>
-            {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt="avatar" style={{
-                width: '64px', height: '64px', borderRadius: '50%',
-                objectFit: 'cover', border: '2px solid rgba(0,255,136,0.4)',
-                display: 'inline-block',
-              }} />
-            ) : (
-              <div style={{ fontSize: '32px' }}>🛡</div>
-            )}
-          </div>
-          <div className="logo" style={{ fontSize: '13px' }}>
-            {user?.first_name?.toUpperCase() || 'GUEST'}
-          </div>
-          {user?.username && (
-            <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.35)', marginTop: '6px' }}>
-              @{user.username}
-            </div>
-          )}
-          {profile && (
-            <div className="gl-pill lvl" style={{ padding: '5px 12px', margin: '10px auto 0', display: 'inline-block' }}>
-              ⚔ LVL {profile.level}
-            </div>
-          )}
-        </div>
+  const SlideCarousel = () => profile?.slide_images?.length > 0 ? (
+    <div style={{ marginBottom: '8px', position: 'relative' }}>
+      <div style={{ width: '100%', height: '130px', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
+        <img src={profile.slide_images[slideIndex]} alt={`slide ${slideIndex + 1}`}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
       </div>
-
-      {/* XP Bar */}
-      <div className="gl xp-w card-stagger-2">
-        <div className="pxgrid" />
-        <div className="xp-top">
-          <span className="xp-lbl" style={{ color: '#ffaa00' }}>XP</span>
-          <span className="xp-lbl">{xp}/{xpMax}</span>
-        </div>
-        <div className="xp-track">
-          <div className="xp-fill" style={{
-            background: 'linear-gradient(90deg,#ffaa00,#ff6600)',
-            width: `${xpPct}%`,
-            transition: 'width 1.2s cubic-bezier(0.22,1,0.36,1)',
-          }} />
-          <div className="xp-shine" />
-        </div>
-      </div>
-
-      {/* Slides slider */}
-      {profile?.slide_images?.length > 0 && (
-        <div style={{ marginBottom: '8px', position: 'relative' }}>
-          <div style={{
-            width: '100%', height: '160px', borderRadius: '14px',
-            overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)',
-          }}>
-            <img
-              src={profile.slide_images[slideIndex]}
-              alt={`slide ${slideIndex + 1}`}
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            />
-          </div>
-          {profile.slide_images.length > 1 && (
-            <>
-              <button onClick={() => setSlideIndex(i => (i - 1 + profile.slide_images.length) % profile.slide_images.length)}
-                style={{
-                  position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)',
-                  background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff',
-                  borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '12px',
-                }}>‹</button>
-              <button onClick={() => setSlideIndex(i => (i + 1) % profile.slide_images.length)}
-                style={{
-                  position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)',
-                  background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff',
-                  borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '12px',
-                }}>›</button>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '5px', marginTop: '6px' }}>
-                {profile.slide_images.map((_: string, i: number) => (
-                  <div key={i} onClick={() => setSlideIndex(i)} style={{
-                    width: '6px', height: '6px', borderRadius: '50%', cursor: 'pointer',
-                    background: i === slideIndex ? '#00ff88' : 'rgba(255,255,255,0.2)',
-                    transition: 'background 0.2s',
-                  }} />
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Mini stats */}
-      <div className="stats card-stagger-3">
-        <div className="stat gl-sm" style={{ borderColor: 'rgba(0,255,136,0.3)' }}>
-          <div className="pxgrid" />
-          <span className="stat-n" style={{ color: '#00ff88' }}>{countDeals}</span>
-          <span className="stat-l">DONE</span>
-        </div>
-        <div className="stat gl-sm" style={{ borderColor: 'rgba(255,170,0,0.3)' }}>
-          <div className="pxgrid" />
-          <span className="stat-n" style={{ color: '#ffaa00', fontSize: '11px' }}>{countCoins.toLocaleString()}</span>
-          <span className="stat-l">COINS</span>
-        </div>
-        <div className="stat gl-sm" style={{ borderColor: 'rgba(170,0,255,0.3)' }}>
-          <div className="pxgrid" />
-          <span className="stat-n" style={{ color: '#cc44ff' }}>
-            {profile?.rating > 0 ? `⭐${profile.rating}` : '—'}
-          </span>
-          <span className="stat-l">RANK</span>
-        </div>
-        <div className="stat gl-sm" style={{ borderColor: 'rgba(255,136,0,0.3)' }}>
-          <div className="pxgrid" />
-          <span className="stat-n" style={{ color: '#ff8800', fontSize: '11px' }}>🔥{countStreak}</span>
-          <span className="stat-l">STREAK</span>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="filter-row card-stagger-4" style={{ display: 'flex', gap: '4px', marginBottom: '8px' }}>
-        {(['stats', 'portfolio', 'reviews', 'edit'] as Tab[]).map(t => (
-          <button key={t} onClick={() => switchTab(t)}
-            className={`fb ${tab === t ? 'fb-on' : 'fb-off'}`}>
-            {t === 'stats'     ? '📊 STATS'
-            : t === 'portfolio' ? '📁 PORT'
-            : t === 'reviews'   ? '⭐ REV'
-            :                    '✏️ EDIT'}
-          </button>
-        ))}
-      </div>
-
-      {/* ---- STATS TAB ---- */}
-      {tab === 'stats' && profile && (
+      {profile.slide_images.length > 1 && (
         <>
-          <div className="gl card-stagger-4">
-            <div className="pxgrid" /><div className="sh" />
-            <DataRow label="Deals completed"    value={String(profile.deals_completed)} color="#00ff88" />
-            <DataRow label="Rating"             value={profile.rating > 0 ? `⭐ ${profile.rating}` : 'None'} color="#ffaa00" />
-            <DataRow label="🔥 Streak"          value={`${profile.streak_days} days`} />
-            <DataRow label="🪙 SafeCoins"        value={String(profile.safe_coins)} color="#cc44ff" />
-            <DataRow label="Total XP"           value={String(profile.xp)} color="#0088ff" />
-          </div>
-
-          {/* TON Wallet */}
-          <div className="gl card-stagger-5">
-            <div className="pxgrid" /><div className="sh" />
-            <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', marginBottom: '12px' }}>
-              💎 TON WALLET
-            </div>
-            {walletConnected && tonAddress ? (
-              <>
-                <div style={{
-                  fontSize: '7px',
-                  color: '#00FF88',
-                  background: 'rgba(0,255,136,0.08)',
-                  border: '1px solid rgba(0,255,136,0.2)',
-                  borderRadius: '10px',
-                  padding: '10px 12px',
-                  marginBottom: '10px',
-                  wordBreak: 'break-all',
-                  lineHeight: '1.8',
-                }}>
-                  ✅ {tonAddress.slice(0, 8)}...{tonAddress.slice(-6)}
-                </div>
-                <button className="btn btn-full" onClick={disconnectWallet}
-                  style={{ fontSize: '7px', background: 'rgba(255,68,102,0.1)', border: '1px solid rgba(255,68,102,0.3)', color: '#FF4466' }}>
-                  [ 🔌 DISCONNECT ]
-                </button>
-              </>
-            ) : (
-              <>
-                {(profile?.ton_wallet_address) && (
-                  <div style={{
-                    fontSize: '7px',
-                    color: 'rgba(255,255,255,0.4)',
-                    marginBottom: '10px',
-                    wordBreak: 'break-all',
-                  }}>
-                    Saved: {profile.ton_wallet_address.slice(0, 8)}...{profile.ton_wallet_address.slice(-6)}
-                  </div>
-                )}
-                <button className="btn btn-b btn-full" onClick={connectWallet}>
-                  [ 💎 CONNECT TONKEEPER ]
-                </button>
-                <div style={{ marginTop: '12px' }}>
-                  <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.3)', marginBottom: '6px', letterSpacing: '1px' }}>
-                    OR PASTE ADDRESS MANUALLY
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="UQ..."
-                    value={wallet}
-                    onChange={e => setWallet(e.target.value)}
-                    style={{
-                      width: '100%',
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid rgba(255,255,255,0.12)',
-                      borderRadius: '10px',
-                      padding: '10px 12px',
-                      color: '#fff',
-                      fontSize: '7px',
-                      fontFamily: 'inherit',
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                      marginBottom: '8px',
-                    }}
-                  />
-                  <button
-                    className="btn btn-full"
-                    onClick={handleSaveWallet}
-                    disabled={!wallet.trim() || loading}
-                    style={{ fontSize: '7px', opacity: wallet.trim() ? 1 : 0.4 }}
-                  >
-                    [ 💾 SAVE WALLET ]
-                  </button>
-                </div>
-              </>
-            )}
+          <button onClick={() => setSlideIndex((i: number) => (i - 1 + profile.slide_images.length) % profile.slide_images.length)}
+            style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', borderRadius: '50%', width: '26px', height: '26px', cursor: 'pointer', fontSize: '12px' }}>‹</button>
+          <button onClick={() => setSlideIndex((i: number) => (i + 1) % profile.slide_images.length)}
+            style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', borderRadius: '50%', width: '26px', height: '26px', cursor: 'pointer', fontSize: '12px' }}>›</button>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', marginTop: '5px' }}>
+            {profile.slide_images.map((_: string, i: number) => (
+              <div key={i} onClick={() => setSlideIndex(i)} style={{ width: '5px', height: '5px', borderRadius: '50%', cursor: 'pointer', background: i === slideIndex ? '#00ff88' : 'rgba(255,255,255,0.2)' }} />
+            ))}
           </div>
         </>
       )}
+    </div>
+  ) : null;
 
-      {/* ---- PORTFOLIO TAB ---- */}
-      {tab === 'portfolio' && (
-        portfolio.length === 0 ? (
-          <div className="gl dc card-stagger-4" style={{ textAlign: 'center', padding: '32px 10px' }}>
-            <div className="pxgrid" /><div className="sh" />
-            <div style={{ fontSize: '28px', marginBottom: '8px', animation: 'float 3s ease-in-out infinite' }}>📁</div>
-            <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.35)', lineHeight: '2.2' }}>
-              PORTFOLIO EMPTY<br/>COMPLETE DEALS!
-            </div>
+  const WalletPanel = ({ compact }: { compact?: boolean }) => (
+    <div className="gl" style={{ padding: compact ? '12px 14px' : undefined }}>
+      <div className="pxgrid" />{!compact && <div className="sh" />}
+      <div style={{ fontSize: compact ? '7px' : '10px', color: 'rgba(255,255,255,0.5)', marginBottom: '10px' }}>💎 TON WALLET</div>
+      {walletConnected && tonAddress ? (
+        <>
+          <div style={{ fontSize: '7px', color: '#00FF88', background: 'rgba(0,255,136,0.08)', border: '1px solid rgba(0,255,136,0.2)', borderRadius: '8px', padding: '8px 10px', marginBottom: '8px', wordBreak: 'break-all', lineHeight: '1.8' }}>
+            ✅ {tonAddress.slice(0, 8)}...{tonAddress.slice(-6)}
           </div>
-        ) : (
-          portfolio.map((p, i) => (
-            <div key={p.id} className={`gl card-stagger-${Math.min(i + 4, 5)}`}>
-              <div className="pxgrid" /><div className="sh" />
-              <div style={{ fontSize: '9px', color: '#fff', marginBottom: '4px' }}>{p.title?.toUpperCase()}</div>
-              <div style={{ fontSize: '9px', color: '#ffaa00' }}>
-                ${p.amount_usd} {p.currency}
-              </div>
-              {p.tags?.length > 0 && (
-                <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                  {p.tags.map((tag: string) => (
-                    <span key={tag} className="gl-pill"
-                      style={{ fontSize: '6px', padding: '2px 7px',
-                        color: '#cc44ff', border: '1px solid rgba(204,68,255,0.4)' }}>
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
+          <button className="btn btn-full" onClick={disconnectWallet}
+            style={{ fontSize: '6px', background: 'rgba(255,68,102,0.1)', border: '1px solid rgba(255,68,102,0.3)', color: '#FF4466' }}>
+            [ 🔌 DISCONNECT ]
+          </button>
+        </>
+      ) : (
+        <>
+          {profile?.ton_wallet_address && (
+            <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.4)', marginBottom: '8px', wordBreak: 'break-all' }}>
+              Saved: {profile.ton_wallet_address.slice(0, 8)}...{profile.ton_wallet_address.slice(-6)}
             </div>
-          ))
-        )
+          )}
+          <button className="btn btn-b btn-full" onClick={connectWallet} style={{ marginBottom: compact ? 0 : '10px' }}>
+            [ 💎 CONNECT TONKEEPER ]
+          </button>
+          {!compact && (
+            <div style={{ marginTop: '10px' }}>
+              <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.3)', marginBottom: '5px' }}>OR PASTE MANUALLY</div>
+              <input type="text" placeholder="UQ..." value={wallet} onChange={e => setWallet(e.target.value)}
+                style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', padding: '9px 12px', color: '#fff', fontSize: '7px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: '7px' }} />
+              <button className="btn btn-full" onClick={handleSaveWallet} disabled={!wallet.trim() || loading}
+                style={{ fontSize: '7px', opacity: wallet.trim() ? 1 : 0.4 }}>
+                [ 💾 SAVE WALLET ]
+              </button>
+            </div>
+          )}
+        </>
       )}
+    </div>
+  );
 
-      {/* ---- REVIEWS TAB ---- */}
-      {tab === 'reviews' && (
-        reviews.length === 0 ? (
-          <div className="gl dc card-stagger-4" style={{ textAlign: 'center', padding: '32px 10px' }}>
-            <div className="pxgrid" /><div className="sh" />
-            <div style={{ fontSize: '28px', marginBottom: '8px', animation: 'float 3s ease-in-out infinite' }}>⭐</div>
-            <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.35)' }}>
-              NO REVIEWS YET
-            </div>
-          </div>
-        ) : (
-          reviews.map((r, i) => (
-            <div key={i} className={`gl card-stagger-${Math.min(i + 4, 5)}`}>
-              <div className="pxgrid" /><div className="sh" />
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <span style={{ fontSize: '8px', color: 'rgba(255,255,255,0.5)' }}>
-                  @{r.reviewer_username}
-                </span>
-                <span style={{ color: '#ffaa00', fontSize: '9px' }}>{'⭐'.repeat(r.rating)}</span>
-              </div>
-              {r.comment && (
-                <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.55)', lineHeight: '1.8' }}>
-                  {r.comment}
-                </div>
-              )}
-            </div>
-          ))
-        )
-      )}
+  return (
+    <div className="page fade-in">
 
-      {/* ---- EDIT TAB ---- */}
-      {tab === 'edit' && (
-        <div className="gl card-stagger-4" style={{ padding: '14px 12px' }}>
-          <div className="pxgrid" /><div className="sh" />
+      {/* ── Desktop topbar ── */}
+      <div className="desktop-topbar desktop-only">
+        <div className="desktop-topbar-title">DASHBOARD / <span>PROFILE</span></div>
+        {user?.username && <span style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', fontFamily: '"Press Start 2P", monospace' }}>@{user.username}</span>}
+        {profile && <span style={{ fontSize: '7px', color: '#ffaa00', fontFamily: '"Press Start 2P", monospace' }}>LVL {profile.level} · {profile.deals_completed} DEALS</span>}
+      </div>
 
-          {/* AVATAR */}
-          <SectionLabel label="AVATAR" />
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
-            {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt="avatar" style={{
-                width: '56px', height: '56px', borderRadius: '50%',
-                objectFit: 'cover', border: '2px solid rgba(0,255,136,0.4)', flexShrink: 0,
-              }} />
-            ) : (
-              <div style={{
-                width: '56px', height: '56px', borderRadius: '50%', flexShrink: 0,
-                background: 'rgba(255,255,255,0.06)', border: '2px dashed rgba(255,255,255,0.15)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px',
-              }}>🛡</div>
-            )}
-            <label style={{
-              flex: 1, textAlign: 'center', padding: '10px', borderRadius: '6px', cursor: 'pointer',
-              border: '1px dashed rgba(0,255,136,0.4)', background: 'rgba(0,255,136,0.06)',
-              color: avatarUploading ? 'rgba(255,255,255,0.3)' : '#00ff88',
-              fontSize: '7px', fontFamily: '"Press Start 2P", monospace',
-            }}>
-              {avatarUploading ? '⏳ UPLOADING...' : profile?.avatar_url ? '🔄 CHANGE' : '📷 UPLOAD AVATAR'}
-              <input type="file" accept="image/*" style={{ display: 'none' }}
-                disabled={avatarUploading} onChange={handleAvatarUpload} />
-            </label>
-          </div>
+      <div className="page-inner">
+        {/* Mobile-only pixel scene */}
+        <div className="mobile-only"><PixelScene scene="profile" width={252} height={56} /></div>
 
-          {/* SLIDES */}
-          <SectionLabel label={`PORTFOLIO SLIDES (${(profile?.slide_images || []).length}/5)`} />
-          <div style={{ marginBottom: '18px' }}>
-            {(profile?.slide_images || []).length > 0 && (
-              <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '6px', marginBottom: '8px' }}>
-                {(profile.slide_images as string[]).map((url, i) => (
-                  <div key={i} style={{ position: 'relative', flexShrink: 0 }}>
-                    <img src={url} alt={`slide ${i + 1}`} style={{
-                      width: '80px', height: '50px', objectFit: 'cover',
-                      borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)',
-                    }} />
-                    <button onClick={() => handleDeleteSlide(i)} style={{
-                      position: 'absolute', top: '-4px', right: '-4px',
-                      width: '16px', height: '16px', borderRadius: '50%',
-                      background: '#ff4466', border: 'none', color: '#fff',
-                      fontSize: '8px', cursor: 'pointer', lineHeight: 1,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>×</button>
-                  </div>
-                ))}
-              </div>
-            )}
-            {(profile?.slide_images || []).length < 5 && (
-              <label style={{
-                display: 'block', textAlign: 'center', padding: '10px', borderRadius: '6px', cursor: 'pointer',
-                border: '1px dashed rgba(204,68,255,0.4)', background: 'rgba(204,68,255,0.06)',
-                color: slideUploading ? 'rgba(255,255,255,0.3)' : '#cc44ff',
-                fontSize: '7px', fontFamily: '"Press Start 2P", monospace',
-              }}>
-                {slideUploading ? '⏳ UPLOADING...' : '+ ADD SLIDE'}
-                <input type="file" accept="image/*" style={{ display: 'none' }}
-                  disabled={slideUploading} onChange={handleAddSlide} />
-              </label>
-            )}
-            <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.2)', marginTop: '5px', textAlign: 'center' }}>
-              900×500px · max 5 MB each
-            </div>
-          </div>
+        <div className="profile-layout">
 
-          {/* BANNER */}
-          <SectionLabel label="BANNER" />
-          <div style={{ marginBottom: '14px' }}>
+          {/* ══ LEFT PANEL ══ */}
+          <div className="profile-left">
+            {/* Banner */}
             {profile?.banner_url && (
-              <div style={{
-                width: '100%', height: '72px', borderRadius: '8px',
-                overflow: 'hidden', marginBottom: '8px',
-                border: '1px solid rgba(255,255,255,0.1)',
-              }}>
-                <img src={profile.banner_url} alt="banner"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <div style={{ width: '100%', height: '70px', borderRadius: '12px', overflow: 'hidden', marginBottom: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <img src={profile.banner_url} alt="banner" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
               </div>
             )}
-            <label style={{
-              display: 'block', textAlign: 'center',
-              padding: '10px', borderRadius: '6px', cursor: 'pointer',
-              border: '1px dashed rgba(0,136,255,0.4)',
-              background: 'rgba(0,136,255,0.06)',
-              color: bannerUploading ? 'rgba(255,255,255,0.3)' : '#0088ff',
-              fontSize: '7px', fontFamily: '"Press Start 2P", monospace',
-            }}>
-              {bannerUploading ? '⏳ UPLOADING...' : profile?.banner_url ? '🔄 CHANGE BANNER' : '📷 UPLOAD BANNER'}
-              <input type="file" accept="image/*" style={{ display: 'none' }}
-                disabled={bannerUploading} onChange={handleBannerUpload} />
-            </label>
-            <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.2)', marginTop: '5px', textAlign: 'center' }}>
-              900×300px · JPG/PNG · max 5 MB
-            </div>
-          </div>
 
-          {/* ABOUT */}
-          <SectionLabel label="ABOUT" />
-
-          <div style={{ marginBottom: '10px' }}>
-            <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', marginBottom: '5px' }}>BIO</div>
-            <textarea
-              className="input"
-              value={edit.bio}
-              maxLength={300}
-              rows={4}
-              onChange={e => setE('bio', e.target.value)}
-              placeholder="Tell about yourself..."
-              style={{
-                resize: 'none',
-                width: '100%',
-                fontFamily: '"Press Start 2P", monospace',
-                fontSize: '7px',
-                lineHeight: '1.8',
-              }}
-            />
-            <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.25)', textAlign: 'right', marginTop: '3px' }}>
-              {edit.bio.length}/300
-            </div>
-          </div>
-
-          <div style={{ marginBottom: '14px' }}>
-            <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', marginBottom: '5px' }}>COUNTRY</div>
-            <input
-              className="input"
-              value={edit.country}
-              onChange={e => setE('country', e.target.value)}
-              placeholder="e.g. Ukraine"
-              style={{ width: '100%' }}
-            />
-          </div>
-
-          {/* ROLE */}
-          <SectionLabel label="ROLE" />
-          <div style={{ display: 'flex', gap: '5px', marginBottom: '14px' }}>
-            {toggleBtn('💼 CLIENT',         edit.role === 'client',     () => setE('role', 'client'))}
-            {toggleBtn('🛠 FREELANCER',     edit.role === 'freelancer', () => setE('role', 'freelancer'))}
-            {toggleBtn('🔄 BOTH',           edit.role === 'both',       () => setE('role', 'both'))}
-          </div>
-
-          {/* SKILLS — shown only if role !== 'client' */}
-          {edit.role !== 'client' && (
-            <>
-              <SectionLabel label="SKILLS" />
-
-              <div style={{ marginBottom: '10px' }}>
-                <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', marginBottom: '5px' }}>CATEGORY</div>
-                <select
-                  className="input"
-                  value={edit.skill_category}
-                  onChange={e => setE('skill_category', e.target.value as SkillCategory)}
-                  style={{
-                    width: '100%',
-                    fontFamily: '"Press Start 2P", monospace',
-                    fontSize: '7px',
-                    background: 'rgba(255,255,255,0.06)',
-                    color: '#fff',
-                    border: '1px solid rgba(255,255,255,0.13)',
-                    borderRadius: '5px',
-                    padding: '10px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {SKILL_CATEGORIES.map(c => (
-                    <option key={c} value={c} style={{ background: '#111' }}>
-                      {c.toUpperCase()}
-                    </option>
-                  ))}
-                </select>
+            {/* Profile card */}
+            <div className="gl hud card-stagger-1">
+              <div className="pxgrid" /><div className="sh" />
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ marginBottom: '8px' }}>
+                  {profile?.avatar_url ? (
+                    <img src={profile.avatar_url} alt="avatar" style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(0,255,136,0.4)', display: 'inline-block' }} />
+                  ) : (
+                    <div style={{ fontSize: '30px' }}>🛡</div>
+                  )}
+                </div>
+                <div className="logo" style={{ fontSize: '12px' }}>{user?.first_name?.toUpperCase() || 'GUEST'}</div>
+                {user?.username && <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.35)', marginTop: '5px' }}>@{user.username}</div>}
+                {profile && <div className="gl-pill lvl" style={{ padding: '4px 10px', margin: '8px auto 0', display: 'inline-block' }}>⚔ LVL {profile.level}</div>}
               </div>
+            </div>
 
-              <div style={{ marginBottom: '10px' }}>
-                <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', marginBottom: '5px' }}>EXPERIENCE</div>
-                <div style={{ display: 'flex', gap: '5px' }}>
-                  {(['junior', 'middle', 'senior'] as const).map(lvl => (
-                    toggleBtn(lvl.toUpperCase(), edit.experience === lvl, () => setE('experience', lvl))
+            {/* XP Bar */}
+            <div className="gl xp-w card-stagger-2">
+              <div className="pxgrid" />
+              <div className="xp-top">
+                <span className="xp-lbl" style={{ color: '#ffaa00' }}>XP</span>
+                <span className="xp-lbl">{xp}/{xpMax}</span>
+              </div>
+              <div className="xp-track">
+                <div className="xp-fill" style={{ background: 'linear-gradient(90deg,#ffaa00,#ff6600)', width: `${xpPct}%`, transition: 'width 1.2s cubic-bezier(0.22,1,0.36,1)' }} />
+                <div className="xp-shine" />
+              </div>
+            </div>
+
+            {/* Stats */}
+            <div className="stats card-stagger-3">
+              <div className="stat gl-sm" style={{ borderColor: 'rgba(0,255,136,0.3)' }}>
+                <div className="pxgrid" />
+                <span className="stat-n" style={{ color: '#00ff88' }}>{countDeals}</span>
+                <span className="stat-l">DONE</span>
+              </div>
+              <div className="stat gl-sm" style={{ borderColor: 'rgba(255,170,0,0.3)' }}>
+                <div className="pxgrid" />
+                <span className="stat-n" style={{ color: '#ffaa00', fontSize: '11px' }}>{countCoins.toLocaleString()}</span>
+                <span className="stat-l">COINS</span>
+              </div>
+              <div className="stat gl-sm" style={{ borderColor: 'rgba(170,0,255,0.3)' }}>
+                <div className="pxgrid" />
+                <span className="stat-n" style={{ color: '#cc44ff' }}>{profile?.rating > 0 ? `⭐${profile.rating}` : '—'}</span>
+                <span className="stat-l">RANK</span>
+              </div>
+              <div className="stat gl-sm" style={{ borderColor: 'rgba(255,136,0,0.3)' }}>
+                <div className="pxgrid" />
+                <span className="stat-n" style={{ color: '#ff8800', fontSize: '11px' }}>🔥{countStreak}</span>
+                <span className="stat-l">STREAK</span>
+              </div>
+            </div>
+
+            {/* Desktop: compact wallet */}
+            <div className="desktop-only"><WalletPanel compact /></div>
+
+            {/* Desktop: slide carousel */}
+            <div className="desktop-only"><SlideCarousel /></div>
+          </div>
+
+          {/* ══ RIGHT PANEL (tabs + content) ══ */}
+          <div className="profile-right">
+            {/* Mobile-only: banner + slides above tabs */}
+            <div className="mobile-only">
+              {profile?.banner_url && (
+                <div style={{ width: '100%', height: '90px', borderRadius: '14px', overflow: 'hidden', marginBottom: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <img src={profile.banner_url} alt="banner" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                </div>
+              )}
+              <SlideCarousel />
+            </div>
+
+            {/* Tabs */}
+            <div className="filter-row card-stagger-4" style={{ display: 'flex', gap: '4px', marginBottom: '10px' }}>
+              {(['stats', 'portfolio', 'reviews', 'edit'] as Tab[]).map(t => (
+                <button key={t} onClick={() => switchTab(t)} className={`fb ${tab === t ? 'fb-on' : 'fb-off'}`}>
+                  {t === 'stats' ? '📊 STATS' : t === 'portfolio' ? '📁 PORT' : t === 'reviews' ? '⭐ REV' : '✏️ EDIT'}
+                </button>
+              ))}
+            </div>
+
+            {/* ── STATS TAB ── */}
+            {tab === 'stats' && profile && (
+              <>
+                <div className="gl card-stagger-4">
+                  <div className="pxgrid" /><div className="sh" />
+                  <DataRow label="Deals completed" value={String(profile.deals_completed)} color="#00ff88" />
+                  <DataRow label="Rating"          value={profile.rating > 0 ? `⭐ ${profile.rating}` : 'None'} color="#ffaa00" />
+                  <DataRow label="🔥 Streak"       value={`${profile.streak_days} days`} />
+                  <DataRow label="🪙 SafeCoins"     value={String(profile.safe_coins)} color="#cc44ff" />
+                  <DataRow label="Total XP"        value={String(profile.xp)} color="#0088ff" />
+                  {profile.role    && <DataRow label="Role"     value={profile.role.toUpperCase()} />}
+                  {profile.country && <DataRow label="Country"  value={profile.country} />}
+                </div>
+                {/* Mobile: full wallet UI */}
+                <div className="mobile-only"><WalletPanel /></div>
+              </>
+            )}
+
+            {/* ── PORTFOLIO TAB ── */}
+            {tab === 'portfolio' && (
+              portfolio.length === 0 ? (
+                <div className="gl dc card-stagger-4" style={{ textAlign: 'center', padding: '32px 10px' }}>
+                  <div className="pxgrid" /><div className="sh" />
+                  <div style={{ fontSize: '28px', marginBottom: '8px', animation: 'float 3s ease-in-out infinite' }}>📁</div>
+                  <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.35)', lineHeight: '2.2' }}>PORTFOLIO EMPTY<br/>COMPLETE DEALS!</div>
+                </div>
+              ) : (
+                <div className="profile-portfolio-grid">
+                  {portfolio.map((p, i) => (
+                    <div key={p.id} className={`gl card-stagger-${Math.min(i + 4, 5)}`}>
+                      <div className="pxgrid" /><div className="sh" />
+                      <div style={{ fontSize: '8px', color: '#fff', marginBottom: '4px' }}>{p.title?.toUpperCase()}</div>
+                      <div style={{ fontSize: '9px', color: '#ffaa00' }}>${p.amount_usd} {p.currency}</div>
+                      {p.tags?.length > 0 && (
+                        <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                          {p.tags.map((tag: string) => (
+                            <span key={tag} className="gl-pill" style={{ fontSize: '6px', padding: '2px 7px', color: '#cc44ff', border: '1px solid rgba(204,68,255,0.4)' }}>{tag}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
-              </div>
+              )
+            )}
 
-              <div style={{ marginBottom: '14px' }}>
-                <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', marginBottom: '5px' }}>
-                  SKILLS ({edit.skills.length}/15)
+            {/* ── REVIEWS TAB ── */}
+            {tab === 'reviews' && (
+              reviews.length === 0 ? (
+                <div className="gl dc card-stagger-4" style={{ textAlign: 'center', padding: '32px 10px' }}>
+                  <div className="pxgrid" /><div className="sh" />
+                  <div style={{ fontSize: '28px', marginBottom: '8px', animation: 'float 3s ease-in-out infinite' }}>⭐</div>
+                  <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.35)' }}>NO REVIEWS YET</div>
                 </div>
-                <div style={{ display: 'flex', gap: '5px', marginBottom: '7px' }}>
-                  <input
-                    className="input"
-                    value={edit.skillInput}
-                    onChange={e => setE('skillInput', e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && addSkill()}
-                    placeholder="e.g. React"
-                    style={{ flex: 1 }}
-                  />
-                  <button
-                    onClick={addSkill}
-                    disabled={edit.skills.length >= 15}
-                    style={{
-                      fontFamily: '"Press Start 2P", monospace',
-                      fontSize: '7px',
-                      padding: '8px 10px',
-                      borderRadius: '5px',
-                      border: '1px solid rgba(0,255,136,0.4)',
-                      background: 'rgba(0,255,136,0.08)',
-                      color: '#00ff88',
-                      cursor: 'pointer',
-                      flexShrink: 0,
-                    }}
-                  >
-                    ADD
+              ) : reviews.map((r, i) => (
+                <div key={i} className={`gl card-stagger-${Math.min(i + 4, 5)}`}>
+                  <div className="pxgrid" /><div className="sh" />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '8px', color: 'rgba(255,255,255,0.5)' }}>@{r.reviewer_username}</span>
+                    <span style={{ color: '#ffaa00', fontSize: '9px' }}>{'⭐'.repeat(r.rating)}</span>
+                  </div>
+                  {r.comment && <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.55)', lineHeight: '1.8' }}>{r.comment}</div>}
+                </div>
+              ))
+            )}
+
+            {/* ── EDIT TAB ── */}
+            {tab === 'edit' && (
+              <div className="profile-edit-grid">
+                {/* Left col: uploads */}
+                <div className="gl card-stagger-4" style={{ padding: '14px 12px' }}>
+                  <div className="pxgrid" /><div className="sh" />
+
+                  <SectionLabel label="AVATAR" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                    {profile?.avatar_url
+                      ? <img src={profile.avatar_url} alt="avatar" style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(0,255,136,0.4)', flexShrink: 0 }} />
+                      : <div style={{ width: '48px', height: '48px', borderRadius: '50%', flexShrink: 0, background: 'rgba(255,255,255,0.06)', border: '2px dashed rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>🛡</div>
+                    }
+                    <label style={{ flex: 1, cursor: 'pointer' }}>
+                      <UploadLabel text={avatarUploading ? '⏳...' : '📷 AVATAR'} color={avatarUploading ? 'rgba(255,255,255,0.3)' : '#00ff88'} borderColor="rgba(0,255,136,0.4)" bg="rgba(0,255,136,0.06)" />
+                      <input type="file" accept="image/*" style={{ display: 'none' }} disabled={avatarUploading} onChange={handleAvatarUpload} />
+                    </label>
+                  </div>
+
+                  <SectionLabel label="BANNER" />
+                  <div style={{ marginBottom: '14px' }}>
+                    {profile?.banner_url && <div style={{ width: '100%', height: '55px', borderRadius: '7px', overflow: 'hidden', marginBottom: '6px', border: '1px solid rgba(255,255,255,0.1)' }}><img src={profile.banner_url} alt="banner" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></div>}
+                    <label style={{ cursor: 'pointer' }}>
+                      <UploadLabel text={bannerUploading ? '⏳...' : '📷 BANNER'} color={bannerUploading ? 'rgba(255,255,255,0.3)' : '#0088ff'} borderColor="rgba(0,136,255,0.4)" bg="rgba(0,136,255,0.06)" />
+                      <input type="file" accept="image/*" style={{ display: 'none' }} disabled={bannerUploading} onChange={handleBannerUpload} />
+                    </label>
+                  </div>
+
+                  <SectionLabel label={`SLIDES (${(profile?.slide_images || []).length}/5)`} />
+                  <div style={{ marginBottom: '8px' }}>
+                    {(profile?.slide_images || []).length > 0 && (
+                      <div style={{ display: 'flex', gap: '5px', overflowX: 'auto', paddingBottom: '5px', marginBottom: '6px' }}>
+                        {(profile.slide_images as string[]).map((url: string, i: number) => (
+                          <div key={i} style={{ position: 'relative', flexShrink: 0 }}>
+                            <img src={url} alt={`slide ${i+1}`} style={{ width: '70px', height: '44px', objectFit: 'cover', borderRadius: '5px', border: '1px solid rgba(255,255,255,0.1)' }} />
+                            <button onClick={() => handleDeleteSlide(i)} style={{ position: 'absolute', top: '-4px', right: '-4px', width: '15px', height: '15px', borderRadius: '50%', background: '#ff4466', border: 'none', color: '#fff', fontSize: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>×</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {(profile?.slide_images || []).length < 5 && (
+                      <label style={{ cursor: 'pointer' }}>
+                        <UploadLabel text={slideUploading ? '⏳...' : '+ ADD SLIDE'} color={slideUploading ? 'rgba(255,255,255,0.3)' : '#cc44ff'} borderColor="rgba(204,68,255,0.4)" bg="rgba(204,68,255,0.06)" />
+                        <input type="file" accept="image/*" style={{ display: 'none' }} disabled={slideUploading} onChange={handleAddSlide} />
+                      </label>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right col: form fields */}
+                <div className="gl card-stagger-4" style={{ padding: '14px 12px' }}>
+                  <div className="pxgrid" /><div className="sh" />
+
+                  <SectionLabel label="ABOUT" />
+                  <div style={{ marginBottom: '10px' }}>
+                    <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px' }}>BIO</div>
+                    <textarea className="input" value={edit.bio} maxLength={300} rows={3} onChange={e => setE('bio', e.target.value)} placeholder="Tell about yourself..."
+                      style={{ resize: 'none', width: '100%', fontFamily: '"Press Start 2P", monospace', fontSize: '7px', lineHeight: '1.8' }} />
+                    <div style={{ fontSize: '5px', color: 'rgba(255,255,255,0.2)', textAlign: 'right' }}>{edit.bio.length}/300</div>
+                  </div>
+                  <div style={{ marginBottom: '10px' }}>
+                    <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px' }}>COUNTRY</div>
+                    <input className="input" value={edit.country} onChange={e => setE('country', e.target.value)} placeholder="e.g. Ukraine" style={{ width: '100%' }} />
+                  </div>
+
+                  <SectionLabel label="ROLE" />
+                  <div style={{ display: 'flex', gap: '4px', marginBottom: '10px' }}>
+                    {toggleBtn('CLIENT',     edit.role === 'client',     () => setE('role', 'client'))}
+                    {toggleBtn('FREELANCE',  edit.role === 'freelancer', () => setE('role', 'freelancer'))}
+                    {toggleBtn('BOTH',       edit.role === 'both',       () => setE('role', 'both'))}
+                  </div>
+
+                  {edit.role !== 'client' && (
+                    <>
+                      <SectionLabel label="SKILLS" />
+                      <div style={{ display: 'flex', gap: '5px', marginBottom: '6px' }}>
+                        <select className="input" value={edit.skill_category} onChange={e => setE('skill_category', e.target.value as SkillCategory)}
+                          style={{ flex: 1, fontFamily: '"Press Start 2P", monospace', fontSize: '6px', background: 'rgba(255,255,255,0.06)', color: '#fff', border: '1px solid rgba(255,255,255,0.13)', borderRadius: '5px', padding: '8px', cursor: 'pointer' }}>
+                          {SKILL_CATEGORIES.map(c => <option key={c} value={c} style={{ background: '#111' }}>{c.toUpperCase()}</option>)}
+                        </select>
+                      </div>
+                      <div style={{ display: 'flex', gap: '4px', marginBottom: '8px' }}>
+                        {(['junior', 'middle', 'senior'] as const).map(lvl => toggleBtn(lvl.toUpperCase(), edit.experience === lvl, () => setE('experience', lvl)))}
+                      </div>
+                      <div style={{ display: 'flex', gap: '5px', marginBottom: '8px' }}>
+                        <input className="input" value={edit.skillInput} onChange={e => setE('skillInput', e.target.value)} onKeyDown={e => e.key === 'Enter' && addSkill()} placeholder="Add skill" style={{ flex: 1 }} />
+                        <button onClick={addSkill} disabled={edit.skills.length >= 15} style={{ fontFamily: '"Press Start 2P", monospace', fontSize: '6px', padding: '8px', borderRadius: '5px', border: '1px solid rgba(0,255,136,0.4)', background: 'rgba(0,255,136,0.08)', color: '#00ff88', cursor: 'pointer', flexShrink: 0 }}>ADD</button>
+                      </div>
+                      {edit.skills.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' }}>
+                          {edit.skills.map(skill => (
+                            <span key={skill} className="gl-pill" style={{ fontSize: '6px', padding: '3px 7px', color: '#cc44ff', border: '1px solid rgba(204,68,255,0.4)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              {skill}<span onClick={() => removeSkill(skill)} style={{ cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: '8px' }}>×</span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  <SectionLabel label="LINKS" />
+                  <div style={{ marginBottom: '7px' }}>
+                    <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px' }}>PORTFOLIO URL</div>
+                    <input className="input" value={edit.portfolio_url} onChange={e => setE('portfolio_url', e.target.value)} placeholder="https://..." style={{ width: '100%' }} />
+                  </div>
+                  <div style={{ marginBottom: '14px' }}>
+                    <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px' }}>GITHUB / BEHANCE</div>
+                    <input className="input" value={edit.github_url} onChange={e => setE('github_url', e.target.value)} placeholder="https://github.com/..." style={{ width: '100%' }} />
+                  </div>
+
+                  <button className="btn btn-g btn-full" onClick={handleSaveProfile} disabled={saving}>
+                    {saving ? '[ ⏳ SAVING... ]' : '[ 💾 SAVE PROFILE ]'}
                   </button>
                 </div>
-                {edit.skills.length > 0 && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                    {edit.skills.map(skill => (
-                      <span
-                        key={skill}
-                        className="gl-pill"
-                        style={{
-                          fontSize: '6px',
-                          padding: '4px 8px',
-                          color: '#cc44ff',
-                          border: '1px solid rgba(204,68,255,0.4)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '5px',
-                        }}
-                      >
-                        {skill}
-                        <span
-                          onClick={() => removeSkill(skill)}
-                          style={{ cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: '8px' }}
-                        >
-                          ×
-                        </span>
-                      </span>
-                    ))}
-                  </div>
-                )}
               </div>
-            </>
-          )}
-
-          {/* COMPANY */}
-          <SectionLabel label="COMPANY" />
-          <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
-            {toggleBtn('👤 INDIVIDUAL', edit.account_type === 'individual', () => setE('account_type', 'individual'))}
-            {toggleBtn('🏢 COMPANY',    edit.account_type === 'company',    () => setE('account_type', 'company'))}
+            )}
           </div>
-
-          {edit.account_type === 'company' && (
-            <>
-              <div style={{ marginBottom: '8px' }}>
-                <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', marginBottom: '5px' }}>COMPANY NAME</div>
-                <input
-                  className="input"
-                  value={edit.company_name}
-                  onChange={e => setE('company_name', e.target.value)}
-                  placeholder="Acme Corp"
-                  style={{ width: '100%' }}
-                />
-              </div>
-              <div style={{ marginBottom: '14px' }}>
-                <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', marginBottom: '5px' }}>COMPANY WEBSITE</div>
-                <input
-                  className="input"
-                  value={edit.company_website}
-                  onChange={e => setE('company_website', e.target.value)}
-                  placeholder="https://..."
-                  style={{ width: '100%' }}
-                />
-              </div>
-            </>
-          )}
-
-          {/* LINKS */}
-          <SectionLabel label="LINKS" />
-
-          <div style={{ marginBottom: '8px' }}>
-            <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', marginBottom: '5px' }}>PORTFOLIO URL</div>
-            <input
-              className="input"
-              value={edit.portfolio_url}
-              onChange={e => setE('portfolio_url', e.target.value)}
-              placeholder="https://myportfolio.com"
-              style={{ width: '100%' }}
-            />
-          </div>
-
-          <div style={{ marginBottom: '18px' }}>
-            <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', marginBottom: '5px' }}>GITHUB / BEHANCE</div>
-            <input
-              className="input"
-              value={edit.github_url}
-              onChange={e => setE('github_url', e.target.value)}
-              placeholder="https://github.com/..."
-              style={{ width: '100%' }}
-            />
-          </div>
-
-          <button
-            className="btn btn-g btn-full"
-            onClick={handleSaveProfile}
-            disabled={saving}
-          >
-            {saving ? '[ ⏳ SAVING... ]' : '[ 💾 SAVE PROFILE ]'}
-          </button>
         </div>
-      )}
-
-      <div className="div" />
+      </div>
     </div>
   );
 }

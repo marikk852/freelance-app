@@ -574,6 +574,29 @@ canvas{image-rendering:pixelated;}
   .quests-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .quests-grid > div { margin-bottom: 0 !important; }
 
+  /* ── Profile desktop 2-panel layout ── */
+  .profile-layout {
+    display: grid;
+    grid-template-columns: 256px 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+  .profile-left { position: sticky; top: 60px; }
+  .profile-left .gl, .profile-left .gl-sm { margin-bottom: 10px; }
+  .profile-left .stats { gap: 8px; }
+  .profile-left .stat { padding: 10px 6px; }
+  .profile-left .stat-n { font-size: 14px !important; }
+  .profile-left .stat-l { font-size: 9px !important; }
+  /* Right panel: tab content scrollable if needed */
+  .profile-right { min-width: 0; overflow-y: auto; max-height: calc(100vh - 90px); padding-right: 2px; }
+  .profile-right .gl { margin-bottom: 10px; }
+  /* Portfolio 2-col grid on desktop */
+  .profile-portfolio-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .profile-portfolio-grid .gl { margin-bottom: 0; }
+  /* Edit form 2-col on desktop */
+  .profile-edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  .profile-edit-grid .gl { margin-bottom: 0; }
+
   /* General desktop upscales */
   .gl, .gl-sm { border-radius: 14px; margin-bottom: 12px; }
   .logo { font-size: 16px; }
