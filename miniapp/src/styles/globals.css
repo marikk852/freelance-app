@@ -357,6 +357,124 @@ canvas{image-rendering:pixelated;}
 /* Nav active dot */
 .nav-item.active::after{content:'';display:block;width:4px;height:4px;border-radius:50%;background:#00ff88;margin:0 auto;animation:glow-pulse-green 1.5s infinite;}
 
+/* ============================================================
+   DESKTOP ADAPTATION — Telegram Desktop / expanded view
+   Breakpoints:
+     600px+  → wider single column, bigger fonts
+     900px+  → sidebar nav + content area
+   ============================================================ */
+
+/* ---------- 600px: wider, slightly larger ---------- */
+@media (min-width: 600px) {
+  .page {
+    max-width: 560px;
+    padding: 16px 20px 100px;
+  }
+  .gl, .gl-sm { border-radius: 12px; margin-bottom: 10px; }
+  .btn { font-size: 9px !important; padding: 15px; }
+  .logo { font-size: 14px; }
+  .input { font-size: 15px; padding: 14px 16px; }
+  .dc-title { font-size: 10px; }
+  .stat-n { font-size: 16px; }
+  .stat-l { font-size: 11px; }
+  .bottom-nav { padding: 12px 20px 16px; }
+  .nav-item { padding: 6px 16px; font-size: 7px; }
+  .nav-item svg { width: 26px; height: 26px; }
+}
+
+/* ---------- 900px: sidebar layout ---------- */
+@media (min-width: 900px) {
+  /* Root becomes flex row */
+  #root {
+    display: flex;
+    flex-direction: row;
+    min-height: 100vh;
+  }
+
+  /* Left sidebar nav */
+  .bottom-nav {
+    position: fixed;
+    left: 0; top: 0; bottom: 0; right: auto;
+    width: 200px;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    padding: 24px 12px;
+    border-top: none;
+    border-right: 1px solid rgba(255,255,255,0.08);
+    gap: 4px;
+    overflow-y: auto;
+  }
+
+  /* Sidebar logo */
+  .bottom-nav::before {
+    content: '🔒 SAFE';
+    display: block;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    color: #00ff88;
+    text-shadow: 0 0 12px rgba(0,255,136,0.6);
+    padding: 0 12px 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    margin-bottom: 16px;
+    letter-spacing: 1px;
+  }
+
+  .nav-item {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 8px;
+    width: 100%;
+  }
+  .nav-item.active { background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.2); }
+  .nav-item.active::after { display: none; }
+  .nav-item svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+  /* Content area shifts right of sidebar */
+  .page {
+    margin-left: 200px;
+    max-width: 680px;
+    padding: 24px 28px 40px;
+  }
+
+  /* Larger glass cards on desktop */
+  .gl, .gl-sm {
+    border-radius: 14px;
+    margin-bottom: 12px;
+  }
+
+  /* Bigger fonts on desktop */
+  .logo { font-size: 16px; }
+  .btn { font-size: 10px !important; padding: 16px 20px; border-radius: 10px; }
+  .input { font-size: 15px; padding: 15px 18px; }
+  .dc-title { font-size: 11px; }
+  .stat-n { font-size: 18px; }
+  .sec { font-size: 12px; }
+
+  /* Buttons — keep full width inside content */
+  .btn-full { width: 100%; }
+
+  /* Two-column stats grid */
+  .stats { gap: 8px; }
+  .stat { padding: 14px 8px; }
+
+  /* Pixel scenes wider on desktop */
+  canvas { max-width: 100%; }
+}
+
+/* ---------- 1200px: generous wide desktop ---------- */
+@media (min-width: 1200px) {
+  .bottom-nav { width: 240px; }
+  .page {
+    margin-left: 240px;
+    max-width: 780px;
+    padding: 28px 36px 48px;
+  }
+}
+
 /* Nav icon 3D bounce + spin */
 @keyframes nav-icon-bounce{
   0%  {transform:perspective(140px) translateY(0px)   rotateY(0deg)   scale(1);}

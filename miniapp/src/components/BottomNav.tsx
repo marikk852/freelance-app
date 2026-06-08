@@ -37,16 +37,16 @@ export function BottomNav() {
             key={path}
             className={`nav-item ${active ? 'active' : ''}`}
             onClick={() => handleNav(path)}
-            style={{ background: 'none', border: 'none' }}
+            style={{ background: active ? undefined : 'none', border: active ? undefined : 'none' }}
           >
             <span
               className={isSpinning ? 'nav-icon-spin' : ''}
               onAnimationEnd={() => setSpin(null)}
-              style={{ display: 'block' }}
+              style={{ display: 'block', flexShrink: 0 }}
             >
               <Icon size={ICON_SIZE} />
             </span>
-            <span style={{ fontSize: '6px' }}>{label}</span>
+            <span>{label}</span>
           </button>
         );
       })}
