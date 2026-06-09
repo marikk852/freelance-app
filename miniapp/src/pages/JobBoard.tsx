@@ -285,139 +285,166 @@ export function JobBoard() {
     } catch (e: any) { toast.error(e.response?.data?.error || 'Error'); }
   };
 
+  const JobCard = ({ j }: { j: any }) => (
+    <GlassCard>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+        <span style={{ fontSize: '8px', color: '#fff', flex: 1, marginRight: '8px', lineHeight: 1.5 }}>{j.title.toUpperCase()}</span>
+        <span style={{ fontSize: '8px', color: '#ffaa00', flexShrink: 0 }}>
+          {j.budget_min ? `$${j.budget_min}` : ''}{j.budget_max ? `—$${j.budget_max}` : ''}
+        </span>
+      </div>
+      <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px', lineHeight: 1.6 }}>
+        {(j.description || '').slice(0, 80)}...
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+          <span style={{ fontSize: '6px', padding: '3px 7px', borderRadius: '4px', background: 'rgba(255,136,0,0.12)', border: '1px solid rgba(255,136,0,0.35)', color: '#ff8800' }}>
+            {j.category || 'general'}
+          </span>
+          <span style={{ fontSize: '6px', color: 'rgba(255,255,255,0.3)' }}>{j.applications_count} apps.</span>
+        </div>
+        <button className="btn btn-g" style={{ fontSize: '7px', padding: '6px 12px', margin: 0, width: 'auto' }}
+          onClick={() =>
+            jobsApi.apply(j.id, {})
+              .then(() => { tg?.HapticFeedback?.notificationOccurred('success'); toast.success('Application sent!'); })
+              .catch((e: any) => toast.error(e.response?.data?.error || 'Error'))
+          }>
+          📨 APPLY
+        </button>
+      </div>
+    </GlassCard>
+  );
+
   return (
     <div className="page fade-in">
-      <PixelScene scene="job_board" width={320} height={110} />
 
-      {/* Заголовок */}
-      <div className="gl hud card-stagger-1" style={{ borderColor: 'rgba(255,136,0,0.3)' }}>
-        <div className="pxgrid" /><div className="sh" />
-        <div className="logo" style={{ fontSize: '10px', color: '#ff8800' }}>📌 JOB BOARD</div>
+      {/* ── Desktop topbar ── */}
+      <div className="desktop-topbar desktop-only">
+        <div className="desktop-topbar-title">DASHBOARD / <span>JOB BOARD</span></div>
+        <div className="filter-row" style={{ margin: 0, gap: '4px' }}>
+          {(['list', 'my', 'create'] as const).map(t => (
+            <button key={t} onClick={() => switchTab(t)} className={`fb ${tab === t ? 'fb-on' : 'fb-off'}`}>
+              {t === 'list' ? '🔍 JOBS' : t === 'my' ? '📋 MY JOBS' : '+ POST JOB'}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Табы */}
-      <div className="filter-row card-stagger-2">
-        {(['list', 'my', 'create'] as const).map(t => (
-          <button key={t} onClick={() => switchTab(t)}
-            className={`fb ${tab === t ? 'fb-on' : 'fb-off'}`}>
-            {t === 'list' ? '🔍 JOBS' : t === 'my' ? '📋 MY' : '+ NEW'}
-          </button>
-        ))}
-      </div>
-
-      {/* Контент по табу */}
-      {tab === 'list' && (
-        <div className="card-stagger-3">
-          {/* Поиск */}
-          <input className="input" placeholder="🔍 Search..." value={search}
-            onChange={e => setSearch(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && loadJobs()}
-            style={{ marginBottom: '10px' }} />
-
-          {/* Категории */}
-          <div className="filter-row" style={{ overflowX: 'auto', paddingBottom: '4px', flexWrap: 'nowrap' }}>
-            {CATEGORIES.map(c => (
-              <button key={c} onClick={() => setCategory(c)}
-                className={`fb ${category === c ? 'fb-on' : 'fb-off'}`}
-                style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
-                {c}
+      <div className="page-inner">
+        {/* Mobile-only: scene + HUD + tabs */}
+        <div className="mobile-only">
+          <PixelScene scene="job_board" width={320} height={110} />
+          <div className="gl hud card-stagger-1" style={{ borderColor: 'rgba(255,136,0,0.3)' }}>
+            <div className="pxgrid" /><div className="sh" />
+            <div className="logo" style={{ fontSize: '10px', color: '#ff8800' }}>📌 JOB BOARD</div>
+          </div>
+          <div className="filter-row card-stagger-2">
+            {(['list', 'my', 'create'] as const).map(t => (
+              <button key={t} onClick={() => switchTab(t)} className={`fb ${tab === t ? 'fb-on' : 'fb-off'}`}>
+                {t === 'list' ? '🔍 JOBS' : t === 'my' ? '📋 MY' : '+ NEW'}
               </button>
             ))}
           </div>
-
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '32px', fontSize: '24px' }}>⏳</div>
-          ) : jobs.length === 0 ? (
-            <GlassCard style={{ textAlign: 'center', padding: '32px' }}>
-              <div style={{ fontSize: '24px' }}>📭</div>
-              <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>No jobs found</div>
-            </GlassCard>
-          ) : (
-            jobs.map(j => (
-              <GlassCard key={j.id}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <span style={{ fontSize: '8px', color: '#fff', flex: 1, marginRight: '8px', lineHeight: 1.5 }}>
-                    {j.title.toUpperCase()}
-                  </span>
-                  <span style={{ fontSize: '8px', color: '#ffaa00', flexShrink: 0 }}>
-                    {j.budget_min ? `$${j.budget_min}` : ''}{j.budget_max ? `—$${j.budget_max}` : ''}
-                  </span>
-                </div>
-                <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px', lineHeight: 1.6 }}>
-                  {(j.description || '').slice(0, 80)}...
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                    <span style={{
-                      fontSize: '6px', padding: '3px 7px', borderRadius: '4px',
-                      background: 'rgba(255,136,0,0.12)',
-                      border: '1px solid rgba(255,136,0,0.35)', color: '#ff8800',
-                    }}>
-                      {j.category || 'general'}
-                    </span>
-                    <span style={{ fontSize: '6px', color: 'rgba(255,255,255,0.3)' }}>
-                      {j.applications_count} apps.
-                    </span>
-                  </div>
-                  <button className="btn btn-g" style={{ fontSize: '7px', padding: '6px 12px', margin: 0, width: 'auto' }}
-                    onClick={() =>
-                      jobsApi.apply(j.id, {})
-                        .then(() => { tg?.HapticFeedback?.notificationOccurred('success'); toast.success('Application sent!'); })
-                        .catch((e: any) => toast.error(e.response?.data?.error || 'Error'))
-                    }>
-                    📨 APPLY
-                  </button>
-                </div>
-              </GlassCard>
-            ))
-          )}
         </div>
-      )}
 
-      {tab === 'my' && (
-        <div className="card-stagger-3">
-          <MyJobs />
-        </div>
-      )}
-
-      {tab === 'create' && (
-        <div className="card-stagger-3">
-          <GlassCard>
-            {[
-              { label: 'Title *', key: 'title', placeholder: 'Website development...' },
-              { label: 'Description *', key: 'description', placeholder: 'Detailed description...', multi: true },
-              { label: 'Budget from ($)', key: 'budget_min', placeholder: '50', type: 'number' },
-              { label: 'Budget to ($)', key: 'budget_max', placeholder: '500', type: 'number' },
-              { label: 'Deadline (days)', key: 'deadline', placeholder: '7', type: 'number' },
-              { label: 'Skills (comma separated)', key: 'skills_required', placeholder: 'React, Node.js...' },
-            ].map(field => (
-              <div key={field.key} style={{ marginBottom: '10px' }}>
-                <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>{field.label}</div>
-                {field.multi ? (
-                  <textarea className="input" placeholder={field.placeholder}
-                    value={(form as any)[field.key]}
-                    onChange={e => setForm(f => ({ ...f, [field.key]: e.target.value }))}
-                    style={{ minHeight: '70px', resize: 'vertical' }} />
-                ) : (
-                  <input className="input" placeholder={field.placeholder} type={field.type || 'text'}
-                    value={(form as any)[field.key]}
-                    onChange={e => setForm(f => ({ ...f, [field.key]: e.target.value }))} />
-                )}
+        {/* ── LIST TAB ── */}
+        {tab === 'list' && (
+          <div className="card-stagger-3">
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
+              <input className="input" placeholder="🔍 Search..." value={search}
+                onChange={e => setSearch(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && loadJobs()}
+                style={{ flex: 1, minWidth: '180px', marginBottom: 0 }} />
+              <div className="filter-row" style={{ margin: 0, flexWrap: 'wrap' }}>
+                {CATEGORIES.map(c => (
+                  <button key={c} onClick={() => setCategory(c)}
+                    className={`fb ${category === c ? 'fb-on' : 'fb-off'}`}
+                    style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>{c}</button>
+                ))}
               </div>
-            ))}
-            <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>Category</div>
-            <select className="input" value={form.category}
-              onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-              style={{ marginBottom: '0' }}>
-              {CATEGORIES.slice(1).map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </GlassCard>
+            </div>
 
-          <button className="btn btn-y btn-full" style={{ marginTop: '10px' }} onClick={handleCreate}>
-            [ 📌 PUBLISH JOB ]
-          </button>
-        </div>
-      )}
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '32px', fontSize: '24px' }}>⏳</div>
+            ) : jobs.length === 0 ? (
+              <GlassCard style={{ textAlign: 'center', padding: '32px' }}>
+                <div style={{ fontSize: '24px' }}>📭</div>
+                <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>No jobs found</div>
+              </GlassCard>
+            ) : (
+              <>
+                <div className="jobs-grid desktop-only">
+                  {jobs.map(j => <JobCard key={j.id} j={j} />)}
+                </div>
+                <div className="mobile-only">
+                  {jobs.map(j => <JobCard key={j.id} j={j} />)}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── MY JOBS TAB ── */}
+        {tab === 'my' && (
+          <div className="card-stagger-3"><MyJobs /></div>
+        )}
+
+        {/* ── CREATE TAB ── */}
+        {tab === 'create' && (
+          <div className="card-stagger-3">
+            <div className="jobs-create-grid">
+              {/* Left col */}
+              <GlassCard>
+                {[
+                  { label: 'Title *',        key: 'title',       placeholder: 'Website development...' },
+                  { label: 'Description *',  key: 'description', placeholder: 'Detailed description...', multi: true },
+                  { label: 'Skills (comma)', key: 'skills_required', placeholder: 'React, Node.js...' },
+                ].map(field => (
+                  <div key={field.key} style={{ marginBottom: '10px' }}>
+                    <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>{field.label}</div>
+                    {field.multi ? (
+                      <textarea className="input" placeholder={field.placeholder}
+                        value={(form as any)[field.key]}
+                        onChange={e => setForm(f => ({ ...f, [field.key]: e.target.value }))}
+                        style={{ minHeight: '80px', resize: 'vertical' }} />
+                    ) : (
+                      <input className="input" placeholder={field.placeholder}
+                        value={(form as any)[field.key]}
+                        onChange={e => setForm(f => ({ ...f, [field.key]: e.target.value }))} />
+                    )}
+                  </div>
+                ))}
+              </GlassCard>
+              {/* Right col */}
+              <div>
+                <GlassCard>
+                  {[
+                    { label: 'Budget from ($)', key: 'budget_min', placeholder: '50',  type: 'number' },
+                    { label: 'Budget to ($)',   key: 'budget_max', placeholder: '500', type: 'number' },
+                    { label: 'Deadline (days)', key: 'deadline',   placeholder: '7',   type: 'number' },
+                  ].map(field => (
+                    <div key={field.key} style={{ marginBottom: '10px' }}>
+                      <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>{field.label}</div>
+                      <input className="input" placeholder={field.placeholder} type={field.type}
+                        value={(form as any)[field.key]}
+                        onChange={e => setForm(f => ({ ...f, [field.key]: e.target.value }))} />
+                    </div>
+                  ))}
+                  <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>Category</div>
+                  <select className="input" value={form.category}
+                    onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                    style={{ marginBottom: 0 }}>
+                    {CATEGORIES.slice(1).map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </GlassCard>
+                <button className="btn btn-y btn-full" style={{ marginTop: '10px' }} onClick={handleCreate}>
+                  [ 📌 PUBLISH JOB ]
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

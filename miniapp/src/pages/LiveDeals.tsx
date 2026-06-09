@@ -153,127 +153,143 @@ export function LiveDeals() {
     filter === 'ACTIVE'   ? allEvents.filter(e => e.type === 'frozen' || e.type === 'new') :
     allEvents.filter(e => e.type === 'disputed');
 
+  const activeCount = stats.active + fakeEvents.filter(e => e.type === 'frozen' || e.type === 'new').length;
+
+  const FeedCard = ({ e, i }: { e: FeedEvent; i: number }) => {
+    const meta = TYPE_META[e.type] || TYPE_META.new;
+    return (
+      <div
+        className="dc gl fade-in"
+        style={{
+          borderColor: meta.border,
+          opacity: e.leaving ? 0 : 1,
+          transform: e.entering ? 'translateY(-12px) scale(0.97)' : e.leaving ? 'translateY(-8px) scale(0.96)' : 'translateY(0) scale(1)',
+          transition: e.entering ? 'none' : 'opacity 0.45s ease, transform 0.45s ease',
+          animationDelay: `${i * 0.05}s`,
+          position: 'relative',
+        }}
+      >
+        <div className="pxgrid" /><div className="sh" />
+        {e.fake && !e.entering && !e.leaving && (
+          <div style={{ position: 'absolute', top: '8px', right: '10px', fontSize: '5px', color: '#00ff88', fontFamily: '"Press Start 2P", monospace', animation: 'glow-pulse-green 1.5s infinite' }}>● LIVE</div>
+        )}
+        <div className="dc-top">
+          <div className="dc-title" style={{ color: '#fff' }}>{e.title.toUpperCase()}</div>
+          <div className="dc-amt" style={{ color: meta.color }}>
+            <span className="pcoin" style={{ background: meta.color, borderColor: meta.color, opacity: 0.8 }} />
+            ${e.amount} {e.currency}
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+          <span className="badge gl-pill" style={{ color: meta.color, border: `1px solid ${meta.border}`, background: `${meta.border.replace('0.25', '0.08')}`, fontSize: '6px' }}>
+            {meta.label}
+          </span>
+          <span style={{ fontSize: '7px', color: 'rgba(255,255,255,0.25)' }}>
+            {typeof e.time === 'string' ? e.time : relativeTime(e.time)}
+          </span>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="page fade-in">
-      <PixelScene scene="live_deals" width={252} height={56} />
 
-      {/* HUD */}
-      <div className="gl hud card-stagger-1">
-        <div className="pxgrid" /><div className="sh" />
-        <div className="logo" style={{ color: '#00ff88' }}>
-          <span style={{ animation: 'glow-pulse-green 1s infinite', display: 'inline-block' }}>●</span>
-          {' '}LIVE FEED
+      {/* ── Desktop topbar ── */}
+      <div className="desktop-topbar desktop-only">
+        <div className="desktop-topbar-title">
+          DASHBOARD / <span>LIVE FEED</span>
         </div>
-        <div style={{ textAlign: 'center', fontSize: '7px', color: 'rgba(255,255,255,0.3)', marginTop: '4px' }}>
-          Deals in real time
-        </div>
+        <span style={{ fontSize: '7px', color: '#00ff88', fontFamily: '"Press Start 2P", monospace', animation: 'glow-pulse-green 1.5s infinite' }}>● LIVE</span>
+        <span style={{ fontSize: '6px', color: 'rgba(255,255,255,0.3)', fontFamily: '"Press Start 2P", monospace' }}>
+          {countCompleted} DEALS · ${countVolume} VOL · {activeCount} ACTIVE · {stats.disputes} DISPUTES
+        </span>
       </div>
 
-      {/* Stats */}
-      <div className="stats card-stagger-2">
-        <div className="stat gl-sm" style={{ borderColor: 'rgba(0,255,136,0.3)' }}>
-          <div className="pxgrid" />
-          <span className="stat-n" style={{ color: '#00ff88' }}>{countCompleted}</span>
-          <span className="stat-l">DEALS</span>
-        </div>
-        <div className="stat gl-sm" style={{ borderColor: 'rgba(255,170,0,0.3)' }}>
-          <div className="pxgrid" />
-          <span className="stat-n" style={{ color: '#ffaa00', fontSize: '10px' }}>${countVolume}</span>
-          <span className="stat-l">VOLUME</span>
-        </div>
-        <div className="stat gl-sm" style={{ borderColor: 'rgba(0,136,255,0.3)' }}>
-          <div className="pxgrid" />
-          <span className="stat-n" style={{ color: '#0088ff', fontSize: '10px' }}>
-            {stats.active + fakeEvents.filter(e => e.type === 'frozen' || e.type === 'new').length}
-          </span>
-          <span className="stat-l">ACTIVE</span>
-        </div>
-        <div className="stat gl-sm" style={{ borderColor: 'rgba(255,68,102,0.3)' }}>
-          <div className="pxgrid" />
-          <span className="stat-n" style={{ color: '#ff4466', fontSize: '10px' }}>
-            {stats.disputes}
-          </span>
-          <span className="stat-l">DISPUTES</span>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="filter-row card-stagger-3">
-        {FILTERS.map(f => (
-          <button key={f} onClick={() => setFilter(f)}
-            className={`fb ${filter === f ? 'fb-on' : 'fb-off'}`}>
-            {f}
-          </button>
-        ))}
-      </div>
-
-      {/* Feed */}
-      {!loaded ? (
-        <div style={{ textAlign: 'center', padding: '40px 0', fontSize: '7px', color: 'rgba(255,255,255,0.25)' }}>
-          LOADING...
-        </div>
-      ) : filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '40px 0', fontSize: '7px', color: 'rgba(255,255,255,0.25)' }}>
-          NO EVENTS
-        </div>
-      ) : (
-        filtered.map((e, i) => {
-          const meta = TYPE_META[e.type] || TYPE_META.new;
-          return (
-            <div
-              key={e.id}
-              className="dc gl fade-in"
-              style={{
-                borderColor     : meta.border,
-                opacity         : e.leaving ? 0 : 1,
-                transform       : e.entering ? 'translateY(-12px) scale(0.97)' : e.leaving ? 'translateY(-8px) scale(0.96)' : 'translateY(0) scale(1)',
-                transition      : e.entering ? 'none' : 'opacity 0.45s ease, transform 0.45s ease',
-                animationDelay  : `${i * 0.05}s`,
-                position        : 'relative',
-              }}
-            >
-              <div className="pxgrid" /><div className="sh" />
-
-              {/* NEW badge for fake events just appeared */}
-              {e.fake && !e.entering && !e.leaving && (
-                <div style={{
-                  position: 'absolute', top: '8px', right: '10px',
-                  fontSize: '5px', color: '#00ff88',
-                  fontFamily: '"Press Start 2P", monospace',
-                  animation: 'glow-pulse-green 1.5s infinite',
-                }}>● LIVE</div>
-              )}
-
-              <div className="dc-top">
-                <div className="dc-title" style={{ color: '#fff' }}>{e.title.toUpperCase()}</div>
-                <div className="dc-amt" style={{ color: meta.color }}>
-                  <span className="pcoin" style={{
-                    background: meta.color,
-                    borderColor: meta.color,
-                    opacity: 0.8,
-                  }} />
-                  ${e.amount} {e.currency}
-                </div>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
-                <span className="badge gl-pill" style={{
-                  color      : meta.color,
-                  border     : `1px solid ${meta.border}`,
-                  background : `${meta.border.replace('0.25', '0.08')}`,
-                  fontSize   : '6px',
-                }}>
-                  {meta.label}
-                </span>
-                <span style={{ fontSize: '7px', color: 'rgba(255,255,255,0.25)' }}>
-                  {typeof e.time === 'string' ? e.time : relativeTime(e.time)}
-                </span>
-              </div>
+      <div className="page-inner">
+        {/* Mobile-only: scene + HUD */}
+        <div className="mobile-only">
+          <PixelScene scene="live_deals" width={252} height={56} />
+          <div className="gl hud card-stagger-1">
+            <div className="pxgrid" /><div className="sh" />
+            <div className="logo" style={{ color: '#00ff88' }}>
+              <span style={{ animation: 'glow-pulse-green 1s infinite', display: 'inline-block' }}>●</span>
+              {' '}LIVE FEED
             </div>
-          );
-        })
-      )}
+          </div>
+          <div className="stats card-stagger-2">
+            <div className="stat gl-sm" style={{ borderColor: 'rgba(0,255,136,0.3)' }}>
+              <div className="pxgrid" />
+              <span className="stat-n" style={{ color: '#00ff88' }}>{countCompleted}</span>
+              <span className="stat-l">DEALS</span>
+            </div>
+            <div className="stat gl-sm" style={{ borderColor: 'rgba(255,170,0,0.3)' }}>
+              <div className="pxgrid" />
+              <span className="stat-n" style={{ color: '#ffaa00', fontSize: '10px' }}>${countVolume}</span>
+              <span className="stat-l">VOLUME</span>
+            </div>
+            <div className="stat gl-sm" style={{ borderColor: 'rgba(0,136,255,0.3)' }}>
+              <div className="pxgrid" />
+              <span className="stat-n" style={{ color: '#0088ff', fontSize: '10px' }}>{activeCount}</span>
+              <span className="stat-l">ACTIVE</span>
+            </div>
+            <div className="stat gl-sm" style={{ borderColor: 'rgba(255,68,102,0.3)' }}>
+              <div className="pxgrid" />
+              <span className="stat-n" style={{ color: '#ff4466', fontSize: '10px' }}>{stats.disputes}</span>
+              <span className="stat-l">DISPUTES</span>
+            </div>
+          </div>
+        </div>
 
-      <div className="div" />
+        {/* Desktop stats row */}
+        <div className="stats live-stats-desktop desktop-only" style={{ marginBottom: '14px' }}>
+          <div className="stat gl-sm" style={{ borderColor: 'rgba(0,255,136,0.3)' }}>
+            <div className="pxgrid" />
+            <span className="stat-n" style={{ color: '#00ff88' }}>{countCompleted}</span>
+            <span className="stat-l">DEALS</span>
+          </div>
+          <div className="stat gl-sm" style={{ borderColor: 'rgba(255,170,0,0.3)' }}>
+            <div className="pxgrid" />
+            <span className="stat-n" style={{ color: '#ffaa00', fontSize: '10px' }}>${countVolume}</span>
+            <span className="stat-l">VOLUME</span>
+          </div>
+          <div className="stat gl-sm" style={{ borderColor: 'rgba(0,136,255,0.3)' }}>
+            <div className="pxgrid" />
+            <span className="stat-n" style={{ color: '#0088ff', fontSize: '10px' }}>{activeCount}</span>
+            <span className="stat-l">ACTIVE</span>
+          </div>
+          <div className="stat gl-sm" style={{ borderColor: 'rgba(255,68,102,0.3)' }}>
+            <div className="pxgrid" />
+            <span className="stat-n" style={{ color: '#ff4466', fontSize: '10px' }}>{stats.disputes}</span>
+            <span className="stat-l">DISPUTES</span>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="filter-row card-stagger-3" style={{ marginBottom: '12px' }}>
+          {FILTERS.map(f => (
+            <button key={f} onClick={() => setFilter(f)} className={`fb ${filter === f ? 'fb-on' : 'fb-off'}`}>{f}</button>
+          ))}
+        </div>
+
+        {/* Feed */}
+        {!loaded ? (
+          <div style={{ textAlign: 'center', padding: '40px 0', fontSize: '7px', color: 'rgba(255,255,255,0.25)' }}>LOADING...</div>
+        ) : filtered.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px 0', fontSize: '7px', color: 'rgba(255,255,255,0.25)' }}>NO EVENTS</div>
+        ) : (
+          <>
+            {/* Desktop: 2-col grid */}
+            <div className="live-feed-grid desktop-only">
+              {filtered.map((e, i) => <FeedCard key={e.id} e={e} i={i} />)}
+            </div>
+            {/* Mobile: single col */}
+            <div className="mobile-only">
+              {filtered.map((e, i) => <FeedCard key={e.id} e={e} i={i} />)}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

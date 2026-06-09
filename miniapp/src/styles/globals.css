@@ -388,10 +388,11 @@ canvas{image-rendering:pixelated;}
   /* Generic desktop-only becomes block; grids override below */
   .desktop-only { display: block !important; }
   .mobile-only  { display: none !important; }
-  .home-hero-grid.desktop-only    { display: grid !important; }
-  .home-action-row.desktop-only   { display: grid !important; }
-  .home-bottom-grid.desktop-only  { display: grid !important; }
-  .desktop-topbar.desktop-only    { display: flex !important; }
+  .home-hero-grid.desktop-only      { display: grid !important; }
+  .home-action-row.desktop-only     { display: grid !important; }
+  .home-bottom-grid.desktop-only    { display: grid !important; }
+  .desktop-topbar.desktop-only      { display: flex !important; }
+  .live-stats-desktop.desktop-only  { display: flex !important; }
 
   /* Root → flex row */
   #root { display: flex; flex-direction: row; min-height: 100vh; }
@@ -573,6 +574,20 @@ canvas{image-rendering:pixelated;}
   /* Quests — 2-column card grid on desktop */
   .quests-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .quests-grid > div { margin-bottom: 0 !important; }
+
+  /* ── Live feed 2-col grid ── */
+  .live-feed-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .live-feed-grid .gl, .live-feed-grid .dc { margin-bottom: 0; }
+  /* Live stats compact row */
+  .live-stats-desktop { display: flex; gap: 12px; margin-bottom: 14px; }
+  .live-stats-desktop .stat { flex: 1; padding: 12px 8px; }
+
+  /* ── Jobs 2-col grid ── */
+  .jobs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .jobs-grid > * { margin-bottom: 0 !important; }
+  /* Jobs create form — 2 col fields */
+  .jobs-create-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+  .jobs-create-grid .gl { margin-bottom: 0; }
 
   /* ── Profile desktop 2-panel layout ── */
   .profile-layout {
