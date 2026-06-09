@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { TonConnectUIProvider } from '@tonconnect/ui-react';
 import { Toaster } from 'react-hot-toast';
@@ -21,6 +21,86 @@ import { FreelancerList }  from './pages/FreelancerList';
 import { Notifications }   from './pages/Notifications';
 import { Quests }          from './pages/Quests';
 import './styles/globals.css';
+
+// ============================================================
+// Кнопка расширения до полноэкранного режима (только десктоп)
+// ============================================================
+function ExpandButton() {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (!tg) return;
+    const handler = () => setIsFullscreen(!!tg.isFullscreen);
+    tg.onEvent?.('fullscreenChanged', handler);
+    return () => tg.offEvent?.('fullscreenChanged', handler);
+  }, []);
+
+  const toggle = useCallback(() => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (!tg) return;
+    if (isFullscreen) {
+      tg.exitFullscreen?.();
+      setIsFullscreen(false);
+    } else if (tg.requestFullscreen) {
+      tg.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      tg.expand?.();
+    }
+  }, [isFullscreen]);
+
+  return (
+    <button
+      onClick={toggle}
+      className="desktop-only"
+      title={isFullscreen ? 'Exit fullscreen' : 'Expand'}
+      style={{
+        position     : 'fixed',
+        bottom       : '20px',
+        right        : '20px',
+        zIndex       : 9000,
+        width        : '36px',
+        height       : '36px',
+        borderRadius : '10px',
+        background   : 'rgba(0,0,0,0.85)',
+        border       : '1px solid rgba(0,255,136,0.35)',
+        color        : '#00ff88',
+        cursor       : 'pointer',
+        display      : 'flex',
+        alignItems   : 'center',
+        justifyContent: 'center',
+        backdropFilter: 'blur(12px)',
+        boxShadow    : '0 0 12px rgba(0,255,136,0.15)',
+        transition   : 'border-color 0.2s, box-shadow 0.2s',
+        fontFamily   : 'monospace',
+        fontSize     : '16px',
+        lineHeight   : 1,
+        padding      : 0,
+      }}
+      onMouseEnter={e => {
+        (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,255,136,0.8)';
+        (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 18px rgba(0,255,136,0.4)';
+      }}
+      onMouseLeave={e => {
+        (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,255,136,0.35)';
+        (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 12px rgba(0,255,136,0.15)';
+      }}
+    >
+      {isFullscreen ? (
+        // compress icon
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+          <path d="M9 1v4h4M5 13V9H1M1 5h4V1M13 9h-4v4"/>
+        </svg>
+      ) : (
+        // expand icon
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+          <path d="M9 1h4v4M5 13H1V9M1 5V1h4M13 9v4H9"/>
+        </svg>
+      )}
+    </button>
+  );
+}
 
 // ============================================================
 // Экран технического обслуживания
@@ -136,6 +216,7 @@ export default function App() {
       />
 
       <NotificationPopup />
+      <ExpandButton />
       <Routes>
         <Route path="/"            element={<Home />} />
         <Route path="/new-deal"    element={<NewDeal />} />
