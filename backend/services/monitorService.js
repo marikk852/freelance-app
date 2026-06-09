@@ -168,17 +168,27 @@ async function checkArbitratorBalance() {
 
     if (balanceTon < ARBITRATOR_LOW_BALANCE_TON) {
       const arbitratorTgId = process.env.ARBITRATOR_TELEGRAM_ID;
-      const msg = `🚨 *НИЗКИЙ БАЛАНС АРБИТРА*\n\nТекущий баланс: *${balanceTon.toFixed(4)} TON*\nМинимум: *${ARBITRATOR_LOW_BALANCE_TON} TON*\n\nПополни кошелёк арбитра — иначе release/refund/split будут падать!`;
-
       console.error(`[Monitor] 🚨 Критически низкий баланс арбитра: ${balanceTon} TON`);
 
       if (arbitratorTgId) {
-        await notificationService.notify(
-          Number(arbitratorTgId),
-          'system_alert',
-          msg,
-          { balanceTon, threshold: ARBITRATOR_LOW_BALANCE_TON }
+        // Не спамим — проверяем что за последний час не было такого уведомления
+        const { rows } = await query(
+          `SELECT id FROM notifications n
+           JOIN users u ON u.id = n.user_id
+           WHERE u.telegram_id = $1 AND n.type = 'system_alert'
+             AND n.created_at > NOW() - INTERVAL '1 hour'
+           LIMIT 1`,
+          [Number(arbitratorTgId)]
         );
+        if (rows.length === 0) {
+          const msg = `🚨 *НИЗКИЙ БАЛАНС АРБИТРА*\n\nТекущий баланс: *${balanceTon.toFixed(4)} TON*\nМинимум: *${ARBITRATOR_LOW_BALANCE_TON} TON*\n\nПополни кошелёк арбитра — иначе release/refund/split будут падать!`;
+          await notificationService.notify(
+            Number(arbitratorTgId),
+            'system_alert',
+            msg,
+            { balanceTon, threshold: ARBITRATOR_LOW_BALANCE_TON }
+          );
+        }
       }
     } else {
       console.log(`[Monitor] Баланс арбитра: ${balanceTon.toFixed(4)} TON ✅`);

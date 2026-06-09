@@ -99,8 +99,9 @@ async function getBalance(address) {
  * Используется MonitorService для алертов.
  */
 async function getArbitratorBalance() {
-  if (!_wallet) throw new Error('[TON] Кошелёк арбитра не инициализирован');
-  return _wallet.getBalance();
+  if (!_wallet || !_client) throw new Error('[TON] Кошелёк арбитра не инициализирован');
+  // Прямой запрос к клиенту надёжнее wallet.getBalance() при rate limit toncenter
+  return _client.getBalance(_wallet.address);
 }
 
 /**
