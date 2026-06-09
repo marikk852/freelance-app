@@ -103,6 +103,20 @@ export function Home() {
   const countCoins  = useCountUp(profile?.safe_coins ?? 0, 1500);
   const countStreak = useCountUp(profile?.streak_days ?? 0, 800);
 
+  // Общий баланс = сумма amount_usd активных сделок
+  const totalBalanceUsd = activeDeals.reduce((s: number, d: any) => s + (Number(d.amount_usd) || 0), 0);
+
+  // Инициалы для аватарки
+  const initials = (() => {
+    const f = profile?.first_name || user?.first_name || '';
+    const l = profile?.last_name  || user?.last_name  || '';
+    return ((f[0] || '') + (l[0] || '')).toUpperCase() || (profile?.username?.[0] || '?').toUpperCase();
+  })();
+
+  // Цвет аватарки на основе telegram_id
+  const avatarColors = ['#0088ff','#00cc88','#ff6644','#aa44ff','#ffaa00','#ff4488'];
+  const avatarColor  = avatarColors[(Number(profile?.telegram_id || 0)) % avatarColors.length];
+
   const go = (path: string) => {
     tg?.HapticFeedback?.impactOccurred('medium');
     navigate(path);
@@ -150,28 +164,79 @@ export function Home() {
 
       {/* ── Mobile-only: HUD + XP + Scene ── */}
       <div className="mobile-only">
-        <div className="gl hud card-stagger-1">
-          <div className="pxgrid" /><div className="sh" />
-          <div className="logo">SAFEDEAL</div>
-          <div className="gl-pill lvl" style={{ padding: '3px 8px' }}>LVL {profile?.level ?? 1}</div>
-          <div className="coins" onClick={() => setBurst(b => !b)} style={{ cursor: 'pointer' }}>
-            <span className="pcoin" style={{ background: '#ffaa00', borderColor: '#ff8800' }} />
-            {countCoins.toLocaleString()}
-          </div>
-          <div onClick={() => go('/notifications')} style={{ position: 'relative', cursor: 'pointer', marginLeft: '4px', lineHeight: 0 }}>
-            <span style={{ fontSize: '16px' }}>🔔</span>
-            {unreadCount > 0 && (
+        {/* ── New HUD: avatar + balance | coins + bell ── */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '10px 4px 8px', gap: '8px',
+        }}>
+          {/* Left: avatar + balance */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {/* Avatar circle */}
+            <div style={{
+              width: '40px', height: '40px', borderRadius: '50%',
+              background: avatarColor,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+              fontSize: '13px', fontWeight: 700, color: '#fff',
+              fontFamily: 'Inter, sans-serif',
+              boxShadow: `0 0 12px ${avatarColor}55`,
+            }}>
+              {initials}
+            </div>
+            {/* Balance info */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
               <span style={{
-                position: 'absolute', top: '-4px', right: '-6px',
-                minWidth: '14px', height: '14px',
-                background: '#ff4466', borderRadius: '7px', fontSize: '7px', color: '#fff',
-                fontFamily: '"Press Start 2P", monospace',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                padding: '0 2px', boxShadow: '0 0 6px rgba(255,68,102,0.7)', lineHeight: 1,
+                fontSize: '11px', color: 'rgba(255,255,255,0.45)',
+                fontFamily: 'Inter, sans-serif', fontWeight: 400, lineHeight: 1,
+              }}>Общий баланс</span>
+              <span style={{
+                fontSize: '17px', color: '#fff',
+                fontFamily: 'Inter, sans-serif', fontWeight: 600, lineHeight: 1,
               }}>
-                {unreadCount > 99 ? '99+' : unreadCount}
+                ${totalBalanceUsd.toFixed(2)}
               </span>
-            )}
+            </div>
+          </div>
+
+          {/* Right: coins pill + bell */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            {/* SafeCoins pill */}
+            <div
+              onClick={() => setBurst(b => !b)}
+              style={{
+                background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '20px', padding: '6px 12px', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: '5px',
+              }}
+            >
+              <span style={{ fontSize: '13px' }}>🪙</span>
+              <span style={{
+                fontSize: '13px', fontWeight: 600, color: '#fff',
+                fontFamily: 'Inter, sans-serif',
+              }}>
+                {(profile?.safe_coins ?? 0).toLocaleString()}
+              </span>
+              <span style={{
+                fontSize: '11px', color: 'rgba(255,255,255,0.45)',
+                fontFamily: 'Inter, sans-serif',
+              }}>SC</span>
+            </div>
+            {/* Bell */}
+            <div onClick={() => go('/notifications')} style={{ position: 'relative', cursor: 'pointer', lineHeight: 0 }}>
+              <span style={{ fontSize: '20px' }}>🔔</span>
+              {unreadCount > 0 && (
+                <span style={{
+                  position: 'absolute', top: '-3px', right: '-5px',
+                  minWidth: '14px', height: '14px',
+                  background: '#ff4466', borderRadius: '7px', fontSize: '7px', color: '#fff',
+                  fontFamily: '"Press Start 2P", monospace',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  padding: '0 2px', boxShadow: '0 0 6px rgba(255,68,102,0.7)', lineHeight: 1,
+                }}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <div className="gl xp-w card-stagger-2">
