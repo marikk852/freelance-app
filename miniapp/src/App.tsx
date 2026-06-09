@@ -55,42 +55,39 @@ function ExpandButton() {
   return (
     <button
       onClick={expand}
-      title="Switch to desktop mode"
+      title="Desktop mode"
       style={{
-        position     : 'fixed',
-        top          : '12px',
-        right        : '12px',
-        zIndex       : 9000,
-        height       : '28px',
-        padding      : '0 10px',
-        borderRadius : '8px',
-        background   : 'rgba(0,0,0,0.9)',
-        border       : '1px solid rgba(0,255,136,0.5)',
-        color        : '#00ff88',
-        cursor       : 'pointer',
-        display      : 'flex',
-        alignItems   : 'center',
-        gap          : '6px',
+        position      : 'fixed',
+        bottom        : '80px',
+        right         : '12px',
+        zIndex        : 9000,
+        width         : '32px',
+        height        : '32px',
+        padding       : 0,
+        borderRadius  : '8px',
+        background    : 'rgba(0,0,0,0.9)',
+        border        : '1px solid rgba(0,255,136,0.4)',
+        color         : '#00ff88',
+        cursor        : 'pointer',
+        display       : 'flex',
+        alignItems    : 'center',
+        justifyContent: 'center',
         backdropFilter: 'blur(12px)',
-        boxShadow    : '0 0 12px rgba(0,255,136,0.2)',
-        transition   : 'border-color 0.2s, box-shadow 0.2s',
-        fontFamily   : '"Press Start 2P", monospace',
-        fontSize     : '6px',
-        whiteSpace   : 'nowrap',
+        boxShadow     : '0 0 10px rgba(0,255,136,0.15)',
+        transition    : 'border-color 0.2s, box-shadow 0.2s',
       }}
       onMouseEnter={e => {
         (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,255,136,0.9)';
-        (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 18px rgba(0,255,136,0.4)';
+        (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 16px rgba(0,255,136,0.4)';
       }}
       onMouseLeave={e => {
-        (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,255,136,0.5)';
-        (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 12px rgba(0,255,136,0.2)';
+        (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,255,136,0.4)';
+        (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 10px rgba(0,255,136,0.15)';
       }}
     >
-      <svg width="10" height="10" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
         <path d="M9 1h4v4M5 13H1V9M1 5V1h4M13 9v4H9"/>
       </svg>
-      DESKTOP MODE
     </button>
   );
 }
