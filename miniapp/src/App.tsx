@@ -23,81 +23,74 @@ import { Quests }          from './pages/Quests';
 import './styles/globals.css';
 
 // ============================================================
-// Кнопка расширения до полноэкранного режима (только десктоп)
+// Кнопка расширения до десктоп-режима (видна только в мобильной версии на ПК)
+// Показывается когда: ширина окна < 900px И есть Telegram WebApp API
 // ============================================================
 function ExpandButton() {
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isMobileView, setIsMobileView] = useState(window.innerWidth < 900);
 
+  // Следим за изменением ширины
   useEffect(() => {
-    const tg = (window as any).Telegram?.WebApp;
-    if (!tg) return;
-    const handler = () => setIsFullscreen(!!tg.isFullscreen);
-    tg.onEvent?.('fullscreenChanged', handler);
-    return () => tg.offEvent?.('fullscreenChanged', handler);
+    const onResize = () => setIsMobileView(window.innerWidth < 900);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  const toggle = useCallback(() => {
+  // Не показывать на реальных мобильных устройствах (только десктопные браузеры/Telegram Desktop)
+  const isTelegramDesktop = !!(window as any).Telegram?.WebApp &&
+    !(/(android|iphone|ipad|mobile)/i.test(navigator.userAgent));
+
+  const expand = useCallback(() => {
     const tg = (window as any).Telegram?.WebApp;
     if (!tg) return;
-    if (isFullscreen) {
-      tg.exitFullscreen?.();
-      setIsFullscreen(false);
-    } else if (tg.requestFullscreen) {
+    if (tg.requestFullscreen) {
       tg.requestFullscreen();
-      setIsFullscreen(true);
     } else {
       tg.expand?.();
     }
-  }, [isFullscreen]);
+  }, []);
+
+  if (!isMobileView || !isTelegramDesktop) return null;
 
   return (
     <button
-      onClick={toggle}
-      className="desktop-only"
-      title={isFullscreen ? 'Exit fullscreen' : 'Expand'}
+      onClick={expand}
+      title="Switch to desktop mode"
       style={{
         position     : 'fixed',
-        bottom       : '20px',
-        right        : '20px',
+        top          : '12px',
+        right        : '12px',
         zIndex       : 9000,
-        width        : '36px',
-        height       : '36px',
-        borderRadius : '10px',
-        background   : 'rgba(0,0,0,0.85)',
-        border       : '1px solid rgba(0,255,136,0.35)',
+        height       : '28px',
+        padding      : '0 10px',
+        borderRadius : '8px',
+        background   : 'rgba(0,0,0,0.9)',
+        border       : '1px solid rgba(0,255,136,0.5)',
         color        : '#00ff88',
         cursor       : 'pointer',
         display      : 'flex',
         alignItems   : 'center',
-        justifyContent: 'center',
+        gap          : '6px',
         backdropFilter: 'blur(12px)',
-        boxShadow    : '0 0 12px rgba(0,255,136,0.15)',
+        boxShadow    : '0 0 12px rgba(0,255,136,0.2)',
         transition   : 'border-color 0.2s, box-shadow 0.2s',
-        fontFamily   : 'monospace',
-        fontSize     : '16px',
-        lineHeight   : 1,
-        padding      : 0,
+        fontFamily   : '"Press Start 2P", monospace',
+        fontSize     : '6px',
+        whiteSpace   : 'nowrap',
       }}
       onMouseEnter={e => {
-        (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,255,136,0.8)';
+        (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,255,136,0.9)';
         (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 18px rgba(0,255,136,0.4)';
       }}
       onMouseLeave={e => {
-        (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,255,136,0.35)';
-        (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 12px rgba(0,255,136,0.15)';
+        (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,255,136,0.5)';
+        (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 12px rgba(0,255,136,0.2)';
       }}
     >
-      {isFullscreen ? (
-        // compress icon
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-          <path d="M9 1v4h4M5 13V9H1M1 5h4V1M13 9h-4v4"/>
-        </svg>
-      ) : (
-        // expand icon
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-          <path d="M9 1h4v4M5 13H1V9M1 5V1h4M13 9v4H9"/>
-        </svg>
-      )}
+      <svg width="10" height="10" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <path d="M9 1h4v4M5 13H1V9M1 5V1h4M13 9v4H9"/>
+      </svg>
+      DESKTOP MODE
     </button>
   );
 }
