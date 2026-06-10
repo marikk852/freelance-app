@@ -331,6 +331,12 @@ select.inp{cursor:pointer}
         <div><div style="font-size:10px;color:var(--muted);margin-bottom:5px" data-i18n="export_to">TO</div><input class="inp" type="date" id="export-to" style="width:150px"></div>
         <button class="btn btn-gold" onclick="exportCSV()" data-i18n="download_csv">⬇ Download CSV</button>
       </div>
+      <!-- Subscription plans toggle -->
+      <div class="table-wrap" style="margin-bottom:16px">
+        <div class="table-header"><span class="table-title">Subscription Plans</span></div>
+        <div id="sub-plans-list" style="padding:8px 0">Loading...</div>
+      </div>
+
       <div class="table-wrap">
         <div class="table-header"><span class="table-title" data-i18n="by_month">By month</span></div>
         <table><thead><tr><th data-i18n="col_month">MONTH</th><th data-i18n="col_currency">CURRENCY</th><th data-i18n="col_deals">DEALS</th><th data-i18n="col_volume">VOLUME ($)</th><th data-i18n="col_fee">FEE ($)</th></tr></thead>
@@ -901,7 +907,34 @@ function deleteJob(id,title){
 }
 
 // FINANCE
+function loadSubPlans(){
+  get('/admark/api/subscriptions/plans').then(function(plans){
+    document.getElementById('sub-plans-list').innerHTML=plans.map(function(p){
+      var isOn=p.is_active;
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border)">'+
+        '<div>'+
+          '<div style="font-size:13px;font-weight:600;color:var(--text)">'+p.name+' — $'+p.price_usd+'/mo</div>'+
+          '<div style="font-size:11px;color:var(--muted);margin-top:3px">'+p.crystals_reward.toLocaleString()+' crystals · '+p.key+'</div>'+
+        '</div>'+
+        '<button onclick="toggleSubPlan(\''+p.key+'\')" style="'+
+          'padding:6px 16px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;'+
+          'background:'+(isOn?'var(--green)':'var(--muted)')+';color:'+(isOn?'#000':'#fff')+'">'+
+          (isOn?'✓ ENABLED':'✗ DISABLED')+
+        '</button>'+
+      '</div>';
+    }).join('');
+  }).catch(function(e){document.getElementById('sub-plans-list').innerHTML='<div style="padding:12px;color:var(--red)">Error: '+e.message+'</div>';});
+}
+function toggleSubPlan(key){
+  fetch('/admark/api/subscriptions/plans/'+key+'/toggle',{method:'PATCH',headers:{'X-Admin-Token':TOKEN}})
+    .then(function(r){return r.json()})
+    .then(function(p){
+      toast((p.is_active?'✓ Enabled: ':'✗ Disabled: ')+p.name,'ok');
+      loadSubPlans();
+    }).catch(function(e){toast('Error: '+e.message,'err');});
+}
 function loadFinance(){
+  loadSubPlans();
   get('/admark/api/finance').then(function(d){
     var totals=d.total||{};
     document.getElementById('fin-totals').innerHTML=
