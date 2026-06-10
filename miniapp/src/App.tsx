@@ -20,6 +20,7 @@ import { PublicProfile }   from './pages/PublicProfile';
 import { FreelancerList }  from './pages/FreelancerList';
 import { Notifications }   from './pages/Notifications';
 import { Quests }          from './pages/Quests';
+import { Board }           from './pages/Board';
 import './styles/globals.css';
 
 // ============================================================
@@ -218,9 +219,10 @@ export default function App() {
         <Route path="/live"        element={<LiveDeals />} />
         <Route path="/profile"     element={<Profile />} />
         <Route path="/profile/:telegramId" element={<PublicProfile />} />
-        <Route path="/jobs"        element={<JobBoard />} />
+        <Route path="/jobs"          element={<Board />} />
+        <Route path="/board"         element={<Board />} />
         <Route path="/my-deals"      element={<MyDeals />} />
-        <Route path="/freelancers"   element={<FreelancerList />} />
+        <Route path="/freelancers"   element={<Board />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/quests"        element={<Quests />} />
       </Routes>

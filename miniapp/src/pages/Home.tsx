@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PixelScene } from '../components/PixelScene';
 import { CoinBurst } from '../components/CoinBurst';
@@ -61,6 +61,242 @@ function NavCard({
         {subtitle}
       </div>
     </div>
+  );
+}
+
+// ============================================================
+// RatingBlock — XP bar with title + bottom sheet
+// ============================================================
+function RatingBlock({ xp, xpMax, xpPct, onNavigate }: {
+  xp: number; xpMax: number; xpPct: number; onNavigate: (path: string) => void;
+}) {
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const sheetRef = useRef<HTMLDivElement>(null);
+
+  // Close on backdrop tap
+  const closeSheet = () => setSheetOpen(false);
+
+  const earnItems = [
+    { icon: '✅', title: 'Complete 3 deals', desc: 'Successfully close 3 deals on SafeDeal', crystals: null, action: () => onNavigate('/board') },
+    { icon: '📅', title: 'Daily login',      desc: '+10 crystals every day you open the app', crystals: 10,   action: null },
+    { icon: '🎯', title: 'Complete quests',  desc: 'Finish tasks in the Quests section',       crystals: null, action: () => { closeSheet(); onNavigate('/quests'); } },
+    { icon: '👥', title: 'Refer friends',    desc: '300 crystals for 3 referrals · 10,000 for 20 active', crystals: null, action: () => { closeSheet(); onNavigate('/profile'); } },
+  ];
+
+  return (
+    <>
+      {/* Rating card */}
+      <div className="gl card-stagger-2" style={{ position: 'relative', padding: '14px 14px 12px', marginBottom: '4px' }}>
+        <div className="pxgrid" />
+        {/* Header row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+          <div>
+            <div style={{ fontFamily: '"Press Start 2P", monospace', fontSize: '9px', color: '#ffaa00', lineHeight: 1.4 }}>
+              RATING
+            </div>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '3px', lineHeight: 1.3 }}>
+              Level up to reach the top freelancers
+            </div>
+          </div>
+          {/* Chevron button */}
+          <button
+            onClick={() => setSheetOpen(true)}
+            style={{
+              width: '28px', height: '28px', borderRadius: '50%',
+              background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
+              color: '#fff', cursor: 'pointer', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M2 4l4 4 4-4"/>
+            </svg>
+          </button>
+        </div>
+        {/* XP bar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+          <span style={{ fontFamily: '"Press Start 2P", monospace', fontSize: '7px', color: '#ffaa00' }}>XP</span>
+          <span style={{ fontFamily: '"Press Start 2P", monospace', fontSize: '7px', color: 'rgba(255,255,255,0.5)' }}>{xp}/{xpMax}</span>
+        </div>
+        <div className="xp-track">
+          <div className="xp-fill" style={{ background: 'linear-gradient(90deg,#ffaa00,#ff6600)', width: `${xpPct}%`, transition: 'width 1.2s cubic-bezier(0.22,1,0.36,1)' }} />
+          <div className="xp-shine" />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px' }}>
+          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', color: '#ffaa00' }}>{xpPct}% to next level</span>
+        </div>
+      </div>
+
+      {/* Bottom sheet backdrop */}
+      {sheetOpen && (
+        <div
+          onClick={closeSheet}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9990,
+            background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)',
+          }}
+        />
+      )}
+
+      {/* Bottom sheet */}
+      <div
+        ref={sheetRef}
+        style={{
+          position: 'fixed', left: 0, right: 0, bottom: 0,
+          zIndex: 9991,
+          height: '90%',
+          background: '#0a0a0a',
+          borderRadius: '20px 20px 0 0',
+          border: '1px solid rgba(255,255,255,0.1)',
+          transform: sheetOpen ? 'translateY(0)' : 'translateY(100%)',
+          transition: 'transform 0.35s cubic-bezier(0.32,0.72,0,1)',
+          display: 'flex', flexDirection: 'column',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Drag handle */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 8px' }}>
+          <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: 'rgba(255,255,255,0.2)' }} />
+        </div>
+
+        {/* Sheet content */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 100px' }}>
+          {/* Title */}
+          <div style={{ textAlign: 'center', padding: '8px 0 20px' }}>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '22px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>
+              Earn Safe Crystals
+            </div>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>
+              Crystals boost your rating and unlock<br/>top positions on SafeDeal
+            </div>
+          </div>
+
+          {/* Earn ways */}
+          <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '16px', overflow: 'hidden', marginBottom: '12px' }}>
+            <div style={{ padding: '14px 16px 6px' }}>
+              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 600, color: '#00ff88' }}>
+                How to earn
+              </span>
+            </div>
+            {earnItems.map((item, i) => (
+              <div
+                key={i}
+                onClick={item.action || undefined}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '14px',
+                  padding: '12px 16px',
+                  borderTop: i > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                  cursor: item.action ? 'pointer' : 'default',
+                }}
+              >
+                <span style={{ fontSize: '20px', flexShrink: 0 }}>{item.icon}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 600, color: '#fff' }}>
+                    {item.title}
+                    {item.crystals && (
+                      <span style={{ color: '#00ff88', marginLeft: '6px' }}>+{item.crystals}</span>
+                    )}
+                  </div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginTop: '2px' }}>
+                    {item.desc}
+                  </div>
+                </div>
+                {item.action && (
+                  <svg width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinecap="round">
+                    <path d="M1 1l6 6-6 6"/>
+                  </svg>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Referral block */}
+          <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '16px', overflow: 'hidden', marginBottom: '12px' }}>
+            <div style={{ padding: '14px 16px 6px' }}>
+              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 600, color: '#00ff88' }}>
+                Referral Boost
+              </span>
+            </div>
+            <div
+              onClick={() => { closeSheet(); onNavigate('/profile'); }}
+              style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '12px 16px', cursor: 'pointer' }}
+            >
+              <span style={{ fontSize: '20px' }}>👥</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 600, color: '#fff' }}>
+                  Invite friends
+                </div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginTop: '2px' }}>
+                  300 crystals for 3 friends · 10,000 for 20 active users
+                </div>
+              </div>
+              <svg width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinecap="round">
+                <path d="M1 1l6 6-6 6"/>
+              </svg>
+            </div>
+          </div>
+
+          {/* Subscription block */}
+          <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '16px', overflow: 'hidden', marginBottom: '12px' }}>
+            <div style={{ padding: '14px 16px 6px' }}>
+              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 600, color: '#cc44ff' }}>
+                Subscription
+              </span>
+            </div>
+            {[
+              { key: 'basic', name: 'Basic', price: '$5.99/mo', crystals: 15000, desc: 'Verified badge · Profile boost · 15,000 crystals/month', color: '#0088ff' },
+              { key: 'pro',   name: 'Pro',   price: '$15.99/mo', crystals: 20000, desc: 'Pro badge · Profile + listing boost · 20,000 crystals/month', color: '#cc44ff' },
+            ].map((plan, i) => (
+              <div
+                key={plan.key}
+                onClick={() => { closeSheet(); onNavigate('/profile'); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '14px',
+                  padding: '12px 16px',
+                  borderTop: i > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                <div style={{
+                  width: '36px', height: '36px', borderRadius: '10px', flexShrink: 0,
+                  background: `${plan.color}22`, border: `1px solid ${plan.color}55`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '16px',
+                }}>
+                  {plan.key === 'basic' ? '✦' : '✦✦'}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', fontWeight: 600, color: '#fff' }}>{plan.name}</span>
+                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: plan.color, fontWeight: 600 }}>{plan.price}</span>
+                  </div>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginTop: '2px' }}>
+                    {plan.desc}
+                  </div>
+                </div>
+                <svg width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinecap="round">
+                  <path d="M1 1l6 6-6 6"/>
+                </svg>
+              </div>
+            ))}
+          </div>
+
+          {/* CTA button */}
+          <button
+            onClick={() => { closeSheet(); onNavigate('/board'); }}
+            style={{
+              width: '100%', padding: '16px',
+              background: '#fff', color: '#000',
+              border: 'none', borderRadius: '14px',
+              fontFamily: 'Inter, sans-serif', fontSize: '15px', fontWeight: 700,
+              cursor: 'pointer', marginBottom: '8px',
+            }}
+          >
+            Start working
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -239,17 +475,8 @@ export function Home() {
             </div>
           </div>
         </div>
-        <div className="gl xp-w card-stagger-2">
-          <div className="pxgrid" />
-          <div className="xp-top">
-            <span className="xp-lbl" style={{ color: '#ffaa00' }}>XP</span>
-            <span className="xp-lbl">{xp}/{xpMax}</span>
-          </div>
-          <div className="xp-track">
-            <div className="xp-fill" style={{ background: 'linear-gradient(90deg,#ffaa00,#ff6600)', width: `${xpPct}%`, transition: 'width 1.2s cubic-bezier(0.22,1,0.36,1)' }} />
-            <div className="xp-shine" />
-          </div>
-        </div>
+        {/* ── Rating block with bottom sheet trigger ── */}
+        <RatingBlock xp={xp} xpMax={xpMax} xpPct={xpPct} onNavigate={go} />
         <PixelScene scene="home" width={252} height={56} />
       </div>
 
@@ -317,8 +544,8 @@ export function Home() {
           <NavCard icon={<DealsIcon size={64} />}      title="MY DEALS"    subtitle={activeCount > 0 ? `${activeCount} active` : 'all quests'} accent="#00ff88" onClick={() => go('/my-deals')}    stagger={4} />
           <NavCard icon={<NewDealIcon size={64} />}    title="NEW DEAL"    subtitle="create quest"  accent="#ffaa00" onClick={() => go('/new-deal')}    stagger={4} />
           <NavCard icon={<LiveFeedIcon size={64} />}   title="LIVE FEED"   subtitle="deals on air"  accent="#0088ff" onClick={() => go('/live')}        stagger={5} />
-          <NavCard icon={<JobBoardIcon size={64} />}   title="JOB BOARD"   subtitle="find a job"    accent="#cc44ff" onClick={() => go('/jobs')}        stagger={5} />
-          <NavCard icon={<FreelancerIcon size={64} />} title="FREELANCERS" subtitle="find a pro"    accent="#0088ff" onClick={() => go('/freelancers')} stagger={5} />
+          <NavCard icon={<JobBoardIcon size={64} />}   title="JOB BOARD"   subtitle="find a job"    accent="#cc44ff" onClick={() => go('/board?tab=jobs')}        stagger={5} />
+          <NavCard icon={<FreelancerIcon size={64} />} title="FREELANCERS" subtitle="find a pro"    accent="#0088ff" onClick={() => go('/board?tab=freelancers')} stagger={5} />
         </div>
 
         {/* ── Desktop bottom row: active deals + live feed ── */}

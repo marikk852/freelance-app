@@ -7,7 +7,7 @@ const NAV_ITEMS = [
   { path: '/',        label: 'HOME',    Icon: HomeIcon    },
   { path: '/live',    label: 'LIVE',    Icon: LiveIcon    },
   { path: '/quests',  label: 'QUESTS',  Icon: QuestsIcon  },
-  { path: '/jobs',    label: 'JOBS',    Icon: JobsIcon    },
+  { path: '/board',   label: 'JOBS',    Icon: JobsIcon    },
   { path: '/profile', label: 'PROFILE', Icon: ProfileIcon },
 ];
 
