@@ -903,10 +903,10 @@ function deleteJob(id,title){
 // FINANCE
 function loadFinance(){
   get('/admark/api/finance').then(function(d){
-    var t=d.total||{};
+    var totals=d.total||{};
     document.getElementById('fin-totals').innerHTML=
-      '<div class="fin-card"><div class="label">'+t('total_processed')+'</div><div class="value" style="color:var(--blue)">$'+fmtd(t.total_processed||0)+'</div></div>'+
-      '<div class="fin-card"><div class="label">'+t('platform_earnings')+'</div><div class="value" style="color:var(--gold)">$'+fmtd(t.total_earned||0)+'</div></div>'+
+      '<div class="fin-card"><div class="label">'+t('total_processed')+'</div><div class="value" style="color:var(--blue)">$'+fmtd(totals.total_processed||0)+'</div></div>'+
+      '<div class="fin-card"><div class="label">'+t('platform_earnings')+'</div><div class="value" style="color:var(--gold)">$'+fmtd(totals.total_earned||0)+'</div></div>'+
       d.by_currency.map(function(c){return'<div class="fin-card"><div class="label">'+c.currency+'</div><div class="value" style="color:var(--green)">$'+fmtd(c.fee)+'</div><div style="font-size:10px;color:var(--muted);margin-top:4px">'+c.count+' '+t('deals_volume').split(' · ')[0]+' · $'+fmtd(c.volume)+' '+t('deals_volume').split(' · ')[1]+'</div></div>'}).join('');
     document.getElementById('finance-body').innerHTML=d.monthly.length===0?'<tr><td colspan="5" class="empty">'+t('none')+'</td></tr>':
       d.monthly.map(function(m){return'<tr><td>'+m.month+'</td><td><span class="pill pill-blue">'+m.currency+'</span></td><td>'+m.deals+'</td><td style="color:var(--blue)">$'+fmtd(m.volume)+'</td><td style="color:var(--gold)">$'+fmtd(m.fee)+'</td></tr>'}).join('');
