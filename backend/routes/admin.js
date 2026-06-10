@@ -458,12 +458,12 @@ router.post('/api/disputes/:id/resolve', async (req, res) => {
 router.get('/api/finance', async (req, res) => {
   try {
     const [monthlyR, currencyR, totalR] = await Promise.all([
-      query(`SELECT TO_CHAR(DATE_TRUNC('month', COALESCE(released_at, NOW())), 'YYYY-MM') AS month,
+      query(`SELECT TO_CHAR(DATE_TRUNC('month', released_at), 'YYYY-MM') AS month,
                currency,
                COUNT(*)::int AS deals,
                ROUND(SUM(amount_usd)::numeric,2) AS volume,
                ROUND(SUM(platform_fee)::numeric,2) AS fee
-             FROM escrow WHERE status='released'
+             FROM escrow WHERE status='released' AND released_at IS NOT NULL
              GROUP BY DATE_TRUNC('month', released_at), currency
              ORDER BY month DESC LIMIT 12`),
       query(`SELECT currency,
