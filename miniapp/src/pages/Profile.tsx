@@ -211,6 +211,36 @@ export function Profile() {
     setEdit(e => ({ ...e, skills: e.skills.filter(s => s !== skill) }));
   };
 
+  const [referralStats, setReferralStats] = useState<any>(null);
+
+  useEffect(() => {
+    const initData = (window as any).Telegram?.WebApp?.initData || '';
+    fetch('/api/referrals/me', { headers: { 'X-Telegram-Init-Data': initData } })
+      .then(r => r.json())
+      .then(data => { if (data.referral_link) setReferralStats(data); })
+      .catch(() => {});
+  }, []);
+
+  const handleClaimReferral = async (tierKey: string) => {
+    const initData = (window as any).Telegram?.WebApp?.initData || '';
+    try {
+      const res = await fetch(`/api/referrals/claim/${tierKey}`, {
+        method: 'POST',
+        headers: { 'X-Telegram-Init-Data': initData },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      toast.success(`+${data.crystals_awarded} Safe Crystals!`);
+      setReferralStats((s: any) => ({
+        ...s,
+        tiers: s.tiers.map((t: any) => t.key === tierKey ? { ...t, claimed: true } : t),
+      }));
+      tg?.HapticFeedback?.notificationOccurred('success');
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
+
   const xpMax     = 1000;
   const xp        = profile?.xp ?? 0;
   const xpPct     = Math.min(100, Math.round((xp / xpMax) * 100));
@@ -443,6 +473,104 @@ export function Profile() {
                   {profile.role    && <DataRow label="Role"     value={profile.role.toUpperCase()} />}
                   {profile.country && <DataRow label="Country"  value={profile.country} />}
                 </div>
+                {/* Referral block */}
+                {referralStats && (() => {
+                  const tier1 = referralStats.tiers?.[0]; // 3 users
+                  const tier2 = referralStats.tiers?.[1]; // 20 active users
+                  const TIER_COLORS = ['#ffaa00', '#cc44ff'];
+                  return (
+                    <div className="gl card-stagger-5" style={{ marginTop: '10px' }}>
+                      <div className="pxgrid" /><div className="sh" />
+                      <div style={{ fontSize: '9px', color: '#ffaa00', marginBottom: '12px', letterSpacing: '1px' }}>👥 REFERRAL PROGRAM</div>
+
+                      {/* Referral link */}
+                      <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.4)', marginBottom: '5px' }}>YOUR INVITE LINK</div>
+                      <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
+                        <div style={{
+                          flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
+                          borderRadius: '8px', padding: '8px 10px', fontSize: '7px', color: 'rgba(255,255,255,0.5)',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>
+                          {referralStats.referral_link}
+                        </div>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(referralStats.referral_link);
+                            toast.success('Link copied!');
+                            tg?.HapticFeedback?.impactOccurred('light');
+                          }}
+                          style={{
+                            fontFamily: '"Press Start 2P", monospace', fontSize: '6px', padding: '8px 10px',
+                            borderRadius: '8px', border: '1px solid rgba(0,255,136,0.4)',
+                            background: 'rgba(0,255,136,0.08)', color: '#00ff88', cursor: 'pointer', flexShrink: 0,
+                          }}
+                        >COPY</button>
+                      </div>
+
+                      {/* Tier 1 */}
+                      {tier1 && (
+                        <div style={{ marginBottom: '12px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                            <div>
+                              <div style={{ fontSize: '7px', color: '#fff' }}>Invite {tier1.required} users</div>
+                              <div style={{ fontSize: '6px', color: TIER_COLORS[0], marginTop: '2px' }}>+{tier1.crystals.toLocaleString()} Safe Crystals</div>
+                            </div>
+                            <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)' }}>
+                              {Math.min(tier1.progress, tier1.required)}/{tier1.required}
+                            </div>
+                          </div>
+                          <div style={{ height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', marginBottom: '6px' }}>
+                            <div style={{ height: '100%', borderRadius: '2px', background: 'linear-gradient(90deg,#ffaa00,#ff6600)', width: `${Math.min(100, (tier1.progress / tier1.required) * 100)}%`, transition: 'width 0.6s ease' }} />
+                          </div>
+                          {tier1.progress >= tier1.required && (
+                            <button onClick={() => handleClaimReferral(tier1.key)} disabled={tier1.claimed}
+                              style={{
+                                width: '100%', fontFamily: '"Press Start 2P", monospace', fontSize: '6px',
+                                padding: '7px', borderRadius: '6px', cursor: tier1.claimed ? 'not-allowed' : 'pointer',
+                                border: tier1.claimed ? '1px solid rgba(255,255,255,0.1)' : `1px solid rgba(255,170,0,0.5)`,
+                                background: tier1.claimed ? 'rgba(255,255,255,0.04)' : 'rgba(255,170,0,0.1)',
+                                color: tier1.claimed ? 'rgba(255,255,255,0.3)' : TIER_COLORS[0],
+                              }}
+                            >{tier1.claimed ? '✓ CLAIMED' : '[ CLAIM REWARD ]'}</button>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Tier 2 */}
+                      {tier2 && (
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                            <div>
+                              <div style={{ fontSize: '7px', color: '#fff' }}>{tier2.required} active users</div>
+                              <div style={{ fontSize: '6px', color: TIER_COLORS[1], marginTop: '2px' }}>+{tier2.crystals.toLocaleString()} Safe Crystals</div>
+                            </div>
+                            <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)' }}>
+                              {Math.min(tier2.progress, tier2.required)}/{tier2.required}
+                            </div>
+                          </div>
+                          <div style={{ height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', marginBottom: '6px' }}>
+                            <div style={{ height: '100%', borderRadius: '2px', background: 'linear-gradient(90deg,#cc44ff,#8822cc)', width: `${Math.min(100, (tier2.progress / tier2.required) * 100)}%`, transition: 'width 0.6s ease' }} />
+                          </div>
+                          <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.3)', lineHeight: 1.6, marginBottom: '4px' }}>
+                            Active = 5+ visits in last 30 days
+                          </div>
+                          {tier2.progress >= tier2.required && (
+                            <button onClick={() => handleClaimReferral(tier2.key)} disabled={tier2.claimed}
+                              style={{
+                                width: '100%', fontFamily: '"Press Start 2P", monospace', fontSize: '6px',
+                                padding: '7px', borderRadius: '6px', cursor: tier2.claimed ? 'not-allowed' : 'pointer',
+                                border: tier2.claimed ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(204,68,255,0.5)',
+                                background: tier2.claimed ? 'rgba(255,255,255,0.04)' : 'rgba(204,68,255,0.1)',
+                                color: tier2.claimed ? 'rgba(255,255,255,0.3)' : TIER_COLORS[1],
+                              }}
+                            >{tier2.claimed ? '✓ CLAIMED' : '[ CLAIM REWARD ]'}</button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {/* Mobile: full wallet UI */}
                 <div className="mobile-only"><WalletPanel /></div>
               </>
