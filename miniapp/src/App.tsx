@@ -21,6 +21,7 @@ import { FreelancerList }  from './pages/FreelancerList';
 import { Notifications }   from './pages/Notifications';
 import { Quests }          from './pages/Quests';
 import { Board }           from './pages/Board';
+import { Subscription }    from './pages/Subscription';
 import './styles/globals.css';
 
 // ============================================================
@@ -225,6 +226,7 @@ export default function App() {
         <Route path="/freelancers"   element={<Board />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/quests"        element={<Quests />} />
+        <Route path="/subscription"  element={<Subscription />} />
       </Routes>
 
       <BottomNav />

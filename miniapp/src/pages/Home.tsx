@@ -249,7 +249,7 @@ function RatingBlock({ xp, xpMax, xpPct, onNavigate }: {
             ].map((plan, i) => (
               <div
                 key={plan.key}
-                onClick={() => { closeSheet(); onNavigate('/profile'); }}
+                onClick={() => { closeSheet(); onNavigate(`/subscription?plan=${plan.key}`); }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '14px',
                   padding: '12px 16px',
