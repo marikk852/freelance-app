@@ -1,6 +1,6 @@
 const express  = require('express');
 const router   = express.Router();
-const { query } = require('../../database/db');
+const { query, transaction } = require('../../database/db');
 const { authMiddleware } = require('../middleware/auth');
 
 // ============================================================
@@ -97,16 +97,16 @@ router.post('/:key/claim', authMiddleware, async (req, res) => {
       [userId, quest.id]
     );
     await query(
-      `UPDATE users SET safe_coins = safe_coins + $1, updated_at = NOW() WHERE id = $2`,
-      [quest.coins, userId]
+      `UPDATE users SET safe_crystals = safe_crystals + $1, updated_at = NOW() WHERE id = $2`,
+      [quest.crystals, userId]
     );
 
     const { rows: updated } = await query(
-      `SELECT safe_coins FROM users WHERE id = $1`,
+      `SELECT safe_crystals FROM users WHERE id = $1`,
       [userId]
     );
 
-    res.json({ success: true, coins: quest.coins, totalCoins: updated[0].safe_coins });
+    res.json({ success: true, crystals: quest.crystals, totalCrystals: updated[0].safe_crystals });
   } catch (err) {
     console.error('[Quests] claim error:', err.message);
     res.status(500).json({ error: 'Failed to claim quest' });
@@ -149,14 +149,75 @@ async function autoCheckQuests(userId, user) {
       [userId, quest.id]
     );
     await query(
-      `UPDATE users SET safe_coins = safe_coins + $1, updated_at = NOW() WHERE id = $2`,
-      [quest.coins, userId]
+      `UPDATE users SET safe_crystals = safe_crystals + $1, updated_at = NOW() WHERE id = $2`,
+      [quest.crystals, userId]
     );
-    completed.push({ key, title: quest.title, coins: quest.coins });
+    completed.push({ key, title: quest.title, crystals: quest.crystals });
   }
 
   return completed;
 }
+
+/**
+ * POST /api/quests/:key/verify-channel
+ * Verify if user subscribed to a Telegram channel (for telegram_channel quest type).
+ */
+router.post('/:key/verify-channel', authMiddleware, async (req, res) => {
+  try {
+    const { key } = req.params;
+    const { rows: qRows } = await query(
+      `SELECT * FROM quests WHERE key = $1 AND is_active = TRUE AND quest_type = 'telegram_channel'`,
+      [key]
+    );
+    if (!qRows[0]) return res.status(404).json({ error: 'Quest not found or wrong type' });
+    const quest = qRows[0];
+    const config = quest.quest_config;
+    if (!config?.channel_id) return res.status(400).json({ error: 'Quest not configured' });
+
+    const { rows: userRows } = await query(
+      'SELECT id FROM users WHERE telegram_id = $1', [req.user.telegramId]
+    );
+    if (!userRows[0]) return res.status(404).json({ error: 'User not found' });
+    const userId = userRows[0].id;
+
+    // Check already completed
+    const { rows: already } = await query(
+      `SELECT uq.id FROM user_quests uq
+       JOIN quests q ON q.id = uq.quest_id
+       WHERE uq.user_id = $1 AND q.key = $2`,
+      [userId, key]
+    );
+    if (already.length > 0) return res.status(400).json({ error: 'Quest already completed' });
+
+    // Check via Telegram Bot API
+    const botToken = process.env.BOT_TOKEN;
+    const checkUrl = `https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${config.channel_id}&user_id=${req.user.telegramId}`;
+    const tgRes  = await fetch(checkUrl);
+    const tgData = await tgRes.json();
+    const status = tgData?.result?.status;
+    const isMember = ['member', 'administrator', 'creator'].includes(status);
+
+    if (!isMember) {
+      return res.status(403).json({ error: 'Not subscribed to channel', channel: config.channel_username });
+    }
+
+    // Award crystals
+    await transaction(async (client) => {
+      await client.query(
+        `INSERT INTO user_quests (user_id, quest_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [userId, quest.id]
+      );
+      await client.query(
+        `UPDATE users SET safe_crystals = safe_crystals + $1 WHERE id = $2`,
+        [quest.crystals, userId]
+      );
+    });
+
+    res.json({ success: true, crystals: quest.crystals });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 /**
  * Check if user meets requirements for a specific quest.

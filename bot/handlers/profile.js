@@ -35,7 +35,7 @@ async function handleProfile(ctx) {
       `• Deals completed: ${profile.deals_completed}\n` +
       `• Rating: ${ratingStr}\n` +
       `• 🔥 Streak: ${profile.streak_days} days\n` +
-      `• 🪙 SafeCoins: ${profile.safe_coins}\n\n` +
+      `• 🪙 SafeCoins: ${profile.safe_crystals}\n\n` +
       `👥 *Referrals: ${refCount}* (${nextMilestone} more for +100 bonus coins)\n` +
       `🔗 Your link: \`${refLink}\`\n\n` +
       (profile.ton_wallet_address

@@ -63,7 +63,7 @@ const User = {
     const { rows: refRows } = await query(
       `UPDATE users
        SET referral_count = referral_count + 1,
-           safe_coins     = safe_coins + 50,
+           safe_crystals     = safe_crystals + 50,
            updated_at     = NOW()
        WHERE telegram_id = $1
        RETURNING *`,
@@ -74,7 +74,7 @@ const User = {
     // Every 5 referrals => milestone bonus +100 coins
     if (referrer && referrer.referral_count % 5 === 0) {
       await query(
-        `UPDATE users SET safe_coins = safe_coins + 100, updated_at = NOW() WHERE telegram_id = $1`,
+        `UPDATE users SET safe_crystals = safe_crystals + 100, updated_at = NOW() WHERE telegram_id = $1`,
         [referrer_telegram_id]
       );
     }
@@ -87,7 +87,7 @@ const User = {
    */
   async getReferralStats(telegramId) {
     const { rows } = await query(
-      `SELECT referral_count, safe_coins FROM users WHERE telegram_id = $1`,
+      `SELECT referral_count, safe_crystals FROM users WHERE telegram_id = $1`,
       [telegramId]
     );
     return rows[0] || null;

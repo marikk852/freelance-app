@@ -67,7 +67,7 @@ export function Quests() {
       const res = await questsApi.claim(quest.key);
       setQuests(prev => prev.map(q => q.key === quest.key ? { ...q, completed: true } : q));
       setNewlyDone(prev => [...prev, quest.key]);
-      toast.success(`+${res.data.coins} SafeCoins earned!`, { duration: 3000 });
+      toast.success(`+${res.data.coins} Safe Crystals earned!`, { duration: 3000 });
     } catch (err: any) {
       const msg = err?.response?.data?.error || 'Requirements not met yet';
       toast.error(msg, { duration: 2500 });

@@ -70,7 +70,7 @@ describe('🔒 Авторизация API — требует Telegram initData',
 
   it('GET /api/users/me с валидным initData → не 401', async () => {
     const { query } = require('../../database/db');
-    query.mockResolvedValueOnce({ rows: [{ id: 1, telegram_id: 12345, level: 1, xp: 0, streak_days: 0, rating: 0, deals_completed: 0, safe_coins: 0 }] });
+    query.mockResolvedValueOnce({ rows: [{ id: 1, telegram_id: 12345, level: 1, xp: 0, streak_days: 0, rating: 0, deals_completed: 0, safe_crystals: 0 }] });
 
     const res = await request(app)
       .get('/api/users/me')

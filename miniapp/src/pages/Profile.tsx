@@ -216,7 +216,7 @@ export function Profile() {
   const xpPct     = Math.min(100, Math.round((xp / xpMax) * 100));
 
   const countDeals  = useCountUp(profile?.deals_completed ?? 0);
-  const countCoins  = useCountUp(profile?.safe_coins ?? 0, 1500);
+  const countCoins  = useCountUp(profile?.safe_crystals ?? 0, 1500);
   const countStreak = useCountUp(profile?.streak_days ?? 0, 800);
 
   const switchTab = (t: Tab) => {
@@ -438,7 +438,7 @@ export function Profile() {
                   <DataRow label="Deals completed" value={String(profile.deals_completed)} color="#00ff88" />
                   <DataRow label="Rating"          value={profile.rating > 0 ? `⭐ ${profile.rating}` : 'None'} color="#ffaa00" />
                   <DataRow label="🔥 Streak"       value={`${profile.streak_days} days`} />
-                  <DataRow label="🪙 SafeCoins"     value={String(profile.safe_coins)} color="#cc44ff" />
+                  <DataRow label="🪙 Safe Crystals"     value={String(profile.safe_crystals)} color="#cc44ff" />
                   <DataRow label="Total XP"        value={String(profile.xp)} color="#0088ff" />
                   {profile.role    && <DataRow label="Role"     value={profile.role.toUpperCase()} />}
                   {profile.country && <DataRow label="Country"  value={profile.country} />}

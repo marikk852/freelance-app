@@ -95,10 +95,10 @@ describe('POST /api/quests/:key/claim', () => {
     query.mockResolvedValueOnce({ rows: [{ ton_wallet_address: 'UQD...' }] });
     // 5. INSERT user_quests
     query.mockResolvedValueOnce({ rows: [] });
-    // 6. UPDATE safe_coins
+    // 6. UPDATE safe_crystals
     query.mockResolvedValueOnce({ rows: [] });
-    // 7. SELECT safe_coins
-    query.mockResolvedValueOnce({ rows: [{ safe_coins: 100 }] });
+    // 7. SELECT safe_crystals
+    query.mockResolvedValueOnce({ rows: [{ safe_crystals: 100 }] });
 
     const res = await request(app).post('/api/quests/link_wallet/claim');
     expect(res.status).toBe(200);

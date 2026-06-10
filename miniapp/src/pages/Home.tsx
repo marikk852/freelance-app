@@ -100,7 +100,7 @@ export function Home() {
   const xpPct = Math.min(100, Math.round((xp / xpMax) * 100));
 
   const countDeals  = useCountUp(profile?.deals_completed ?? 0);
-  const countCoins  = useCountUp(profile?.safe_coins ?? 0, 1500);
+  const countCoins  = useCountUp(profile?.safe_crystals ?? 0, 1500);
   const countStreak = useCountUp(profile?.streak_days ?? 0, 800);
 
   // Общий баланс = сумма amount_usd активных сделок
@@ -200,7 +200,7 @@ export function Home() {
 
           {/* Right: coins pill + bell */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-            {/* SafeCoins pill */}
+            {/* Safe Crystals pill */}
             <div
               onClick={() => setBurst(b => !b)}
               style={{
@@ -214,7 +214,7 @@ export function Home() {
                 fontSize: '13px', fontWeight: 600, color: '#fff',
                 fontFamily: 'Inter, sans-serif',
               }}>
-                {(profile?.safe_coins ?? 0).toLocaleString()}
+                {(profile?.safe_crystals ?? 0).toLocaleString()}
               </span>
               <span style={{
                 fontSize: '11px', color: 'rgba(255,255,255,0.45)',

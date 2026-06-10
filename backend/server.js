@@ -119,6 +119,22 @@ app.use('/api/livefeed',       require('./routes/livefeed'));
 app.use('/api/marketing',      require('./routes/marketing'));
 app.use('/api/notifications',  require('./routes/notifications'));
 app.use('/api/quests',         require('./routes/quests'));
+app.use('/api/subscriptions',  require('./routes/subscriptions'));
+app.use('/api/referrals',      require('./routes/referrals'));
+
+// ---------- Track user visit (for referral activity) ----------
+app.use('/api/', async (req, res, next) => {
+  if (req.user?.telegramId) {
+    const { query: dbQuery } = require('../database/db');
+    dbQuery(
+      `INSERT INTO user_visits (user_id, visited_at)
+       SELECT id, CURRENT_DATE FROM users WHERE telegram_id = $1
+       ON CONFLICT DO NOTHING`,
+      [req.user.telegramId]
+    ).catch(() => {});
+  }
+  next();
+});
 
 // ---------- Webhook для бота (production) ----------
 if (process.env.NODE_ENV === 'production') {

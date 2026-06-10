@@ -339,9 +339,9 @@ router.post('/api/users/:tgId/reward', async (req, res) => {
   try {
     const { xp = 0, coins = 0 } = req.body;
     const { rows } = await query(`
-      UPDATE users SET xp = xp + $1, safe_coins = safe_coins + $2
+      UPDATE users SET xp = xp + $1, safe_crystals = safe_crystals + $2
       WHERE telegram_id = $3
-      RETURNING telegram_id, xp, safe_coins
+      RETURNING telegram_id, xp, safe_crystals
     `, [Number(xp), Number(coins), req.params.tgId]);
     if (!rows[0]) return res.status(404).json({ error: 'User not found' });
     res.json(rows[0]);
@@ -702,6 +702,93 @@ router.post('/api/commission/history', adminAuth, async (req, res) => {
     if (isNaN(v) || v < 0 || v > 20) return res.status(400).json({ error: 'Value must be 0–20' });
     await query(`INSERT INTO commission_history (value) VALUES ($1)`, [v]);
     res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ================================================================
+// QUESTS CRUD (admin)
+// ================================================================
+
+// GET /admark/api/quests
+router.get('/api/quests', async (req, res) => {
+  try {
+    const { rows } = await query(`SELECT * FROM quests ORDER BY sort_order ASC`);
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /admark/api/quests — create quest
+router.post('/api/quests', async (req, res) => {
+  try {
+    const { key, title, description, crystals, icon = '🎯', category = 'general',
+            is_repeatable = false, quest_type = 'manual', quest_config = null, sort_order = 0 } = req.body;
+    if (!key || !title || !description || crystals == null) {
+      return res.status(400).json({ error: 'key, title, description, crystals required' });
+    }
+    const { rows } = await query(
+      `INSERT INTO quests (key, title, description, crystals, icon, category, is_repeatable, quest_type, quest_config, sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+      [key, title, description, crystals, icon, category, is_repeatable, quest_type, quest_config ? JSON.stringify(quest_config) : null, sort_order]
+    );
+    res.json(rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT /admark/api/quests/:id — update quest
+router.put('/api/quests/:id', async (req, res) => {
+  try {
+    const { title, description, crystals, icon, category, is_repeatable,
+            is_active, quest_type, quest_config, sort_order } = req.body;
+    const { rows } = await query(
+      `UPDATE quests SET
+         title        = COALESCE($1, title),
+         description  = COALESCE($2, description),
+         crystals     = COALESCE($3, crystals),
+         icon         = COALESCE($4, icon),
+         category     = COALESCE($5, category),
+         is_repeatable= COALESCE($6, is_repeatable),
+         is_active    = COALESCE($7, is_active),
+         quest_type   = COALESCE($8, quest_type),
+         quest_config = COALESCE($9::jsonb, quest_config),
+         sort_order   = COALESCE($10, sort_order)
+       WHERE id = $11 RETURNING *`,
+      [title, description, crystals, icon, category, is_repeatable,
+       is_active, quest_type, quest_config ? JSON.stringify(quest_config) : null, sort_order, req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Quest not found' });
+    res.json(rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE /admark/api/quests/:id
+router.delete('/api/quests/:id', async (req, res) => {
+  try {
+    await query(`DELETE FROM quests WHERE id = $1`, [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ================================================================
+// SUBSCRIPTIONS toggle (admin)
+// ================================================================
+
+// GET /admark/api/subscriptions/plans
+router.get('/api/subscriptions/plans', async (req, res) => {
+  try {
+    const { rows } = await query(`SELECT * FROM subscription_plans ORDER BY sort_order`);
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PATCH /admark/api/subscriptions/plans/:key/toggle — enable/disable plan
+router.patch('/api/subscriptions/plans/:key/toggle', async (req, res) => {
+  try {
+    const { rows } = await query(
+      `UPDATE subscription_plans SET is_active = NOT is_active WHERE key = $1 RETURNING *`,
+      [req.params.key]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Plan not found' });
+    res.json(rows[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

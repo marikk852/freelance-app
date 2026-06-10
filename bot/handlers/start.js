@@ -50,7 +50,7 @@ async function handleStart(ctx) {
               referrerTelegramId,
               `🎊 *Your referral link worked!*\n\n` +
               `*${tg.first_name || tg.username}* just joined SafeDeal.\n` +
-              `🪙 You earned *+50 SafeCoins*! Total: *${referrer.safe_coins} coins*${milestoneMsg}`,
+              `🪙 You earned *+50 SafeCoins*! Total: *${referrer.safe_crystals} coins*${milestoneMsg}`,
               { parse_mode: 'Markdown' }
             ).catch(() => {});
           }

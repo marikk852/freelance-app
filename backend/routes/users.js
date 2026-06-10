@@ -97,7 +97,7 @@ router.get('/me', async (req, res) => {
          u.level,
          u.xp,
          u.streak_days,
-         u.safe_coins,
+         u.safe_crystals,
          u.is_verified,
          u.bio,
          u.role,

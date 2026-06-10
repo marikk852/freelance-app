@@ -65,9 +65,6 @@ async function deployContract({
     amountNano   = BigInt(Math.round(amountUsd * 1e6)); // jUSDT имеет 6 decimals
   }
 
-  const arbitratorAddress = tonService.getArbitratorAddress();
-  if (!arbitratorAddress) throw new Error('[Escrow] Арбитр-кошелёк не инициализирован');
-
   const deadline = Math.floor(deadlineDate.getTime() / 1000);
 
   // Симуляционный режим — не деплоим реальный контракт
@@ -99,6 +96,9 @@ async function deployContract({
     console.log(`[Escrow] 🧪 Simulated deploy. Контракт: ${contractId}, адрес: ${fakeAddress}`);
     return { tonContractAddress: fakeAddress, cryptoAmount, simulated: true };
   }
+
+  const arbitratorAddress = tonService.getArbitratorAddress();
+  if (!arbitratorAddress) throw new Error('[Escrow] Арбитр-кошелёк не инициализирован');
 
   // Загружаем скомпилированный код контракта
   const contractCode = await loadContractCode();
