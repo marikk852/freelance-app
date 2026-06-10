@@ -92,9 +92,6 @@ export function Subscription() {
         messages: [{
           address: data.payment.to,
           amount : gasNano,
-          // Simple transfer with memo comment
-          payload: btoa(String.fromCharCode(0, 0, 0, 0) +
-            data.payment.memo.split('').map((c: string) => c.charCodeAt(0))),
         }],
       });
 
