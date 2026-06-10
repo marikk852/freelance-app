@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { useTelegram } from '../hooks/useTelegram';
+import toast from 'react-hot-toast';
 
 const PLANS = [
   {
@@ -33,23 +35,26 @@ const PLANS = [
 ];
 
 export function Subscription() {
-  const navigate    = useNavigate();
-  const [params]    = useSearchParams();
-  const { tg }      = useTelegram();
-  const selectedKey = params.get('plan') || null;
-  const [plans,     setPlans]     = useState<any[]>(PLANS);
-  const [selected,  setSelected]  = useState<string | null>(selectedKey);
-  const [loading,   setLoading]   = useState(false);
+  const navigate          = useNavigate();
+  const [params]          = useSearchParams();
+  const { tg }            = useTelegram();
+  const [tonConnectUI]    = useTonConnectUI();
+  const wallet            = useTonWallet();
+  const selectedKey       = params.get('plan') || null;
+  const [plans,  setPlans]    = useState<any[]>(PLANS);
+  const [selected, setSelected] = useState<string | null>(selectedKey);
+  const [loading,  setLoading]  = useState(false);
+
+  const initData = (window as any).Telegram?.WebApp?.initData || '';
 
   // Fetch available plans from backend (respects admin toggle)
   useEffect(() => {
     fetch('/api/subscriptions/plans', {
-      headers: { 'X-Telegram-Init-Data': (window as any).Telegram?.WebApp?.initData || '' }
+      headers: { 'X-Telegram-Init-Data': initData }
     })
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data)) {
-          // Only show plans that are active
           const activeKeys = data.map((p: any) => p.key);
           setPlans(PLANS.filter(p => activeKeys.includes(p.key)));
         }
@@ -58,9 +63,15 @@ export function Subscription() {
   }, []);
 
   const handlePurchase = async (planKey: string) => {
+    // Connect wallet first if not connected
+    if (!wallet) {
+      tonConnectUI.openModal();
+      return;
+    }
+
     setLoading(true);
     try {
-      const initData = (window as any).Telegram?.WebApp?.initData || '';
+      // 1. Get payment details from backend
       const res = await fetch('/api/subscriptions/purchase', {
         method : 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Telegram-Init-Data': initData },
@@ -69,16 +80,45 @@ export function Subscription() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed');
 
-      // Open TonConnect / show payment address
-      // For now show payment info popup
       const plan = PLANS.find(p => p.key === planKey)!;
-      tg?.showPopup?.({
-        title  : `Pay $${plan.price} USDT`,
-        message: `Send ${data.payment.amount} USDT to:\n${data.payment.to}\n\nMemo: ${data.payment.memo}`,
-        buttons: [{ id: 'ok', type: 'ok' }],
+      // Convert USD to nanoUSDT (6 decimals for jUSDT)
+      const nanoUsdt = BigInt(Math.round(plan.price * 1e6)).toString();
+      // Small TON for gas
+      const gasNano = '50000000'; // 0.05 TON
+
+      // 2. Send via TonConnect
+      const tx = await tonConnectUI.sendTransaction({
+        validUntil: Math.floor(Date.now() / 1000) + 600,
+        messages: [{
+          address: data.payment.to,
+          amount : gasNano,
+          // Simple transfer with memo comment
+          payload: btoa(String.fromCharCode(0, 0, 0, 0) +
+            data.payment.memo.split('').map((c: string) => c.charCodeAt(0))),
+        }],
       });
+
+      tg?.HapticFeedback?.notificationOccurred('success');
+
+      // 3. Confirm with backend
+      const txHash = tx.boc;
+      const confirmRes = await fetch('/api/subscriptions/confirm', {
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Telegram-Init-Data': initData },
+        body   : JSON.stringify({ plan_key: planKey, tx_hash: txHash, currency: 'USDT' }),
+      });
+      const confirmData = await confirmRes.json();
+      if (!confirmRes.ok) throw new Error(confirmData.error || 'Confirmation failed');
+
+      toast.success(`✓ ${plan.name} subscription activated!`);
+      setTimeout(() => navigate('/profile'), 1500);
     } catch (err: any) {
-      tg?.showAlert?.(`Error: ${err.message}`);
+      tg?.HapticFeedback?.notificationOccurred('error');
+      if (err?.message?.includes('User declined') || err?.message?.includes('Reject')) {
+        toast.error('Payment cancelled');
+      } else {
+        toast.error(err.message || 'Payment failed');
+      }
     } finally {
       setLoading(false);
     }
