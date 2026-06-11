@@ -88,7 +88,7 @@ router.post('/purchase', async (req, res) => {
 // POST /api/subscriptions/confirm — confirm payment after tx
 router.post('/confirm', async (req, res) => {
   try {
-    const { plan_key, tx_hash, currency = 'USDT' } = req.body;
+    const { plan_key, tx_hash, currency = 'TON' } = req.body;
     if (!tx_hash) return res.status(400).json({ error: 'tx_hash required' });
 
     const { rows: plans } = await query(
@@ -108,6 +108,16 @@ router.post('/confirm', async (req, res) => {
       `SELECT id FROM user_subscriptions WHERE tx_hash = $1`, [tx_hash]
     );
     if (dup[0]) return res.status(409).json({ error: 'Transaction already used' });
+
+    // Verify payment on-chain
+    if (currency === 'TON') {
+      const tonPrice     = await tonService.getTonUsdPrice();
+      const expectedTon  = plan.price_usd / tonPrice;
+      const verification = await tonService.verifyTonPayment(tx_hash, expectedTon);
+      if (!verification.valid) {
+        return res.status(402).json({ error: 'Payment not found on blockchain. Try again in a few seconds.' });
+      }
+    }
 
     const expiresAt = new Date();
     expiresAt.setMonth(expiresAt.getMonth() + 1);

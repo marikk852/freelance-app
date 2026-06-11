@@ -102,6 +102,7 @@ export function Subscription() {
         body   : JSON.stringify({ plan_key: planKey, tx_hash: txHash, currency: 'TON' }),
       });
       const confirmData = await confirmRes.json();
+      if (confirmRes.status === 402) throw new Error('⏳ Transaction is confirming. Please wait 10 seconds and try again.');
       if (!confirmRes.ok) throw new Error(confirmData.error || 'Confirmation failed');
 
       toast.success(`✓ ${plan.name} subscription activated!`);

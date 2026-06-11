@@ -290,6 +290,71 @@ async function getTonUsdPrice() {
   }
 }
 
+/**
+ * Проверить что TON транзакция реально прошла на кошелёк арбитра.
+ *
+ * Ищет среди последних входящих транзакций арбитратора одну,
+ * у которой сумма совпадает с ожидаемой (±5%) и время — не старше 15 минут.
+ *
+ * @param {string} boc            - base64 BOC из TonConnect (tx.boc)
+ * @param {number} expectedTon    - ожидаемая сумма в TON (float)
+ * @param {number} retries        - количество попыток (tx может ещё не подтвердиться)
+ * @returns {Promise<{ valid: boolean, txHash?: string }>}
+ */
+async function verifyTonPayment(boc, expectedTon, retries = 3) {
+  const { Cell } = require('@ton/core');
+
+  // Хеш BOC — уникальный ID сообщения (для логирования)
+  let bocHash;
+  try {
+    bocHash = Cell.fromBase64(boc).hash().toString('hex');
+  } catch {
+    bocHash = 'unknown';
+  }
+  console.log(`[TON] verifyTonPayment: bocHash=${bocHash}, expected=${expectedTon} TON`);
+
+  const arbitratorAddress = _wallet?.address.toString();
+  if (!arbitratorAddress) throw new Error('[TON] Арбитратор не инициализирован');
+
+  const expectedNano   = BigInt(Math.round(expectedTon * 1e9));
+  const toleranceNano  = expectedNano * 5n / 100n; // 5% tolerance
+  const cutoffUnix     = Math.floor(Date.now() / 1000) - 15 * 60; // 15 минут назад
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const txs = await getTransactions(arbitratorAddress, 20);
+
+      for (const tx of txs) {
+        // Только входящие internal сообщения
+        const inMsg = tx.inMessage;
+        if (!inMsg || inMsg.info.type !== 'internal') continue;
+
+        // Не старше 15 минут
+        if (tx.now < cutoffUnix) break; // txs идут от новых к старым
+
+        const value = inMsg.info.value?.coins ?? 0n;
+
+        // Проверяем сумму с tolerance
+        if (value >= expectedNano - toleranceNano && value <= expectedNano + toleranceNano) {
+          const txHash = tx.hash().toString('hex');
+          console.log(`[TON] ✅ Платёж подписки верифицирован: ${fromNano(value)} TON, txHash=${txHash}`);
+          return { valid: true, txHash };
+        }
+      }
+    } catch (err) {
+      console.warn(`[TON] verifyTonPayment attempt ${attempt} error:`, err.message);
+    }
+
+    if (attempt < retries) {
+      console.log(`[TON] Попытка ${attempt}/${retries} — транзакция ещё не подтверждена, жду 4с...`);
+      await sleep(4000);
+    }
+  }
+
+  console.warn(`[TON] ❌ Платёж не верифицирован после ${retries} попыток`);
+  return { valid: false };
+}
+
 module.exports = {
   init,
   getClient,
@@ -300,6 +365,7 @@ module.exports = {
   getTransactions,
   runGetMethod,
   getTonUsdPrice,
+  verifyTonPayment,
   sleep,
   getArbitratorAddress: () => _wallet?.address.toString(),
 };
