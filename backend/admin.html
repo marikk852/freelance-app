@@ -219,6 +219,7 @@ select.inp{cursor:pointer}
     <div class="nav-sep"></div>
     <div class="nav-item" onclick="nav('finance')" data-i18n="nav_finance">💰 Finance</div>
     <div class="nav-item" onclick="nav('commission')" data-i18n="nav_commission">💸 Commissions</div>
+    <div class="nav-item" onclick="nav('quests')">🎯 Quests</div>
     <div class="nav-item" onclick="nav('settings')" data-i18n="nav_settings">⚙️ Settings</div>
     <div class="nav-item" onclick="nav('broadcast')" data-i18n="nav_broadcast">📢 Broadcast</div>
     <div class="sidebar-footer"><span id="admin-time">--:--</span><a id="lang-btn" onclick="toggleLang()" title="Language" style="cursor:pointer">🇷🇺</a><a id="theme-btn" onclick="toggleTheme()" title="Toggle theme">🌙</a><a onclick="logout()" data-i18n="logout">Logout</a></div>
@@ -341,6 +342,89 @@ select.inp{cursor:pointer}
         <div class="table-header"><span class="table-title" data-i18n="by_month">By month</span></div>
         <table><thead><tr><th data-i18n="col_month">MONTH</th><th data-i18n="col_currency">CURRENCY</th><th data-i18n="col_deals">DEALS</th><th data-i18n="col_volume">VOLUME ($)</th><th data-i18n="col_fee">FEE ($)</th></tr></thead>
         <tbody id="finance-body"><tr><td colspan="5" class="loading" data-i18n="loading">Loading...</td></tr></tbody></table>
+      </div>
+    </section>
+
+    <section id="s-quests" class="section">
+      <div class="page-title">Quests</div>
+      <div class="page-sub">Create and manage gamification quests</div>
+
+      <!-- Quest modal -->
+      <div id="quest-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center">
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;position:relative">
+          <div style="font-size:14px;font-weight:600;margin-bottom:20px" id="quest-modal-title">New Quest</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+            <div>
+              <div style="font-size:10px;color:var(--muted);margin-bottom:4px">KEY *</div>
+              <input class="inp" id="q-key" placeholder="daily_login" style="width:100%;box-sizing:border-box">
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--muted);margin-bottom:4px">ICON</div>
+              <input class="inp" id="q-icon" placeholder="🎯" style="width:100%;box-sizing:border-box">
+            </div>
+          </div>
+          <div style="margin-bottom:12px">
+            <div style="font-size:10px;color:var(--muted);margin-bottom:4px">TITLE *</div>
+            <input class="inp" id="q-title" placeholder="Daily Login" style="width:100%;box-sizing:border-box">
+          </div>
+          <div style="margin-bottom:12px">
+            <div style="font-size:10px;color:var(--muted);margin-bottom:4px">DESCRIPTION *</div>
+            <textarea class="inp" id="q-desc" rows="2" placeholder="Open the app every day" style="width:100%;box-sizing:border-box;resize:vertical"></textarea>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
+            <div>
+              <div style="font-size:10px;color:var(--muted);margin-bottom:4px">CRYSTALS *</div>
+              <input class="inp" id="q-crystals" type="number" min="1" placeholder="100" style="width:100%;box-sizing:border-box">
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--muted);margin-bottom:4px">CATEGORY</div>
+              <input class="inp" id="q-category" placeholder="general" style="width:100%;box-sizing:border-box">
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--muted);margin-bottom:4px">SORT ORDER</div>
+              <input class="inp" id="q-sort" type="number" min="0" placeholder="0" style="width:100%;box-sizing:border-box">
+            </div>
+          </div>
+          <div style="margin-bottom:12px">
+            <div style="font-size:10px;color:var(--muted);margin-bottom:4px">QUEST TYPE</div>
+            <select class="inp" id="q-type" onchange="onQuestTypeChange()" style="width:100%;box-sizing:border-box">
+              <option value="manual">manual — awarded manually</option>
+              <option value="telegram_channel">telegram_channel — subscribe to channel</option>
+              <option value="deal_count">deal_count — complete N deals</option>
+              <option value="streak">streak — login streak N days</option>
+              <option value="referral">referral — invite N friends</option>
+            </select>
+          </div>
+          <!-- Dynamic config fields -->
+          <div id="q-config-wrap" style="margin-bottom:12px;display:none">
+            <div style="font-size:10px;color:var(--muted);margin-bottom:4px" id="q-config-label">CONFIG</div>
+            <input class="inp" id="q-config-val" placeholder="" style="width:100%;box-sizing:border-box">
+          </div>
+          <div style="margin-bottom:20px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px;color:var(--muted)">
+              <input type="checkbox" id="q-repeatable"> Repeatable (can be completed multiple times)
+            </label>
+          </div>
+          <div style="display:flex;gap:10px;justify-content:flex-end">
+            <button class="btn" onclick="closeQuestModal()" style="background:var(--card2)">Cancel</button>
+            <button class="btn btn-green" onclick="saveQuest()">💾 Save</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+        <button class="btn btn-green" onclick="openQuestModal(null)">+ New Quest</button>
+      </div>
+
+      <div class="table-wrap">
+        <div class="table-header"><span class="table-title">All Quests</span></div>
+        <table>
+          <thead><tr>
+            <th>ICON</th><th>KEY</th><th>TITLE</th><th>TYPE</th>
+            <th>CRYSTALS</th><th>REPEATABLE</th><th>STATUS</th><th>ACTIONS</th>
+          </tr></thead>
+          <tbody id="quests-body"><tr><td colspan="8" class="loading">Loading...</td></tr></tbody>
+        </table>
       </div>
     </section>
 
@@ -703,6 +787,7 @@ function nav(s){
   if(s==='commission')loadCommission();
   if(s==='settings')loadSettings();
   if(s==='broadcast')loadBcQueue();
+  if(s==='quests')loadQuests();
 }
 
 function _handleResp(r){if(r.status===401){logout();return Promise.reject(new Error('Session expired'))}return r.json().then(function(d){if(!r.ok)throw new Error(d.error||r.statusText);return d})}
@@ -904,6 +989,132 @@ function loadJobs(){
 function deleteJob(id,title){
   if(!confirm(t('delete_confirm')+' "'+title+'"?'))return;
   del('/admark/api/jobs/'+id).then(function(){toast(t('deleted'));loadJobs()}).catch(function(e){toast('Error: '+e.message,'err')});
+}
+
+// QUESTS
+var _editingQuestId = null;
+
+function loadQuests(){
+  get('/admark/api/quests').then(function(rows){
+    var TYPE_COLOR={'manual':'var(--muted)','telegram_channel':'#0088ff','deal_count':'#00ff88','streak':'#ffaa00','referral':'#cc44ff'};
+    document.getElementById('quests-body').innerHTML = rows.length === 0
+      ? '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted)">No quests yet</td></tr>'
+      : rows.map(function(q){
+          var color = TYPE_COLOR[q.quest_type]||'var(--muted)';
+          return '<tr>'+
+            '<td style="font-size:18px;text-align:center">'+q.icon+'</td>'+
+            '<td style="font-family:monospace;font-size:11px;color:var(--muted)">'+q.key+'</td>'+
+            '<td>'+q.title+'</td>'+
+            '<td><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:'+color+'22;color:'+color+';border:1px solid '+color+'44">'+q.quest_type+'</span></td>'+
+            '<td style="color:var(--gold);font-weight:600">'+Number(q.crystals).toLocaleString()+'</td>'+
+            '<td style="text-align:center">'+(q.is_repeatable?'✓':'—')+'</td>'+
+            '<td><button class="btn" onclick="toggleQuest('+q.id+','+(!q.is_active)+')" style="font-size:10px;padding:3px 10px;background:'+(q.is_active?'rgba(0,255,136,.1)':'rgba(255,68,68,.1)')+';color:'+(q.is_active?'var(--green)':'var(--red)')+';border-color:'+(q.is_active?'var(--green)':'var(--red)')+'">'+
+              (q.is_active?'ON':'OFF')+'</button></td>'+
+            '<td style="white-space:nowrap">'+
+              '<button class="btn" onclick="openQuestModal('+JSON.stringify(q).replace(/"/g,"&quot;")+')" style="font-size:10px;padding:3px 10px;margin-right:4px">✏ Edit</button>'+
+              '<button class="btn" onclick="deleteQuest('+q.id+',\''+q.title.replace(/'/g,"\\'")+'\')" style="font-size:10px;padding:3px 10px;background:rgba(255,68,68,.08);color:var(--red);border-color:rgba(255,68,68,.3)">🗑</button>'+
+            '</td>'+
+          '</tr>';
+        }).join('');
+  }).catch(function(e){toast('Error: '+e.message,'err')});
+}
+
+function onQuestTypeChange(){
+  var type = document.getElementById('q-type').value;
+  var wrap = document.getElementById('q-config-wrap');
+  var lbl  = document.getElementById('q-config-label');
+  var inp  = document.getElementById('q-config-val');
+  var configTypes = {'telegram_channel':true,'deal_count':true,'streak':true,'referral':true};
+  if(configTypes[type]){
+    wrap.style.display='block';
+    if(type==='telegram_channel'){lbl.textContent='CHANNEL ID (e.g. @mychannel)';inp.placeholder='@mychannel';}
+    else if(type==='deal_count'){lbl.textContent='REQUIRED DEALS COUNT';inp.placeholder='5';}
+    else if(type==='streak'){lbl.textContent='REQUIRED STREAK DAYS';inp.placeholder='7';}
+    else if(type==='referral'){lbl.textContent='REQUIRED REFERRALS COUNT';inp.placeholder='3';}
+  } else {
+    wrap.style.display='none';
+  }
+}
+
+function openQuestModal(quest){
+  _editingQuestId = quest ? quest.id : null;
+  document.getElementById('quest-modal-title').textContent = quest ? 'Edit Quest' : 'New Quest';
+  document.getElementById('q-key').value       = quest ? quest.key         : '';
+  document.getElementById('q-key').disabled    = !!quest;
+  document.getElementById('q-icon').value      = quest ? quest.icon        : '🎯';
+  document.getElementById('q-title').value     = quest ? quest.title       : '';
+  document.getElementById('q-desc').value      = quest ? quest.description : '';
+  document.getElementById('q-crystals').value  = quest ? quest.crystals    : '';
+  document.getElementById('q-category').value  = quest ? quest.category    : 'general';
+  document.getElementById('q-sort').value      = quest ? quest.sort_order  : '0';
+  document.getElementById('q-type').value      = quest ? quest.quest_type  : 'manual';
+  document.getElementById('q-repeatable').checked = quest ? quest.is_repeatable : false;
+  onQuestTypeChange();
+  if(quest && quest.quest_config){
+    var cfg = typeof quest.quest_config === 'string' ? JSON.parse(quest.quest_config) : quest.quest_config;
+    var type = quest.quest_type;
+    if(type==='telegram_channel') document.getElementById('q-config-val').value = cfg.channel_id||'';
+    else if(type==='deal_count')  document.getElementById('q-config-val').value = cfg.count||'';
+    else if(type==='streak')      document.getElementById('q-config-val').value = cfg.days||'';
+    else if(type==='referral')    document.getElementById('q-config-val').value = cfg.count||'';
+  } else {
+    document.getElementById('q-config-val').value = '';
+  }
+  var modal = document.getElementById('quest-modal');
+  modal.style.display='flex';
+}
+
+function closeQuestModal(){
+  document.getElementById('quest-modal').style.display='none';
+  _editingQuestId = null;
+}
+
+function buildQuestConfig(){
+  var type = document.getElementById('q-type').value;
+  var val  = document.getElementById('q-config-val').value.trim();
+  if(!val) return null;
+  if(type==='telegram_channel') return {channel_id: val};
+  if(type==='deal_count')       return {count: parseInt(val)};
+  if(type==='streak')           return {days: parseInt(val)};
+  if(type==='referral')         return {count: parseInt(val)};
+  return null;
+}
+
+function saveQuest(){
+  var body = {
+    key:          document.getElementById('q-key').value.trim(),
+    title:        document.getElementById('q-title').value.trim(),
+    description:  document.getElementById('q-desc').value.trim(),
+    icon:         document.getElementById('q-icon').value.trim()||'🎯',
+    crystals:     parseInt(document.getElementById('q-crystals').value),
+    category:     document.getElementById('q-category').value.trim()||'general',
+    sort_order:   parseInt(document.getElementById('q-sort').value)||0,
+    quest_type:   document.getElementById('q-type').value,
+    is_repeatable:document.getElementById('q-repeatable').checked,
+    quest_config: buildQuestConfig(),
+  };
+  if(!body.key||!body.title||!body.description||!body.crystals){
+    toast('key, title, description, crystals required','err'); return;
+  }
+  var req = _editingQuestId
+    ? fetch(BASE+'/admark/api/quests/'+_editingQuestId,{method:'PUT',headers:{'Content-Type':'application/json','X-Admin-Token':TOKEN},body:JSON.stringify(body)}).then(_handleResp)
+    : post('/admark/api/quests', body);
+  req.then(function(){
+    toast(_editingQuestId ? 'Quest updated' : 'Quest created');
+    closeQuestModal();
+    loadQuests();
+  }).catch(function(e){toast('Error: '+e.message,'err')});
+}
+
+function toggleQuest(id, active){
+  fetch(BASE+'/admark/api/quests/'+id,{method:'PUT',headers:{'Content-Type':'application/json','X-Admin-Token':TOKEN},body:JSON.stringify({is_active:active})}).then(_handleResp)
+    .then(function(){loadQuests()})
+    .catch(function(e){toast('Error: '+e.message,'err')});
+}
+
+function deleteQuest(id, title){
+  if(!confirm('Delete quest "'+title+'"?'))return;
+  del('/admark/api/quests/'+id).then(function(){toast('Deleted');loadQuests()}).catch(function(e){toast('Error: '+e.message,'err')});
 }
 
 // FINANCE
