@@ -313,7 +313,7 @@ async function verifyTonPayment(boc, expectedTon, retries = 3) {
   }
   console.log(`[TON] verifyTonPayment: bocHash=${bocHash}, expected=${expectedTon} TON`);
 
-  const arbitratorAddress = _wallet?.address.toString();
+  const arbitratorAddress = module.exports.getArbitratorAddress();
   if (!arbitratorAddress) throw new Error('[TON] Арбитратор не инициализирован');
 
   const expectedNano   = BigInt(Math.round(expectedTon * 1e9));
@@ -322,7 +322,7 @@ async function verifyTonPayment(boc, expectedTon, retries = 3) {
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      const txs = await getTransactions(arbitratorAddress, 20);
+      const txs = await module.exports.getTransactions(arbitratorAddress, 20);
 
       for (const tx of txs) {
         // Только входящие internal сообщения
