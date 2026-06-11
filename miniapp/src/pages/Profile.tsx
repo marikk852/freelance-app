@@ -391,7 +391,17 @@ export function Profile() {
                 </div>
                 <div className="logo" style={{ fontSize: '12px' }}>{user?.first_name?.toUpperCase() || 'GUEST'}</div>
                 {user?.username && <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.35)', marginTop: '5px' }}>@{user.username}</div>}
-                {profile && <div className="gl-pill lvl" style={{ padding: '4px 10px', margin: '8px auto 0', display: 'inline-block' }}>⚔ LVL {profile.level}</div>}
+                {profile && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
+                    <div className="gl-pill lvl" style={{ padding: '4px 10px' }}>⚔ LVL {profile.level}</div>
+                    {profile.subscription_plan === 'basic' && new Date(profile.subscription_expires) > new Date() && (
+                      <div style={{ padding: '4px 10px', borderRadius: '100px', background: 'rgba(0,136,255,0.15)', border: '1px solid rgba(0,136,255,0.4)', fontSize: '7px', color: '#0088ff', fontFamily: '"Press Start 2P", monospace' }}>✦ BASIC</div>
+                    )}
+                    {profile.subscription_plan === 'pro' && new Date(profile.subscription_expires) > new Date() && (
+                      <div style={{ padding: '4px 10px', borderRadius: '100px', background: 'rgba(204,68,255,0.15)', border: '1px solid rgba(204,68,255,0.4)', fontSize: '7px', color: '#cc44ff', fontFamily: '"Press Start 2P", monospace' }}>✦✦ PRO</div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 

@@ -32,6 +32,8 @@ interface PublicUser {
   banner_url?: string;
   avatar_url?: string;
   slide_images?: string[];
+  subscription_plan?: string;
+  subscription_expires?: string;
 }
 
 function RolePill({ role }: { role: Role }) {
@@ -194,6 +196,12 @@ export function PublicProfile() {
             </span>
           )}
           {profile.role && <RolePill role={profile.role} />}
+          {profile.subscription_plan === 'basic' && profile.subscription_expires && new Date(profile.subscription_expires) > new Date() && (
+            <span style={{ fontSize: '6px', padding: '4px 10px', borderRadius: '100px', background: 'rgba(0,136,255,0.15)', border: '1px solid rgba(0,136,255,0.4)', color: '#0088ff', fontFamily: '"Press Start 2P", monospace' }}>✦ BASIC</span>
+          )}
+          {profile.subscription_plan === 'pro' && profile.subscription_expires && new Date(profile.subscription_expires) > new Date() && (
+            <span style={{ fontSize: '6px', padding: '4px 10px', borderRadius: '100px', background: 'rgba(204,68,255,0.15)', border: '1px solid rgba(204,68,255,0.4)', color: '#cc44ff', fontFamily: '"Press Start 2P", monospace' }}>✦✦ PRO</span>
+          )}
         </div>
       </div>
 

@@ -115,6 +115,8 @@ router.get('/me', async (req, res) => {
          u.avatar_url,
          u.slide_images,
          u.created_at,
+         u.subscription_plan,
+         u.subscription_expires,
          COALESCE(r.review_count, 0) AS review_count
        FROM users u
        LEFT JOIN (
@@ -533,7 +535,9 @@ router.get('/:telegramId', async (req, res) => {
          u.profile_completed,
          u.banner_url,
          u.avatar_url,
-         u.slide_images
+         u.slide_images,
+         u.subscription_plan,
+         u.subscription_expires
        FROM users u
        WHERE u.telegram_id = $1`,
       [telegramId]
