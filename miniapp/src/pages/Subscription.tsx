@@ -71,27 +71,24 @@ export function Subscription() {
 
     setLoading(true);
     try {
-      // 1. Get payment details from backend
+      // 1. Get payment details from backend (converts USD → TON at current rate)
       const res = await fetch('/api/subscriptions/purchase', {
         method : 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Telegram-Init-Data': initData },
-        body   : JSON.stringify({ plan_key: planKey, currency: 'USDT' }),
+        body   : JSON.stringify({ plan_key: planKey, currency: 'TON' }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed');
 
-      const plan = PLANS.find(p => p.key === planKey)!;
-      // Convert USD to nanoUSDT (6 decimals for jUSDT)
-      const nanoUsdt = BigInt(Math.round(plan.price * 1e6)).toString();
-      // Small TON for gas
-      const gasNano = '50000000'; // 0.05 TON
+      // Convert TON amount to nanoTON (9 decimals)
+      const nanoAmount = BigInt(Math.round(parseFloat(data.payment.amount) * 1e9)).toString();
 
-      // 2. Send via TonConnect
+      // 2. Send via TonConnect — full subscription amount to arbitrator wallet
       const tx = await tonConnectUI.sendTransaction({
         validUntil: Math.floor(Date.now() / 1000) + 600,
         messages: [{
           address: data.payment.to,
-          amount : gasNano,
+          amount : nanoAmount,
         }],
       });
 
@@ -102,7 +99,7 @@ export function Subscription() {
       const confirmRes = await fetch('/api/subscriptions/confirm', {
         method : 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Telegram-Init-Data': initData },
-        body   : JSON.stringify({ plan_key: planKey, tx_hash: txHash, currency: 'USDT' }),
+        body   : JSON.stringify({ plan_key: planKey, tx_hash: txHash, currency: 'TON' }),
       });
       const confirmData = await confirmRes.json();
       if (!confirmRes.ok) throw new Error(confirmData.error || 'Confirmation failed');
