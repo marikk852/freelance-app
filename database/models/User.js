@@ -1,4 +1,4 @@
-const { query } = require('../db');
+const { query, transaction } = require('../db');
 
 // ============================================================
 // Модель: User
@@ -48,38 +48,44 @@ const User = {
       return { newUser: existing, referrer: null, isNew: false };
     }
 
-    const { rows: newRows } = await query(
-      `INSERT INTO users (telegram_id, username, first_name, last_name, referred_by)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (telegram_id) DO NOTHING
-       RETURNING *`,
-      [telegram_id, username, first_name, last_name, referrer_telegram_id]
-    );
-    const newUser = newRows[0];
-    if (!newUser) {
-      return { newUser: await User.findByTelegramId(telegram_id), referrer: null, isNew: false };
-    }
+    // Транзакция: регистрация + награда реферера атомарны —
+    // нельзя создать пользователя без referral_count++ у реферера
+    return transaction(async (client) => {
+      const { rows: newRows } = await client.query(
+        `INSERT INTO users (telegram_id, username, first_name, last_name, referred_by)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (telegram_id) DO NOTHING
+         RETURNING *`,
+        [telegram_id, username, first_name, last_name, referrer_telegram_id]
+      );
+      const newUser = newRows[0];
+      if (!newUser) {
+        return { newUser: await User.findByTelegramId(telegram_id), referrer: null, isNew: false };
+      }
 
-    const { rows: refRows } = await query(
-      `UPDATE users
-       SET referral_count = referral_count + 1,
-           safe_crystals     = safe_crystals + 50,
-           updated_at     = NOW()
-       WHERE telegram_id = $1
-       RETURNING *`,
-      [referrer_telegram_id]
-    );
-    const referrer = refRows[0] || null;
-
-    // Every 5 referrals => milestone bonus +100 coins
-    if (referrer && referrer.referral_count % 5 === 0) {
-      await query(
-        `UPDATE users SET safe_crystals = safe_crystals + 100, updated_at = NOW() WHERE telegram_id = $1`,
+      const { rows: refRows } = await client.query(
+        `UPDATE users
+         SET referral_count = referral_count + 1,
+             safe_crystals  = safe_crystals + 50,
+             updated_at     = NOW()
+         WHERE telegram_id = $1
+         RETURNING *`,
         [referrer_telegram_id]
       );
-    }
+      let referrer = refRows[0] || null;
 
-    return { newUser, referrer, isNew: true };
+      // Every 5 referrals => milestone bonus +100 coins
+      if (referrer && referrer.referral_count % 5 === 0) {
+        const { rows: bonusRows } = await client.query(
+          `UPDATE users SET safe_crystals = safe_crystals + 100, updated_at = NOW()
+           WHERE telegram_id = $1 RETURNING *`,
+          [referrer_telegram_id]
+        );
+        referrer = bonusRows[0] || referrer;
+      }
+
+      return { newUser, referrer, isNew: true };
+    });
   },
 
   /**

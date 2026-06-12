@@ -443,6 +443,39 @@ async function releaseFiles(files) {
   return released;
 }
 
+/**
+ * Удалить из storage/released/ файлы старше 24 часов.
+ * setTimeout-таймеры из releaseFiles() теряются при рестарте сервера,
+ * поэтому вызывается при старте и далее ежечасно (server.js).
+ *
+ * @returns {number} количество удалённых файлов
+ */
+function cleanupExpiredReleased() {
+  const TTL_MS = 24 * 60 * 60 * 1000;
+  let removed = 0;
+
+  try {
+    for (const name of fs.readdirSync(DIRS.released)) {
+      if (name.startsWith('.')) continue; // .gitkeep и служебные файлы
+      const filePath = path.join(DIRS.released, name);
+      try {
+        const stat = fs.statSync(filePath);
+        if (stat.isFile() && Date.now() - stat.mtimeMs > TTL_MS) {
+          fs.unlinkSync(filePath);
+          removed++;
+        }
+      } catch { /* файл уже удалён параллельным setTimeout */ }
+    }
+  } catch (err) {
+    console.error('[FileProtection] Ошибка очистки released:', err.message);
+  }
+
+  if (removed > 0) {
+    console.log(`[FileProtection] Очистка released: удалено ${removed} файлов старше 24ч`);
+  }
+  return removed;
+}
+
 // ============================================================
 // Вспомогательные функции
 // ============================================================
@@ -517,5 +550,6 @@ module.exports = {
   decryptFile,
   releaseFiles,
   cleanupFiles,
+  cleanupExpiredReleased,
   DIRS,
 };

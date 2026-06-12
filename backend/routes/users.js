@@ -78,12 +78,16 @@ router.get('/me/deals', async (req, res) => {
 router.get('/me', async (req, res) => {
   try {
     // Upsert — auto-registration on first Mini App open
-    await User.upsert({
+    const me = await User.upsert({
       telegram_id: req.user.telegramId,
       username   : req.user.username,
       first_name : req.user.firstName,
       last_name  : req.user.lastName,
     });
+
+    // Streak обновляется при каждом открытии Mini App, не только через /start бота
+    // (SQL update_streak идемпотентна в пределах дня)
+    await User.updateStreak(me.id);
 
     const { rows } = await query(
       `SELECT

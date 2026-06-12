@@ -11,6 +11,7 @@ const tonService = require('./services/tonService');
 const { startMonitoring } = require('./services/monitorService');
 const { authMiddleware } = require('./middleware/auth');
 const { processPendingBroadcasts } = require('./services/broadcastService');
+const { cleanupExpiredReleased } = require('./services/fileProtection');
 
 // ============================================================
 // SafeDeal Backend — Express API Server
@@ -110,20 +111,10 @@ app.use('/api/rooms', require('./routes/rooms'));
 // ---------- Защищённые маршруты (требуют Telegram initData) ----------
 app.use('/api/', authMiddleware);
 
-app.use('/api/contracts',  require('./routes/contracts'));
-app.use('/api/deliveries', require('./routes/deliveries'));
-app.use('/api/disputes',   require('./routes/disputes'));
-app.use('/api/users',      require('./routes/users'));
-app.use('/api/jobs',           require('./routes/jobs'));
-app.use('/api/livefeed',       require('./routes/livefeed'));
-app.use('/api/marketing',      require('./routes/marketing'));
-app.use('/api/notifications',  require('./routes/notifications'));
-app.use('/api/quests',         require('./routes/quests'));
-app.use('/api/subscriptions',  require('./routes/subscriptions'));
-app.use('/api/referrals',      require('./routes/referrals'));
-
 // ---------- Track user visit (for referral activity) ----------
-app.use('/api/', async (req, res, next) => {
+// ВАЖНО: до роутеров — роутеры завершают ответ без next(),
+// middleware после них никогда не выполняется
+app.use('/api/', (req, res, next) => {
   if (req.user?.telegramId) {
     const { query: dbQuery } = require('../database/db');
     dbQuery(
@@ -135,6 +126,18 @@ app.use('/api/', async (req, res, next) => {
   }
   next();
 });
+
+app.use('/api/contracts',  require('./routes/contracts'));
+app.use('/api/deliveries', require('./routes/deliveries'));
+app.use('/api/disputes',   require('./routes/disputes'));
+app.use('/api/users',      require('./routes/users'));
+app.use('/api/jobs',           require('./routes/jobs'));
+app.use('/api/livefeed',       require('./routes/livefeed'));
+app.use('/api/marketing',      require('./routes/marketing'));
+app.use('/api/notifications',  require('./routes/notifications'));
+app.use('/api/quests',         require('./routes/quests'));
+app.use('/api/subscriptions',  require('./routes/subscriptions'));
+app.use('/api/referrals',      require('./routes/referrals'));
 
 // ---------- Webhook для бота (production) ----------
 if (process.env.NODE_ENV === 'production') {
@@ -247,6 +250,11 @@ async function start() {
   // Планировщик рассылок — каждую минуту
   setInterval(() => processPendingBroadcasts(), 60 * 1000);
   console.log('[Server] Broadcast scheduler started (60s interval)');
+
+  // Очистка released-файлов старше 24ч: при старте (setTimeout-таймеры
+  // releaseFiles теряются при рестарте) и далее ежечасно
+  cleanupExpiredReleased();
+  setInterval(() => cleanupExpiredReleased(), 60 * 60 * 1000);
 
   // Старт HTTP сервера
   app.listen(PORT, () => {
