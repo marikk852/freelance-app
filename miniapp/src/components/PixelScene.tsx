@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-type SceneName = 'home'|'new_deal'|'deal_room'|'payment'|'review'|'dispute'|'live_deals'|'profile'|'job_board';
+type SceneName = 'home'|'new_deal'|'deal_room'|'payment'|'review'|'dispute'|'live_deals'|'profile'|'job_board'|'subscription';
 
 const W=252,H=56,S=3;
 
@@ -443,10 +443,46 @@ function drawBoard(ctx:Ctx){
   ctx.fillStyle=AU+'44';ctx.font='4px monospace';ctx.textAlign='center';ctx.fillText('JOB BOARD',42*S,15*S+1);
 }
 
+// ── SUBSCRIPTION — floating upgrade crystal + plan gems ────
+function drawSubscription(ctx:Ctx){
+  ctx.fillStyle=DK;ctx.fillRect(0,0,W,H);
+  // Stars
+  [[4,1],[14,3],[24,1],[33,2],[52,2],[60,1],[70,3],[79,1],[9,2],[75,2]].forEach(([x,y])=>px(ctx,x,y,'#ffffff33'));
+  star(ctx,29,4,AU5);star(ctx,55,3,AU5);
+  // Ground
+  bk(ctx,0,16,84,1,'#1a1a2e');bk(ctx,0,17,84,1,'#12121e');
+  // Center pedestal (stone)
+  bk(ctx,38,14,9,2,'#2a3a4a');bk(ctx,39,13,7,1,'#3a4a5a');bk(ctx,38,14,9,1,'#34445a');
+  bk(ctx,37,16,11,1,'#1c2a38');
+  // Glow aura behind crystal
+  ctx.fillStyle=PU+'18';ctx.fillRect(37*S,3*S,11*S,10*S);
+  ctx.fillStyle=PU+'10';ctx.fillRect(35*S,5*S,15*S,7*S);
+  // Big floating crystal (diamond, purple facets)
+  const cw:[number,number][]=[[42,3],[41,4],[43,4],[40,5],[44,5],[39,6],[45,6],[39,7],[45,7],[40,8],[44,8],[41,9],[43,9],[42,10]];
+  bk(ctx,41,4,3,1,'#e088ff');bk(ctx,40,5,5,1,PU);bk(ctx,39,6,7,2,PU);
+  bk(ctx,40,8,5,1,'#9933cc');bk(ctx,41,9,3,1,'#8822bb');px(ctx,42,10,'#771faa');
+  px(ctx,42,3,'#ffffff');px(ctx,41,4,'#ffeeff');
+  cw.forEach(([x,y])=>{if(y<6)px(ctx,x,y,'#dd77ff');});
+  px(ctx,40,6,'#ee99ff');px(ctx,40,7,'#bb55ee');px(ctx,44,6,'#aa33dd');px(ctx,44,7,'#9922cc');
+  // Sparkles around crystal
+  star(ctx,36,5,'#ffffff');star(ctx,49,8,PU);px(ctx,47,4,'#ffffffaa');px(ctx,37,10,PU+'aa');
+  // Gold coins at base
+  px(ctx,36,15,AU);px(ctx,37,15,AU5);px(ctx,48,15,AU);px(ctx,49,15,AU2);px(ctx,47,14,AU5);
+  // Left small gem — BASIC (blue) on mini pedestal
+  bk(ctx,18,15,5,1,'#2a3a4a');bk(ctx,19,14,3,1,'#3a4a5a');
+  bk(ctx,19,11,3,1,BL5);bk(ctx,18,12,5,1,BL);bk(ctx,19,13,3,1,BL2);px(ctx,20,10,'#ffffff');px(ctx,19,11,'#bbddff');
+  // Right tall gem — PRO (purple, two stars) on mini pedestal
+  bk(ctx,62,15,5,1,'#2a3a4a');bk(ctx,63,14,3,1,'#3a4a5a');
+  bk(ctx,63,9,3,1,'#e088ff');bk(ctx,62,10,5,2,PU);bk(ctx,63,12,3,1,'#9933cc');px(ctx,64,13,'#8822bb');
+  px(ctx,64,8,'#ffffff');px(ctx,63,9,'#ffeeff');
+  star(ctx,60,7,'#ffffff55');star(ctx,68,9,PU+'88');
+}
+
 const staticFns: Partial<Record<SceneName, (ctx: Ctx) => void>> = {
   new_deal: drawNewDeal, deal_room: drawRoom,
   payment: drawPayment, review: drawReview, dispute: drawDispute,
   live_deals: drawLive, profile: drawProfile, job_board: drawBoard,
+  subscription: drawSubscription,
 };
 const animatedFns: Partial<Record<SceneName, (ctx: Ctx, t: number) => void>> = {
   home: drawHome,

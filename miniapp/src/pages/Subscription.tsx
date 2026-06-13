@@ -2,16 +2,18 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { useTelegram } from '../hooks/useTelegram';
+import { PixelScene } from '../components/PixelScene';
 import toast from 'react-hot-toast';
 
 const PLANS = [
   {
     key      : 'basic',
-    name     : 'Basic',
+    name     : 'BASIC',
     price    : 5.99,
     crystals : 15000,
     color    : '#0088ff',
     badge    : '✦',
+    popular  : false,
     features : [
       'Verified badge on your profile',
       'Profile boosted in search results',
@@ -20,11 +22,12 @@ const PLANS = [
   },
   {
     key      : 'pro',
-    name     : 'Pro',
+    name     : 'PRO',
     price    : 15.99,
     crystals : 20000,
     color    : '#cc44ff',
     badge    : '✦✦',
+    popular  : true,
     features : [
       'Pro badge on your profile',
       'Profile + job listings boosted',
@@ -34,241 +37,340 @@ const PLANS = [
   },
 ];
 
+type Plan = typeof PLANS[number];
+// Стадии оплаты: пользователь всегда видит, что происходит сейчас
+type PayStage = 'idle' | 'creating' | 'wallet' | 'confirming';
+
+const STAGE_LABEL: Record<PayStage, string> = {
+  idle      : '',
+  creating  : 'CREATING PAYMENT...',
+  wallet    : 'CONFIRM IN WALLET ↗',
+  confirming: 'VERIFYING ON-CHAIN...',
+};
+
 export function Subscription() {
-  const navigate          = useNavigate();
-  const [params]          = useSearchParams();
-  const { tg }            = useTelegram();
-  const [tonConnectUI]    = useTonConnectUI();
-  const wallet            = useTonWallet();
-  const selectedKey       = params.get('plan') || null;
-  const [plans,  setPlans]    = useState<any[]>(PLANS);
-  const [selected, setSelected] = useState<string | null>(selectedKey);
-  const [loading,  setLoading]  = useState(false);
+  const navigate       = useNavigate();
+  const [params]       = useSearchParams();
+  const { tg, initData } = useTelegram();
+  const [tonConnectUI] = useTonConnectUI();
+  const wallet         = useTonWallet();
 
-  const initData = (window as any).Telegram?.WebApp?.initData || '';
+  const urlPlan = params.get('plan');
+  const [plans, setPlans]           = useState<Plan[]>(PLANS);
+  const [plansError, setPlansError] = useState(false);
+  // Pro предвыбран: CTA видна сразу, карточки очевидно выбираемые
+  const [selected, setSelected] = useState<string>(
+    urlPlan && PLANS.some(p => p.key === urlPlan) ? urlPlan : 'pro'
+  );
+  const [stage, setStage]   = useState<PayStage>('idle');
+  const [quotes, setQuotes] = useState<Record<string, string>>({});
+  // Отправленная, но не подтверждённая транзакция: повторный тап
+  // НЕ создаёт новый платёж, а только перепроверяет этот BOC
+  const [pendingTx, setPendingTx] = useState<{ planKey: string; boc: string } | null>(null);
 
-  // Fetch available plans from backend (respects admin toggle)
+  const headers = { 'Content-Type': 'application/json', 'X-Telegram-Init-Data': initData };
+
+  // Telegram BackButton вместо кастомной стрелки (тач-таргет, деплинки)
   useEffect(() => {
-    fetch('/api/subscriptions/plans', {
-      headers: { 'X-Telegram-Init-Data': initData }
-    })
-      .then(r => r.json())
+    if (!tg?.BackButton) return;
+    tg.BackButton.show();
+    const goBack = () => navigate('/profile');
+    tg.BackButton.onClick(goBack);
+    return () => {
+      tg.BackButton.offClick(goBack);
+      tg.BackButton.hide();
+    };
+  }, [tg, navigate]);
+
+  const loadPlans = () => {
+    setPlansError(false);
+    fetch('/api/subscriptions/plans', { headers: { 'X-Telegram-Init-Data': initData } })
+      .then(r => {
+        if (!r.ok) throw new Error();
+        return r.json();
+      })
       .then(data => {
         if (Array.isArray(data)) {
-          const activeKeys = data.map((p: any) => p.key);
+          const activeKeys = data.map((p: { key: string }) => p.key);
           setPlans(PLANS.filter(p => activeKeys.includes(p.key)));
         }
       })
+      .catch(() => setPlansError(true));
+  };
+  useEffect(loadPlans, []);
+
+  // Котировка в TON для выбранного плана — пользователь видит сумму
+  // ДО открытия кошелька, без сюрпризов
+  useEffect(() => {
+    if (!selected || quotes[selected]) return;
+    fetch(`/api/subscriptions/quote/${selected}`, { headers: { 'X-Telegram-Init-Data': initData } })
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => {
+        if (data?.ton_amount) setQuotes(q => ({ ...q, [selected]: data.ton_amount }));
+      })
       .catch(() => {});
-  }, []);
+  }, [selected]);
+
+  const selectPlan = (key: string) => {
+    setSelected(key);
+    tg?.HapticFeedback?.impactOccurred('light');
+  };
+
+  // Подтверждение с авто-ретраем: сеть TON подтверждает транзакцию
+  // до ~30 секунд, 402 = "ещё не видна", пробуем сами, юзер ждёт
+  const confirmPayment = async (planKey: string, boc: string) => {
+    const ATTEMPTS = 6, DELAY_MS = 5000;
+    for (let i = 0; i < ATTEMPTS; i++) {
+      const res  = await fetch('/api/subscriptions/confirm', {
+        method: 'POST', headers,
+        body  : JSON.stringify({ plan_key: planKey, tx_hash: boc, currency: 'TON' }),
+      });
+      if (res.ok) return;
+      const data = await res.json().catch(() => ({} as { error?: string }));
+      if (res.status !== 402) throw new Error(data.error || 'Confirmation failed');
+      await new Promise(r => setTimeout(r, DELAY_MS));
+    }
+    throw new Error('PENDING');
+  };
 
   const handlePurchase = async (planKey: string) => {
-    // Connect wallet first if not connected
+    const plan = PLANS.find(p => p.key === planKey);
+    if (!plan) return;
+
     if (!wallet) {
       tonConnectUI.openModal();
       return;
     }
 
-    setLoading(true);
     try {
-      // 1. Get payment details from backend (converts USD → TON at current rate)
-      const res = await fetch('/api/subscriptions/purchase', {
-        method : 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Telegram-Init-Data': initData },
-        body   : JSON.stringify({ plan_key: planKey, currency: 'TON' }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed');
+      let boc: string;
 
-      // Convert TON amount to nanoTON (9 decimals)
-      const nanoAmount = BigInt(Math.round(parseFloat(data.payment.amount) * 1e9)).toString();
+      if (pendingTx && pendingTx.planKey === planKey) {
+        // Уже оплачено, но не подтверждено — только перепроверяем, НЕ платим снова
+        boc = pendingTx.boc;
+        setStage('confirming');
+      } else {
+        setStage('creating');
+        const res  = await fetch('/api/subscriptions/purchase', {
+          method: 'POST', headers,
+          body  : JSON.stringify({ plan_key: planKey, currency: 'TON' }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to create payment');
 
-      // 2. Send via TonConnect — full subscription amount to arbitrator wallet
-      const tx = await tonConnectUI.sendTransaction({
-        validUntil: Math.floor(Date.now() / 1000) + 600,
-        messages: [{
-          address: data.payment.to,
-          amount : nanoAmount,
-        }],
-      });
+        const nanoAmount = BigInt(Math.round(parseFloat(data.payment.amount) * 1e9)).toString();
 
+        setStage('wallet');
+        const tx = await tonConnectUI.sendTransaction({
+          validUntil: Math.floor(Date.now() / 1000) + 600,
+          messages  : [{ address: data.payment.to, amount: nanoAmount }],
+        });
+        boc = tx.boc;
+        setPendingTx({ planKey, boc });
+        tg?.HapticFeedback?.notificationOccurred('success');
+        setStage('confirming');
+      }
+
+      await confirmPayment(planKey, boc);
+
+      setPendingTx(null);
+      setStage('idle');
       tg?.HapticFeedback?.notificationOccurred('success');
-
-      // 3. Confirm with backend
-      const txHash = tx.boc;
-      const confirmRes = await fetch('/api/subscriptions/confirm', {
-        method : 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Telegram-Init-Data': initData },
-        body   : JSON.stringify({ plan_key: planKey, tx_hash: txHash, currency: 'TON' }),
-      });
-      const confirmData = await confirmRes.json();
-      if (confirmRes.status === 402) throw new Error('⏳ Transaction is confirming. Please wait 10 seconds and try again.');
-      if (!confirmRes.ok) throw new Error(confirmData.error || 'Confirmation failed');
-
       toast.success(`✓ ${plan.name} subscription activated!`);
       setTimeout(() => navigate('/profile'), 1500);
-    } catch (err: any) {
+    } catch (err) {
+      setStage('idle');
+      const msg = err instanceof Error ? err.message : 'Payment failed';
+      if (msg === 'PENDING') {
+        // Деньги отправлены — pendingTx сохранён, кнопка станет CHECK STATUS
+        toast('⏳ Network is still confirming your payment. Tap CHECK STATUS in a minute — you will NOT be charged twice.', { duration: 6000 });
+        return;
+      }
       tg?.HapticFeedback?.notificationOccurred('error');
-      if (err?.message?.includes('User declined') || err?.message?.includes('Reject')) {
+      if (msg.includes('User declined') || msg.includes('Reject')) {
         toast.error('Payment cancelled');
       } else {
-        toast.error(err.message || 'Payment failed');
+        toast.error(msg);
       }
-    } finally {
-      setLoading(false);
     }
   };
 
+  const selPlan   = plans.find(p => p.key === selected);
+  const isPending = pendingTx !== null && pendingTx.planKey === selected;
+  const busy      = stage !== 'idle';
+
   return (
     <div className="page fade-in">
-      {/* Header */}
-      <div className="gl hud card-stagger-1" style={{ borderColor: 'rgba(204,68,255,0.3)' }}>
-        <div className="pxgrid" /><div className="sh" />
-        <button onClick={() => navigate(-1)} style={{
-          background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)',
-          fontFamily: '"Press Start 2P", monospace', fontSize: '7px', cursor: 'pointer', padding: 0,
-        }}>←</button>
-        <div className="logo" style={{ fontSize: '10px', color: '#cc44ff' }}>SUBSCRIPTION</div>
-        <div style={{ width: '20px' }} />
-      </div>
-
-      {/* Hero */}
-      <div style={{ textAlign: 'center', padding: '20px 8px 16px' }}>
-        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>
-          Level up your account
+      <div className="sub-wrap">
+        {/* Header */}
+        <div className="gl hud card-stagger-1" style={{ borderColor: 'rgba(204,68,255,0.3)', justifyContent: 'center' }}>
+          <div className="pxgrid" /><div className="sh" />
+          <div className="logo" style={{ fontSize: '10px', color: '#cc44ff' }}>SUBSCRIPTION</div>
         </div>
-        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6 }}>
-          Get a verified badge, boost your profile<br/>and earn extra Safe Crystals every month
-        </div>
-      </div>
 
-      {/* Plans */}
-      {plans.length === 0 ? (
-        <div className="gl" style={{ textAlign: 'center', padding: '32px', marginBottom: '12px' }}>
-          <div className="pxgrid" />
-          <div style={{ fontSize: '28px', marginBottom: '10px' }}>🔒</div>
-          <div style={{ fontFamily: '"Press Start 2P", monospace', fontSize: '7px', color: 'rgba(255,255,255,0.4)' }}>
-            SUBSCRIPTIONS UNAVAILABLE
+        {/* Hero — pixel retrofuturism */}
+        <div style={{ textAlign: 'center', padding: '16px 8px 14px' }}>
+          <PixelScene scene="subscription" />
+          <div className="px" style={{
+            fontSize: '12px', color: '#cc44ff', marginBottom: '10px',
+            textShadow: '0 0 10px rgba(204,68,255,0.8), 0 0 28px rgba(204,68,255,0.4)',
+          }}>
+            LEVEL UP
+          </div>
+          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6 }}>
+            Verified badge, boosted profile<br/>and Safe Crystals every month
           </div>
         </div>
-      ) : (
-        plans.map(plan => {
-          const isSelected = selected === plan.key;
-          return (
-            <div
-              key={plan.key}
-              onClick={() => setSelected(plan.key)}
-              className="gl card-stagger-2"
-              style={{
-                marginBottom   : '10px',
-                borderColor    : isSelected ? plan.color : 'rgba(255,255,255,0.1)',
-                cursor         : 'pointer',
-                background     : isSelected ? `${plan.color}0d` : 'rgba(255,255,255,0.03)',
-                transition     : 'border-color 0.2s, background 0.2s',
-              }}
-            >
-              <div className="pxgrid" />
-              {/* Plan header */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', position: 'relative', zIndex: 2 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{
-                    width: '40px', height: '40px', borderRadius: '12px',
-                    background: `${plan.color}22`, border: `1px solid ${plan.color}55`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '16px', color: plan.color,
-                  }}>
-                    {plan.badge}
-                  </div>
-                  <div>
-                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '16px', fontWeight: 700, color: '#fff' }}>
-                      {plan.name}
-                    </div>
-                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>
-                      monthly subscription
-                    </div>
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '20px', fontWeight: 700, color: plan.color }}>
-                    ${plan.price}
-                  </div>
-                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', color: 'rgba(255,255,255,0.3)' }}>
-                    / month
-                  </div>
-                </div>
-              </div>
 
-              {/* Features */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', position: 'relative', zIndex: 2 }}>
-                {plan.features.map((f: string, i: number) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{
-                      width: '16px', height: '16px', borderRadius: '50%', flexShrink: 0,
-                      background: `${plan.color}22`, border: `1px solid ${plan.color}44`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '8px', color: plan.color,
-                    }}>✓</div>
-                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}>
-                      {f}
-                    </span>
-                  </div>
-                ))}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                  <div style={{
-                    width: '16px', height: '16px', borderRadius: '50%', flexShrink: 0,
-                    background: 'rgba(255,170,0,0.15)', border: '1px solid rgba(255,170,0,0.4)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '8px', color: '#ffaa00',
-                  }}>💎</div>
-                  <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: '#ffaa00', fontWeight: 600 }}>
-                    +{plan.crystals.toLocaleString()} Safe Crystals on purchase
-                  </span>
-                </div>
-              </div>
+        {/* Plans load error */}
+        {plansError && (
+          <div className="gl" style={{ padding: '12px', marginBottom: '10px', borderColor: 'rgba(255,136,0,0.35)', textAlign: 'center' }}>
+            <div className="pxgrid" />
+            <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: '#ff8800' }}>
+              Could not check plan availability.{' '}
+            </span>
+            <button onClick={loadPlans} style={{
+              background: 'none', border: 'none', cursor: 'pointer', padding: '8px',
+              fontFamily: 'Inter, sans-serif', fontSize: '12px', color: '#ffaa00', textDecoration: 'underline',
+            }}>Retry</button>
+          </div>
+        )}
 
-              {/* Selected indicator */}
-              {isSelected && (
-                <div style={{
-                  position: 'absolute', top: '12px', right: '12px',
-                  width: '20px', height: '20px', borderRadius: '50%',
-                  background: plan.color, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '10px', color: '#000', fontWeight: 700, zIndex: 3,
-                }}>✓</div>
-              )}
+        {/* Plans */}
+        {plans.length === 0 && !plansError ? (
+          <div className="gl" style={{ textAlign: 'center', padding: '32px', marginBottom: '12px' }}>
+            <div className="pxgrid" />
+            <div style={{ fontSize: '28px', marginBottom: '10px' }}>🔒</div>
+            <div className="px" style={{ fontSize: '8px', color: 'rgba(255,255,255,0.4)' }}>
+              SUBSCRIPTIONS UNAVAILABLE
             </div>
-          );
-        })
-      )}
+          </div>
+        ) : (
+          <div className="sub-plans">
+            {plans.map(plan => {
+              const isSelected = selected === plan.key;
+              return (
+                <div
+                  key={plan.key}
+                  onClick={() => selectPlan(plan.key)}
+                  className="gl card-stagger-2"
+                  style={{
+                    marginBottom: '10px',
+                    paddingTop  : plan.popular ? '26px' : undefined,
+                    borderColor : isSelected ? plan.color : 'rgba(255,255,255,0.1)',
+                    boxShadow   : isSelected ? `0 0 18px ${plan.color}33, inset 0 0 24px ${plan.color}0a` : 'none',
+                    cursor      : 'pointer',
+                    background  : isSelected ? `${plan.color}0d` : 'rgba(255,255,255,0.03)',
+                    transition  : 'border-color 0.2s, background 0.2s, box-shadow 0.2s',
+                  }}
+                >
+                  <div className="pxgrid" />
+                  {isSelected && <div className="sh" />}
 
-      {/* Purchase button */}
-      {selected && plans.length > 0 && (
-        <button
-          onClick={() => handlePurchase(selected)}
-          disabled={loading}
-          style={{
-            width       : '100%',
-            padding     : '16px',
-            background  : PLANS.find(p => p.key === selected)?.color || '#cc44ff',
-            color       : '#fff',
-            border      : 'none',
-            borderRadius: '14px',
-            fontFamily  : 'Inter, sans-serif',
-            fontSize    : '15px',
-            fontWeight  : 700,
-            cursor      : loading ? 'not-allowed' : 'pointer',
-            opacity     : loading ? 0.7 : 1,
-            marginBottom: '8px',
-          }}
-        >
-          {loading ? '⏳ Processing...' : `Subscribe to ${PLANS.find(p => p.key === selected)?.name} — $${PLANS.find(p => p.key === selected)?.price}/mo`}
-        </button>
-      )}
+                  {/* POPULAR pixel ribbon */}
+                  {plan.popular && (
+                    <div className="px" style={{
+                      position: 'absolute', top: '-1px', left: '14px', zIndex: 3,
+                      fontSize: '6px', color: '#000', background: plan.color,
+                      padding: '4px 8px 5px', borderRadius: '0 0 6px 6px',
+                      boxShadow: `0 0 12px ${plan.color}66`,
+                    }}>POPULAR</div>
+                  )}
 
-      <div style={{
-        fontFamily: 'Inter, sans-serif', fontSize: '10px',
-        color: 'rgba(255,255,255,0.25)', textAlign: 'center', padding: '8px 0 20px',
-      }}>
-        Payment via USDT (TON network) · Cancel anytime
+                  {/* Plan header */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', position: 'relative', zIndex: 2 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{
+                        width: '40px', height: '40px', borderRadius: '8px',
+                        background: `${plan.color}22`, border: `1px solid ${plan.color}55`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '16px', color: plan.color,
+                        boxShadow: isSelected ? `0 0 10px ${plan.color}44` : 'none',
+                      }}>
+                        {plan.badge}
+                      </div>
+                      <div>
+                        <div className="px" style={{ fontSize: '10px', color: isSelected ? plan.color : '#fff', marginBottom: '5px' }}>
+                          {plan.name}
+                        </div>
+                        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>
+                          monthly subscription
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div className="px" style={{ fontSize: '12px', color: plan.color }}>
+                        ${plan.price}
+                      </div>
+                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '4px' }}>
+                        {quotes[plan.key] ? `≈ ${quotes[plan.key]} TON / mo` : '/ month'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Features */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', position: 'relative', zIndex: 2 }}>
+                    {plan.features.map((f: string, i: number) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{
+                          width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0,
+                          background: `${plan.color}22`, border: `1px solid ${plan.color}44`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '8px', color: plan.color,
+                        }}>✓</div>
+                        <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}>
+                          {f}
+                        </span>
+                      </div>
+                    ))}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                      <div style={{
+                        width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0,
+                        background: 'rgba(255,170,0,0.15)', border: '1px solid rgba(255,170,0,0.4)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '8px',
+                      }}>💎</div>
+                      <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: '#ffaa00', fontWeight: 600 }}>
+                        +{plan.crystals.toLocaleString()} Safe Crystals on purchase
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Purchase CTA — pixel glass button */}
+        {selPlan && (
+          <button
+            onClick={() => handlePurchase(selPlan.key)}
+            disabled={busy}
+            className="btn"
+            style={{
+              background  : `linear-gradient(175deg, ${selPlan.color}, ${selPlan.color}99)`,
+              color       : '#fff',
+              border      : `1px solid ${selPlan.color}`,
+              boxShadow   : `0 0 16px ${selPlan.color}44`,
+              cursor      : busy ? 'not-allowed' : 'pointer',
+              opacity     : busy ? 0.75 : 1,
+              textShadow  : '0 1px 0 rgba(0,0,0,0.4)',
+            }}
+          >
+            {busy
+              ? STAGE_LABEL[stage]
+              : isPending
+                ? 'CHECK STATUS'
+                : `SUBSCRIBE ${selPlan.name} · $${selPlan.price}/MO`}
+          </button>
+        )}
+
+        <div style={{
+          fontFamily: 'Inter, sans-serif', fontSize: '10px',
+          color: 'rgba(255,255,255,0.25)', textAlign: 'center', padding: '8px 0 20px',
+        }}>
+          Payment in TON · converted from USD at live rate · Cancel anytime
+        </div>
       </div>
     </div>
   );

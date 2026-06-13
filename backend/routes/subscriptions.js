@@ -42,6 +42,31 @@ router.get('/my', async (req, res) => {
 });
 
 // POST /api/subscriptions/purchase — initiate subscription payment
+// GET /api/subscriptions/quote/:plan_key — сколько TON стоит план по текущему курсу
+// (превью для UI до открытия кошелька; ничего не создаёт)
+router.get('/quote/:plan_key', async (req, res) => {
+  try {
+    const { plan_key } = req.params;
+    if (!['basic', 'pro'].includes(plan_key)) {
+      return res.status(400).json({ error: 'Invalid plan' });
+    }
+    const { rows: plans } = await query(
+      `SELECT * FROM subscription_plans WHERE key = $1 AND is_active = TRUE`, [plan_key]
+    );
+    if (!plans[0]) return res.status(404).json({ error: 'Plan not available' });
+
+    const tonPrice = await tonService.getTonUsdPrice();
+    res.json({
+      plan_key,
+      price_usd     : plans[0].price_usd,
+      ton_amount    : (plans[0].price_usd / tonPrice).toFixed(4),
+      ton_price_usd : tonPrice,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/purchase', async (req, res) => {
   try {
     const { plan_key, currency = 'USDT' } = req.body;
