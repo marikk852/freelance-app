@@ -30,6 +30,12 @@ function startMonitoring() {
   // FIX #4: Мониторинг баланса кошелька арбитра каждые 5 минут
   cron.schedule('*/5 * * * *', checkArbitratorBalance);
 
+  // Жизненный цикл подписок (раз в день):
+  // напоминание о продлении за ~3 дня + перевод просроченных в expired.
+  // Авто-списания нет — в крипте оно невозможно без подписи пользователя.
+  cron.schedule('0 10 * * *', sendSubscriptionRenewalReminders);
+  cron.schedule('5 10 * * *', expireSubscriptions);
+
   console.log('[Monitor] Фоновый мониторинг запущен');
 }
 
@@ -196,6 +202,102 @@ async function checkArbitratorBalance() {
   } catch (err) {
     // Не крашим мониторинг если TON API временно недоступен
     console.error('[Monitor] Ошибка checkArbitratorBalance:', err.message);
+  }
+}
+
+/**
+ * Напомнить о скором истечении подписки (за ~3 дня).
+ * renewal_reminded защищает от повторов; авто-продления нет —
+ * пользователь должен сам подписать новую транзакцию.
+ */
+async function sendSubscriptionRenewalReminders() {
+  try {
+    const { rows } = await query(
+      `SELECT us.id, sp.name AS plan_name, u.telegram_id
+       FROM user_subscriptions us
+       JOIN subscription_plans sp ON sp.id = us.plan_id
+       JOIN users u ON u.id = us.user_id
+       WHERE us.status = 'active'
+         AND us.renewal_reminded = FALSE
+         AND us.expires_at BETWEEN NOW() AND NOW() + INTERVAL '3 days'`
+    );
+
+    for (const row of rows) {
+      try {
+        await notificationService.notify(
+          Number(row.telegram_id),
+          'subscription_renewal',
+          `⏳ *Subscription expiring soon*\n\nYour *${row.plan_name}* plan ends in less than 3 days. Renew now to keep your badge, profile boost and monthly crystals without interruption.`,
+          { inlineKeyboard: [[
+            { text: '✦ Renew now', web_app: { url: `${process.env.WEBAPP_URL}?screen=subscription` } },
+          ]] }
+        );
+        await query(
+          `UPDATE user_subscriptions SET renewal_reminded = TRUE WHERE id = $1`,
+          [row.id]
+        );
+      } catch (err) {
+        console.error(`[Monitor] Ошибка напоминания подписки ${row.id}:`, err.message);
+      }
+    }
+
+    if (rows.length > 0) console.log(`[Monitor] Отправлено ${rows.length} напоминаний о продлении`);
+  } catch (err) {
+    console.error('[Monitor] Ошибка sendSubscriptionRenewalReminders:', err.message);
+  }
+}
+
+/**
+ * Перевести просроченные подписки в status='expired' и сбросить
+ * stale-колонки users.subscription_plan / subscription_expires.
+ * Без этого подписка вечно числится 'active' в БД (ломает аналитику),
+ * хотя /my и бейдж на фронте корректно фильтруют по expires_at.
+ */
+async function expireSubscriptions() {
+  try {
+    const { rows } = await query(
+      `SELECT us.id, sp.name AS plan_name, u.telegram_id
+       FROM user_subscriptions us
+       JOIN subscription_plans sp ON sp.id = us.plan_id
+       JOIN users u ON u.id = us.user_id
+       WHERE us.status = 'active' AND us.expires_at < NOW()`
+    );
+    if (rows.length === 0) return;
+
+    // Помечаем просроченные (WHERE повторно проверяет дату — свежая покупка не заденется)
+    await query(
+      `UPDATE user_subscriptions SET status = 'expired'
+       WHERE status = 'active' AND expires_at < NOW()`
+    );
+
+    // Сбрасываем stale-колонки только у тех, у кого НЕТ другой активной подписки
+    await query(
+      `UPDATE users u SET subscription_plan = NULL, subscription_expires = NULL
+       WHERE u.subscription_expires < NOW()
+         AND NOT EXISTS (
+           SELECT 1 FROM user_subscriptions us
+           WHERE us.user_id = u.id AND us.status = 'active' AND us.expires_at > NOW()
+         )`
+    );
+
+    for (const row of rows) {
+      try {
+        await notificationService.notify(
+          Number(row.telegram_id),
+          'subscription_expired',
+          `⌛ *Subscription ended*\n\nYour *${row.plan_name}* subscription has expired. Renew to bring back your badge, profile boost and monthly crystals.`,
+          { inlineKeyboard: [[
+            { text: '✦ Renew', web_app: { url: `${process.env.WEBAPP_URL}?screen=subscription` } },
+          ]] }
+        );
+      } catch (err) {
+        console.error(`[Monitor] Ошибка уведомления об истечении ${row.id}:`, err.message);
+      }
+    }
+
+    console.log(`[Monitor] Истекло подписок: ${rows.length}`);
+  } catch (err) {
+    console.error('[Monitor] Ошибка expireSubscriptions:', err.message);
   }
 }
 

@@ -139,15 +139,24 @@ function MaintenanceScreen({ message }: { message: string }) {
 // Обработчик invite-ссылки ?room=UUID
 // Запускается при старте — если есть ?room=, показываем JoinDeal
 // ============================================================
+// Карта ?screen= → маршрут (бот открывает mini app кнопками web_app с этим параметром)
+const SCREEN_ROUTES: Record<string, string> = {
+  profile     : '/profile',
+  new_deal    : '/new-deal',
+  job_board   : '/jobs',
+  subscription: '/subscription',
+  review      : '/review', // требует ?id=
+};
+
 function InviteHandler() {
   const navigate = useNavigate();
   const [inviteLink, setInviteLink] = useState<string | null>(null);
 
   useEffect(() => {
-    // Читаем ?room= из URL
     const params = new URLSearchParams(window.location.search);
-    const room = params.get('room');
 
+    // Читаем ?room= из URL
+    const room = params.get('room');
     // Также проверяем start_param Telegram (когда открыто через t.me/bot?startapp=...)
     const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
 
@@ -155,6 +164,15 @@ function InviteHandler() {
     if (link) {
       setInviteLink(link);
       navigate(`/join/${link}`, { replace: true });
+      return;
+    }
+
+    // Глубокая ссылка из бота: ?screen=subscription, ?screen=review&id=...
+    const screen = params.get('screen');
+    if (screen && SCREEN_ROUTES[screen]) {
+      const screenId = params.get('id');
+      const base     = SCREEN_ROUTES[screen];
+      navigate(screenId ? `${base}/${screenId}` : base, { replace: true });
     }
   }, []);
 
