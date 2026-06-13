@@ -124,6 +124,46 @@ router.get('/:id', async (req, res) => {
 });
 
 /**
+ * GET /api/contracts/:id/estimate
+ * Оценка депозита в TON по текущему курсу — показывается клиенту
+ * ДО деплоя контракта (deploy фиксирует точную сумму сам).
+ */
+router.get('/:id/estimate', async (req, res) => {
+  try {
+    const { telegramId } = req.user;
+    const { rows } = await query(
+      `SELECT c.amount_usd, c.currency,
+              uc.telegram_id AS client_tg_id,
+              uf.telegram_id AS freelancer_tg_id
+       FROM contracts c
+       JOIN rooms r ON r.id = c.room_id
+       JOIN users uc ON uc.id = r.client_id
+       LEFT JOIN users uf ON uf.id = r.freelancer_id
+       WHERE c.id = $1`,
+      [req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Contract not found' });
+
+    const row = rows[0];
+    const isParticipant = [row.client_tg_id, row.freelancer_tg_id]
+      .map(Number).includes(Number(telegramId));
+    if (!isParticipant) return res.status(403).json({ error: 'Access denied' });
+
+    const tonService = require('../services/tonService');
+    const tonPrice   = await tonService.getTonUsdPrice();
+    res.json({
+      amount_usd    : row.amount_usd,
+      ton_amount    : (Number(row.amount_usd) / tonPrice).toFixed(4),
+      ton_price_usd : tonPrice,
+      gas_buffer    : 0.15,
+    });
+  } catch (err) {
+    console.error('[API] GET /contracts/:id/estimate error:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
  * POST /api/contracts/:id/sign
  * Sign the contract.
  */

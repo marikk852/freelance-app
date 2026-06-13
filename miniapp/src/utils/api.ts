@@ -22,6 +22,7 @@ api.interceptors.request.use((config) => {
 export const contracts = {
   create: (data: any)             => api.post('/contracts', data),
   get:    (id: string)            => api.get(`/contracts/${id}`),
+  estimate: (id: string)          => api.get(`/contracts/${id}/estimate`),
   sign:   (id: string, role: string) => api.post(`/contracts/${id}/sign`, { role }),
   deploy: (id: string, data: any) => api.post(`/contracts/${id}/deploy`, data),
   approve:         (id: string)   => api.post(`/contracts/${id}/approve`),
