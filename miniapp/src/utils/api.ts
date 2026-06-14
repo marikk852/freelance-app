@@ -37,6 +37,7 @@ export const contracts = {
   deploy: (id: string, data: any) => api.post(`/contracts/${id}/deploy`, data),
   approve:         (id: string)   => api.post(`/contracts/${id}/approve`),
   simulatePayment: (id: string)   => api.post(`/contracts/${id}/simulate-payment`),
+  review: (id: string, body: { rating: number; comment?: string }) => api.post(`/contracts/${id}/review`, body),
 };
 
 // ---- Сдача работы ----

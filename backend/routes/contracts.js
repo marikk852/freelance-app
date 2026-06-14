@@ -424,4 +424,82 @@ router.post('/:id/simulate-payment', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/contracts/:id/review
+ * Оставить отзыв о контрагенте после завершённой сделки.
+ * Рейтинг 1–5; users.rating пересчитывается триггером БД. Один отзыв на сделку.
+ */
+router.post('/:id/review', async (req, res) => {
+  try {
+    const rating = Number(req.body.rating);
+    const comment = req.body.comment;
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      return res.status(400).json({ error: 'rating must be an integer 1–5' });
+    }
+    if (comment != null && String(comment).length > 1000) {
+      return res.status(400).json({ error: 'comment too long (max 1000)' });
+    }
+    const { telegramId } = req.user;
+
+    const { rows } = await query(
+      `SELECT c.status,
+              uc.id AS client_id, uc.telegram_id AS client_tg,
+              uf.id AS freelancer_id, uf.telegram_id AS freelancer_tg
+       FROM contracts c
+       JOIN rooms r ON r.id = c.room_id
+       JOIN users uc ON uc.id = r.client_id
+       LEFT JOIN users uf ON uf.id = r.freelancer_id
+       WHERE c.id = $1`,
+      [req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Contract not found' });
+    const c = rows[0];
+
+    if (c.status !== 'completed') {
+      return res.status(400).json({ error: 'You can only review a completed deal' });
+    }
+
+    // Кто оставляет отзыв и о ком
+    let reviewerId, revieweeId;
+    if (Number(c.client_tg) === Number(telegramId)) {
+      reviewerId = c.client_id; revieweeId = c.freelancer_id;
+    } else if (Number(c.freelancer_tg) === Number(telegramId)) {
+      reviewerId = c.freelancer_id; revieweeId = c.client_id;
+    } else {
+      return res.status(403).json({ error: 'Only deal participants can leave a review' });
+    }
+    if (!revieweeId) return res.status(400).json({ error: 'No counterparty to review' });
+
+    let review;
+    try {
+      const { rows: ins } = await query(
+        `INSERT INTO reviews (contract_id, reviewer_id, reviewee_id, rating, comment)
+         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+        [req.params.id, reviewerId, revieweeId, rating, comment ?? null]
+      );
+      review = ins[0];
+    } catch (e) {
+      if (e.code === '23505') return res.status(409).json({ error: 'You already reviewed this deal' });
+      throw e;
+    }
+
+    // +25 XP ревьюеру; кристаллы: review_left — ревьюеру, review_5star — ревьюи
+    await query('SELECT add_xp($1, 25)', [reviewerId]).catch(() => {});
+    crystalService.award(reviewerId, 'review_left').catch(() => {});
+    if (rating === 5) crystalService.award(revieweeId, 'review_5star').catch(() => {});
+
+    await AuditLog.log({
+      contract_id : req.params.id,
+      action      : 'review_left',
+      performed_by: reviewerId,
+      details     : { rating },
+    }).catch(() => {});
+
+    res.status(201).json(review);
+  } catch (err) {
+    console.error('[API] POST /contracts/:id/review error:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = router;
