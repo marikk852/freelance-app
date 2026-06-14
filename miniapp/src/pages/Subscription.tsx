@@ -38,6 +38,15 @@ const PLANS = [
 ];
 
 type Plan = typeof PLANS[number];
+// Котировка плана для пользователя (цена/TON/гейтинг по уровню)
+type Quote = {
+  eligible: boolean;
+  is_early?: boolean;
+  price_usd?: number;
+  ton_amount?: string;
+  your_level?: number;
+  required_level?: number;
+};
 // Стадии оплаты: пользователь всегда видит, что происходит сейчас
 type PayStage = 'idle' | 'creating' | 'wallet' | 'confirming';
 
@@ -63,7 +72,7 @@ export function Subscription() {
     urlPlan && PLANS.some(p => p.key === urlPlan) ? urlPlan : 'pro'
   );
   const [stage, setStage]   = useState<PayStage>('idle');
-  const [quotes, setQuotes] = useState<Record<string, string>>({});
+  const [quotes, setQuotes] = useState<Record<string, Quote>>({});
   // Отправленная, но не подтверждённая транзакция: повторный тап
   // НЕ создаёт новый платёж, а только перепроверяет этот BOC
   const [pendingTx, setPendingTx] = useState<{ planKey: string; boc: string } | null>(null);
@@ -99,17 +108,19 @@ export function Subscription() {
   };
   useEffect(loadPlans, []);
 
-  // Котировка в TON для выбранного плана — пользователь видит сумму
-  // ДО открытия кошелька, без сюрпризов
+  // Котировки (цена, TON, право покупки по уровню) для всех планов —
+  // пользователь видит реальную сумму и гейтинг ДО открытия кошелька
   useEffect(() => {
-    if (!selected || quotes[selected]) return;
-    fetch(`/api/subscriptions/quote/${selected}`, { headers: { 'X-Telegram-Init-Data': initData } })
-      .then(r => (r.ok ? r.json() : null))
-      .then(data => {
-        if (data?.ton_amount) setQuotes(q => ({ ...q, [selected]: data.ton_amount }));
-      })
-      .catch(() => {});
-  }, [selected]);
+    plans.forEach(plan => {
+      if (quotes[plan.key]) return;
+      fetch(`/api/subscriptions/quote/${plan.key}`, { headers: { 'X-Telegram-Init-Data': initData } })
+        .then(r => (r.ok ? r.json() : null))
+        .then((data: Quote | null) => {
+          if (data) setQuotes(q => ({ ...q, [plan.key]: data }));
+        })
+        .catch(() => {});
+    });
+  }, [plans]);
 
   const selectPlan = (key: string) => {
     setSelected(key);
@@ -196,6 +207,8 @@ export function Subscription() {
   };
 
   const selPlan   = plans.find(p => p.key === selected);
+  const selQuote  = quotes[selected];
+  const selLocked = selQuote ? selQuote.eligible === false : false;
   const isPending = pendingTx !== null && pendingTx.planKey === selected;
   const busy      = stage !== 'idle';
 
@@ -249,6 +262,8 @@ export function Subscription() {
           <div className="sub-plans">
             {plans.map(plan => {
               const isSelected = selected === plan.key;
+              const q = quotes[plan.key];
+              const locked = q ? q.eligible === false : false;
               return (
                 <div
                   key={plan.key}
@@ -299,12 +314,30 @@ export function Subscription() {
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div className="px" style={{ fontSize: '12px', color: plan.color }}>
-                        ${plan.price}
-                      </div>
-                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '4px' }}>
-                        {quotes[plan.key] ? `≈ ${quotes[plan.key]} TON / mo` : '/ month'}
-                      </div>
+                      {locked ? (
+                        <>
+                          <div className="px" style={{ fontSize: '9px', color: '#ff8800' }}>
+                            🔒 LVL {q?.required_level}
+                          </div>
+                          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '4px' }}>
+                            your LVL {q?.your_level}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="px" style={{ fontSize: '12px', color: plan.color }}>
+                            ${q?.price_usd ?? plan.price}
+                          </div>
+                          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '4px' }}>
+                            {q?.ton_amount ? `≈ ${q.ton_amount} TON / mo` : '/ month'}
+                          </div>
+                          {q?.is_early && (
+                            <div className="px" style={{ fontSize: '6px', color: '#ffaa00', marginTop: '4px' }}>
+                              EARLY ACCESS
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -344,24 +377,28 @@ export function Subscription() {
         {/* Purchase CTA — pixel glass button */}
         {selPlan && (
           <button
-            onClick={() => handlePurchase(selPlan.key)}
-            disabled={busy}
+            onClick={() => { if (!selLocked) handlePurchase(selPlan.key); }}
+            disabled={busy || selLocked}
             className="btn"
             style={{
-              background  : `linear-gradient(175deg, ${selPlan.color}, ${selPlan.color}99)`,
-              color       : '#fff',
-              border      : `1px solid ${selPlan.color}`,
-              boxShadow   : `0 0 16px ${selPlan.color}44`,
-              cursor      : busy ? 'not-allowed' : 'pointer',
+              background  : selLocked
+                ? 'rgba(255,255,255,0.06)'
+                : `linear-gradient(175deg, ${selPlan.color}, ${selPlan.color}99)`,
+              color       : selLocked ? '#ff8800' : '#fff',
+              border      : `1px solid ${selLocked ? 'rgba(255,136,0,0.4)' : selPlan.color}`,
+              boxShadow   : selLocked ? 'none' : `0 0 16px ${selPlan.color}44`,
+              cursor      : (busy || selLocked) ? 'not-allowed' : 'pointer',
               opacity     : busy ? 0.75 : 1,
-              textShadow  : '0 1px 0 rgba(0,0,0,0.4)',
+              textShadow  : selLocked ? 'none' : '0 1px 0 rgba(0,0,0,0.4)',
             }}
           >
-            {busy
-              ? STAGE_LABEL[stage]
-              : isPending
-                ? 'CHECK STATUS'
-                : `SUBSCRIBE ${selPlan.name} · $${selPlan.price}/MO`}
+            {selLocked
+              ? `🔒 UNLOCK AT LVL ${selQuote?.required_level} · YOU ARE LVL ${selQuote?.your_level}`
+              : busy
+                ? STAGE_LABEL[stage]
+                : isPending
+                  ? 'CHECK STATUS'
+                  : `SUBSCRIBE ${selPlan.name} · $${selQuote?.price_usd ?? selPlan.price}/MO`}
           </button>
         )}
 

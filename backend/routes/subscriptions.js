@@ -7,6 +7,20 @@ const { fromNano, toNano } = require('@ton/ton');
 
 router.use(authMiddleware);
 
+// Phase 3: право покупки и цена по уровню пользователя.
+// LVL < early_level_gate → нельзя купить. early_gate ≤ LVL < level_gate → ранний доступ
+// (дороже, price_early). LVL ≥ level_gate → стандартная цена (price_standard).
+function resolvePricing(plan, userLevel) {
+  const early = plan.early_level_gate;
+  const std   = plan.level_gate;
+  if (early != null && userLevel < early) {
+    return { eligible: false, requiredLevel: early };
+  }
+  const isEarly = std != null && userLevel < std;
+  const price = Number(isEarly ? plan.price_early_usd : plan.price_standard_usd);
+  return { eligible: true, isEarly, price, requiredLevel: early };
+}
+
 // GET /api/subscriptions/plans — available plans
 router.get('/plans', async (req, res) => {
   try {
@@ -55,12 +69,28 @@ router.get('/quote/:plan_key', async (req, res) => {
     );
     if (!plans[0]) return res.status(404).json({ error: 'Plan not available' });
 
+    const { rows: users } = await query(
+      `SELECT level FROM users WHERE telegram_id = $1`, [req.user.telegramId]
+    );
+    const userLevel = users[0] ? users[0].level : 1;
+    const pr = resolvePricing(plans[0], userLevel);
+
+    if (!pr.eligible) {
+      return res.json({
+        plan_key, eligible: false,
+        your_level: userLevel, required_level: pr.requiredLevel,
+      });
+    }
+
     const tonPrice = await tonService.getTonUsdPrice();
     res.json({
       plan_key,
-      price_usd     : plans[0].price_usd,
-      ton_amount    : (plans[0].price_usd / tonPrice).toFixed(4),
+      eligible      : true,
+      is_early      : pr.isEarly,
+      price_usd     : pr.price,
+      ton_amount    : (pr.price / tonPrice).toFixed(4),
       ton_price_usd : tonPrice,
+      your_level    : userLevel,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -81,23 +111,33 @@ router.post('/purchase', async (req, res) => {
     const plan = plans[0];
 
     const { rows: users } = await query(
-      `SELECT id FROM users WHERE telegram_id = $1`, [req.user.telegramId]
+      `SELECT id, level FROM users WHERE telegram_id = $1`, [req.user.telegramId]
     );
     if (!users[0]) return res.status(404).json({ error: 'User not found' });
 
-    // Calculate crypto amount
+    // Гейтинг по уровню + цена раннего доступа
+    const pr = resolvePricing(plan, users[0].level);
+    if (!pr.eligible) {
+      return res.status(403).json({
+        error: `${plan.name} unlocks at level ${pr.requiredLevel}. You are level ${users[0].level} — close more deals to level up.`,
+      });
+    }
+
+    // Calculate crypto amount по эффективной цене (early/standard)
     let cryptoAmount;
     if (currency === 'TON') {
       const tonPrice = await tonService.getTonUsdPrice();
-      cryptoAmount = (plan.price_usd / tonPrice).toFixed(9);
+      cryptoAmount = (pr.price / tonPrice).toFixed(9);
     } else {
-      cryptoAmount = plan.price_usd.toString();
+      cryptoAmount = pr.price.toString();
     }
 
     const arbitratorAddress = tonService.getArbitratorAddress();
 
     res.json({
       plan,
+      price_usd: pr.price,
+      is_early : pr.isEarly,
       payment: {
         to: arbitratorAddress,
         amount: cryptoAmount,
@@ -123,10 +163,17 @@ router.post('/confirm', async (req, res) => {
     const plan = plans[0];
 
     const { rows: users } = await query(
-      `SELECT id FROM users WHERE telegram_id = $1`, [req.user.telegramId]
+      `SELECT id, level FROM users WHERE telegram_id = $1`, [req.user.telegramId]
     );
     if (!users[0]) return res.status(404).json({ error: 'User not found' });
     const userId = users[0].id;
+
+    // Гейтинг + эффективная цена (та же, что в purchase)
+    const pr = resolvePricing(plan, users[0].level);
+    if (!pr.eligible) {
+      return res.status(403).json({ error: `${plan.name} unlocks at level ${pr.requiredLevel}.` });
+    }
+    const effectivePrice = pr.price;
 
     // Check duplicate tx
     const { rows: dup } = await query(
@@ -134,10 +181,10 @@ router.post('/confirm', async (req, res) => {
     );
     if (dup[0]) return res.status(409).json({ error: 'Transaction already used' });
 
-    // Verify payment on-chain
+    // Verify payment on-chain по эффективной цене
     if (currency === 'TON') {
       const tonPrice     = await tonService.getTonUsdPrice();
-      const expectedTon  = plan.price_usd / tonPrice;
+      const expectedTon  = effectivePrice / tonPrice;
       const verification = await tonService.verifyTonPayment(tx_hash, expectedTon);
       if (!verification.valid) {
         return res.status(402).json({ error: 'Payment not found on blockchain. Try again in a few seconds.' });
@@ -160,7 +207,7 @@ router.post('/confirm', async (req, res) => {
         `INSERT INTO user_subscriptions
            (user_id, plan_id, expires_at, tx_hash, currency, amount_paid)
          VALUES ($1, $2, $3, $4, $5, $6)`,
-        [userId, plan.id, expiresAt, tx_hash, currency, plan.price_usd]
+        [userId, plan.id, expiresAt, tx_hash, currency, effectivePrice]
       );
 
       // Award crystals
