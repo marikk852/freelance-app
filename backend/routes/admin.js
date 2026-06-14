@@ -792,6 +792,146 @@ router.patch('/api/subscriptions/plans/:key/toggle', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ================================================================
+// ECONOMY CONFIG (Фаза 0) — конфиг тарифов + кристальная экономика
+// ================================================================
+
+// helper: пустое/undefined → null (для nullable-полей; NULL в *_limit = ∞)
+const _num = (v) => (v === '' || v === undefined || v === null ? null : Number(v));
+
+// PUT /admark/api/subscriptions/plans/:key — полный конфиг тарифа
+// (прямое присваивание: поддерживает NULL = ∞ для лимитов)
+router.put('/api/subscriptions/plans/:key', async (req, res) => {
+  try {
+    const b = req.body;
+    const { rows } = await query(
+      `UPDATE subscription_plans SET
+         price_early_usd=$1, price_standard_usd=$2, price_usd=$2, commission_percent=$3,
+         monthly_crystals=$4, starter_bonus_crystals=$5, crystals_reward=$5,
+         earning_bonus_percent=$6, level_gate=$7, early_level_gate=$8,
+         active_deals_limit=$9, deal_max_usd=$10, portfolio_limit=$11,
+         applications_limit=$12, job_posts_limit=$13
+       WHERE key=$14 RETURNING *`,
+      [_num(b.price_early_usd), _num(b.price_standard_usd), _num(b.commission_percent),
+       _num(b.monthly_crystals) || 0, _num(b.starter_bonus_crystals) || 0,
+       _num(b.earning_bonus_percent) || 0, _num(b.level_gate), _num(b.early_level_gate),
+       _num(b.active_deals_limit), _num(b.deal_max_usd), _num(b.portfolio_limit),
+       _num(b.applications_limit), _num(b.job_posts_limit), req.params.key]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Plan not found' });
+    res.json(rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ---------- crystal_packages CRUD ----------
+router.get('/api/crystal-packages', async (req, res) => {
+  try { res.json((await query(`SELECT * FROM crystal_packages ORDER BY sort_order`)).rows); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.post('/api/crystal-packages', async (req, res) => {
+  try {
+    const { crystals, bonus_crystals = 0, price_usd, sort_order = 0 } = req.body;
+    if (crystals == null || price_usd == null) return res.status(400).json({ error: 'crystals, price_usd required' });
+    const { rows } = await query(
+      `INSERT INTO crystal_packages (crystals, bonus_crystals, price_usd, sort_order)
+       VALUES ($1,$2,$3,$4) RETURNING *`,
+      [crystals, bonus_crystals, price_usd, sort_order]
+    );
+    res.json(rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.put('/api/crystal-packages/:id', async (req, res) => {
+  try {
+    const { crystals, bonus_crystals, price_usd, sort_order, is_active } = req.body;
+    const { rows } = await query(
+      `UPDATE crystal_packages SET
+         crystals=COALESCE($1,crystals), bonus_crystals=COALESCE($2,bonus_crystals),
+         price_usd=COALESCE($3,price_usd), sort_order=COALESCE($4,sort_order),
+         is_active=COALESCE($5,is_active)
+       WHERE id=$6 RETURNING *`,
+      [crystals, bonus_crystals, price_usd, sort_order, is_active, req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Package not found' });
+    res.json(rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.delete('/api/crystal-packages/:id', async (req, res) => {
+  try { await query(`DELETE FROM crystal_packages WHERE id=$1`, [req.params.id]); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ---------- crystal_actions CRUD (заработок) ----------
+router.get('/api/crystal-actions', async (req, res) => {
+  try { res.json((await query(`SELECT * FROM crystal_actions ORDER BY sort_order`)).rows); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.post('/api/crystal-actions', async (req, res) => {
+  try {
+    const { key, label, amount, category = 'general', daily_cap = null, sort_order = 0 } = req.body;
+    if (!key || !label || amount == null) return res.status(400).json({ error: 'key, label, amount required' });
+    const { rows } = await query(
+      `INSERT INTO crystal_actions (key, label, amount, category, daily_cap, sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+      [key, label, amount, category, _num(daily_cap), sort_order]
+    );
+    res.json(rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.put('/api/crystal-actions/:id', async (req, res) => {
+  try {
+    const { label, amount, category, daily_cap, is_active, sort_order } = req.body;
+    const { rows } = await query(
+      `UPDATE crystal_actions SET
+         label=COALESCE($1,label), amount=COALESCE($2,amount), category=COALESCE($3,category),
+         daily_cap=$4, is_active=COALESCE($5,is_active), sort_order=COALESCE($6,sort_order)
+       WHERE id=$7 RETURNING *`,
+      [label, amount, category, _num(daily_cap), is_active, sort_order, req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Action not found' });
+    res.json(rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.delete('/api/crystal-actions/:id', async (req, res) => {
+  try { await query(`DELETE FROM crystal_actions WHERE id=$1`, [req.params.id]); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ---------- crystal_shop_items CRUD (трата, soft-only) ----------
+router.get('/api/crystal-shop', async (req, res) => {
+  try { res.json((await query(`SELECT * FROM crystal_shop_items ORDER BY sort_order`)).rows); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.post('/api/crystal-shop', async (req, res) => {
+  try {
+    const { key, label, cost, category = 'general', sort_order = 0 } = req.body;
+    if (!key || !label || cost == null) return res.status(400).json({ error: 'key, label, cost required' });
+    const { rows } = await query(
+      `INSERT INTO crystal_shop_items (key, label, cost, category, sort_order)
+       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      [key, label, cost, category, sort_order]
+    );
+    res.json(rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.put('/api/crystal-shop/:id', async (req, res) => {
+  try {
+    const { label, cost, category, is_active, sort_order } = req.body;
+    const { rows } = await query(
+      `UPDATE crystal_shop_items SET
+         label=COALESCE($1,label), cost=COALESCE($2,cost), category=COALESCE($3,category),
+         is_active=COALESCE($4,is_active), sort_order=COALESCE($5,sort_order)
+       WHERE id=$6 RETURNING *`,
+      [label, cost, category, is_active, sort_order, req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Item not found' });
+    res.json(rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.delete('/api/crystal-shop/:id', async (req, res) => {
+  try { await query(`DELETE FROM crystal_shop_items WHERE id=$1`, [req.params.id]); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // PUBLIC — platform status (for Mini App)
 // ================================================================
 router.get('/status', async (req, res) => {
