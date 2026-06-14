@@ -5,6 +5,7 @@ const { query, transaction } = require('../../database/db');
 const { Room, Contract, AuditLog } = require('../../database/models');
 const escrowService = require('../services/escrowService');
 const notificationService = require('../services/notificationService');
+const tierService = require('../services/tierService');
 const { getBotUsername } = require('../services/botInfo');
 
 // ============================================================
@@ -18,7 +19,7 @@ const TON_ADDRESS_RE = /^(UQ|EQ|kQ|0Q)[A-Za-z0-9_-]{46}$/;
 const createContractSchema = Joi.object({
   title      : Joi.string().min(3).max(256).required(),
   description: Joi.string().min(10).required(),
-  amount_usd : Joi.number().positive().max(500).required(),
+  amount_usd : Joi.number().positive().max(10000).required(), // потолок платформы; тарифный лимит ниже
   currency   : Joi.string().valid('TON', 'USDT').required(),
   deadline   : Joi.date().greater('now').required(),
   criteria   : Joi.array().items(
@@ -38,10 +39,35 @@ router.post('/', async (req, res) => {
     const { telegramId } = req.user;
 
     const { rows: users } = await query(
-      'SELECT id FROM users WHERE telegram_id = $1',
+      'SELECT id, subscription_plan, subscription_expires FROM users WHERE telegram_id = $1',
       [telegramId]
     );
     if (!users[0]) return res.status(404).json({ error: 'User not found' });
+
+    // Тарифные ограничения клиента (Фаза 1)
+    const tier = await tierService.getTierLimits(users[0]);
+
+    // Лимит суммы сделки по тарифу
+    if (tier.deal_max_usd != null && value.amount_usd > tier.deal_max_usd) {
+      return res.status(403).json({
+        error: `Deal amount $${value.amount_usd} exceeds your ${tier.name} limit of $${tier.deal_max_usd}. Upgrade your plan to create larger deals.`,
+      });
+    }
+
+    // Лимит одновременно активных сделок (NULL = ∞)
+    if (tier.active_deals_limit != null) {
+      const { rows: cnt } = await query(
+        `SELECT COUNT(*)::int AS n
+         FROM contracts c JOIN rooms r ON r.id = c.room_id
+         WHERE r.client_id = $1 AND c.status NOT IN ('completed','cancelled','refunded')`,
+        [users[0].id]
+      );
+      if (cnt[0].n >= tier.active_deals_limit) {
+        return res.status(403).json({
+          error: `You already have ${cnt[0].n} active deal(s) — your ${tier.name} plan allows ${tier.active_deals_limit}. Close a deal or upgrade your plan.`,
+        });
+      }
+    }
 
     const room = await Room.create(users[0].id);
 
@@ -53,6 +79,8 @@ router.post('/', async (req, res) => {
       currency   : value.currency,
       deadline   : value.deadline,
       criteria   : value.criteria,
+      // Фиксируем ставку комиссии тарифа на сделке (смена тарифа не затронет её)
+      commission_percent: tier.commission_percent,
     });
 
     // Client automatically signs upon creation (they are the initiator)
@@ -362,7 +390,11 @@ router.post('/:id/simulate-payment', async (req, res) => {
     );
 
     if (!existing[0]) {
-      const platformFee = cryptoAmount * (Number(process.env.PLATFORM_FEE_PERCENT) || 2) / 100;
+      // Зафиксированная на сделке ставка тарифа (fallback на env/free)
+      const feePercent  = contract.commission_percent != null
+        ? Number(contract.commission_percent)
+        : (Number(process.env.PLATFORM_FEE_PERCENT) || 5);
+      const platformFee = cryptoAmount * feePercent / 100;
       await query(
         `INSERT INTO escrow
            (contract_id, currency, amount, amount_usd, platform_fee, ton_contract_address, status, frozen_at)

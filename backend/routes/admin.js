@@ -4,6 +4,7 @@ const path     = require('path');
 const axios    = require('axios');
 const { query } = require('../../database/db');
 const escrowService      = require('../services/escrowService');
+const tierService        = require('../services/tierService');
 const { sendBroadcast, sendToTargets, processPendingBroadcasts } = require('../services/broadcastService');
 
 // ============================================================
@@ -819,6 +820,7 @@ router.put('/api/subscriptions/plans/:key', async (req, res) => {
        _num(b.applications_limit), _num(b.job_posts_limit), req.params.key]
     );
     if (!rows[0]) return res.status(404).json({ error: 'Plan not found' });
+    tierService.invalidate(); // правки тарифа действуют сразу
     res.json(rows[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

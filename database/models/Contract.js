@@ -9,13 +9,13 @@ const Contract = {
    * Создать черновик контракта.
    * @param {{ room_id, title, description, amount_usd, currency, deadline, criteria }} data
    */
-  async create({ room_id, title, description, amount_usd, currency, deadline, criteria }) {
+  async create({ room_id, title, description, amount_usd, currency, deadline, criteria, commission_percent = null }) {
     const { rows } = await query(
       `INSERT INTO contracts
-         (room_id, title, description, amount_usd, currency, deadline, criteria)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+         (room_id, title, description, amount_usd, currency, deadline, criteria, commission_percent)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
-      [room_id, title, description, amount_usd, currency, deadline, JSON.stringify(criteria)]
+      [room_id, title, description, amount_usd, currency, deadline, JSON.stringify(criteria), commission_percent]
     );
     return rows[0];
   },

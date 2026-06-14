@@ -45,13 +45,19 @@ async function deployContract({
   deadlineDate,
 }) {
   // Проверяем лимит $500
-  const maxAmount = Number(process.env.MAX_DEAL_AMOUNT_USD) || 500;
+  // Платформенный потолок $10k (тарифный лимит проверяется при создании сделки)
+  const maxAmount = 10000;
   if (amountUsd > maxAmount) {
-    throw new Error(`Сумма сделки $${amountUsd} превышает лимит $${maxAmount}`);
+    throw new Error(`Сумма сделки $${amountUsd} превышает потолок платформы $${maxAmount}`);
   }
 
-  // Вычисляем сумму в крипте
-  const feePercent  = Number(process.env.PLATFORM_FEE_PERCENT) || 2;
+  // Ставка комиссии — зафиксированная на сделке при создании (fallback на env/free)
+  const { rows: cRows } = await query(
+    `SELECT commission_percent FROM contracts WHERE id = $1`, [contractId]
+  );
+  const feePercent = cRows[0] && cRows[0].commission_percent != null
+    ? Number(cRows[0].commission_percent)
+    : (Number(process.env.PLATFORM_FEE_PERCENT) || 5);
   let   cryptoAmount;
   let   amountNano;
 
