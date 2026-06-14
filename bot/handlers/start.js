@@ -1,4 +1,5 @@
 const { User } = require('../../database/models');
+const crystalService = require('../../backend/services/crystalService');
 const { mainMenu } = require('../keyboards/inline');
 
 // ============================================================
@@ -36,21 +37,19 @@ async function handleStart(ctx) {
           await ctx.reply(
             `👋 *Welcome to SafeDeal!*\n\n` +
             `You joined via a referral link.\n` +
-            `🪙 Your friend earned *50 SafeCoins* for inviting you!\n\n` +
-            `Complete deals to earn your own coins and level up.`,
+            `💎 Your friend earned *Safe Crystals* for inviting you!\n\n` +
+            `Complete deals to earn your own crystals and level up.`,
             { parse_mode: 'Markdown' }
           );
 
-          // Notify the referrer (fire and forget)
+          // Награждаем реферера кристаллами (referral_invite, с множителем тарифа)
           if (referrer) {
-            const milestoneMsg = referrer.referral_count % 5 === 0
-              ? `\n\n🎉 *Milestone bonus!* +100 extra SafeCoins for ${referrer.referral_count} referrals!`
-              : '';
+            crystalService.award(referrer.id, 'referral_invite', { meta: { referred: tg.id } }).catch(() => {});
             ctx.telegram.sendMessage(
               referrerTelegramId,
               `🎊 *Your referral link worked!*\n\n` +
               `*${tg.first_name || tg.username}* just joined SafeDeal.\n` +
-              `🪙 You earned *+50 SafeCoins*! Total: *${referrer.safe_crystals} coins*${milestoneMsg}`,
+              `💎 You earned referral crystals! +500 more when they close their first deal.`,
               { parse_mode: 'Markdown' }
             ).catch(() => {});
           }

@@ -48,8 +48,9 @@ const User = {
       return { newUser: existing, referrer: null, isNew: false };
     }
 
-    // Транзакция: регистрация + награда реферера атомарны —
-    // нельзя создать пользователя без referral_count++ у реферера
+    // Транзакция: создание пользователя + referral_count++ у реферера атомарны.
+    // Кристаллы (referral_invite) начисляет ВЫЗЫВАЮЩИЙ через crystalService —
+    // с тарифным множителем и журналом; вехи рефералов — через tier-систему (referrals.js).
     return transaction(async (client) => {
       const { rows: newRows } = await client.query(
         `INSERT INTO users (telegram_id, username, first_name, last_name, referred_by)
@@ -64,27 +65,11 @@ const User = {
       }
 
       const { rows: refRows } = await client.query(
-        `UPDATE users
-         SET referral_count = referral_count + 1,
-             safe_crystals  = safe_crystals + 50,
-             updated_at     = NOW()
-         WHERE telegram_id = $1
-         RETURNING *`,
+        `UPDATE users SET referral_count = referral_count + 1, updated_at = NOW()
+         WHERE telegram_id = $1 RETURNING *`,
         [referrer_telegram_id]
       );
-      let referrer = refRows[0] || null;
-
-      // Every 5 referrals => milestone bonus +100 coins
-      if (referrer && referrer.referral_count % 5 === 0) {
-        const { rows: bonusRows } = await client.query(
-          `UPDATE users SET safe_crystals = safe_crystals + 100, updated_at = NOW()
-           WHERE telegram_id = $1 RETURNING *`,
-          [referrer_telegram_id]
-        );
-        referrer = bonusRows[0] || referrer;
-      }
-
-      return { newUser, referrer, isNew: true };
+      return { newUser, referrer: refRows[0] || null, isNew: true };
     });
   },
 

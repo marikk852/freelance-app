@@ -3,6 +3,7 @@ const { query } = require('../../database/db');
 const escrowService = require('./escrowService');
 const notificationService = require('./notificationService');
 const tonService = require('./tonService');
+const crystalService = require('./crystalService');
 const { fromNano, toNano } = require('@ton/ton');
 
 // Порог баланса арбитра — алерт если меньше
@@ -35,6 +36,9 @@ function startMonitoring() {
   // Авто-списания нет — в крипте оно невозможно без подписи пользователя.
   cron.schedule('0 10 * * *', sendSubscriptionRenewalReminders);
   cron.schedule('5 10 * * *', expireSubscriptions);
+
+  // Месячные кристальные награды (1-го числа 12:00): rating_month + deal_of_month
+  cron.schedule('0 12 1 * *', monthlyEconomyRewards);
 
   console.log('[Monitor] Фоновый мониторинг запущен');
 }
@@ -298,6 +302,55 @@ async function expireSubscriptions() {
     console.log(`[Monitor] Истекло подписок: ${rows.length}`);
   } catch (err) {
     console.error('[Monitor] Ошибка expireSubscriptions:', err.message);
+  }
+}
+
+/**
+ * Месячные кристальные награды (Фаза 2):
+ *  - rating_month: рейтинг ≥4.9 при ≥3 отзывах, не награждён в этом календарном месяце
+ *  - deal_of_month: топ-сделка прошлого месяца по сумме → фрилансеру (однократно на сделку)
+ */
+async function monthlyEconomyRewards() {
+  try {
+    // rating_month
+    const { rows: topRated } = await query(
+      `SELECT u.id FROM users u
+       JOIN (SELECT reviewee_id, COUNT(*) AS c FROM reviews GROUP BY reviewee_id) r
+         ON r.reviewee_id = u.id
+       WHERE u.rating >= 4.9 AND r.c >= 3
+         AND NOT EXISTS (
+           SELECT 1 FROM crystal_ledger l
+           WHERE l.user_id = u.id AND l.action_key = 'rating_month'
+             AND l.created_at >= date_trunc('month', NOW())
+         )`
+    );
+    for (const u of topRated) {
+      await crystalService.award(u.id, 'rating_month').catch(() => {});
+    }
+
+    // deal_of_month — топ по сумме за ПРОШЛЫЙ месяц
+    const { rows: dom } = await query(
+      `SELECT c.id, r.freelancer_id
+       FROM contracts c JOIN rooms r ON r.id = c.room_id
+       WHERE c.status = 'completed'
+         AND c.updated_at >= date_trunc('month', NOW()) - INTERVAL '1 month'
+         AND c.updated_at <  date_trunc('month', NOW())
+       ORDER BY c.amount_usd DESC LIMIT 1`
+    );
+    if (dom[0] && dom[0].freelancer_id) {
+      const { rows: already } = await query(
+        `SELECT 1 FROM crystal_ledger WHERE action_key = 'deal_of_month'
+           AND meta->>'contract_id' = $1 LIMIT 1`,
+        [dom[0].id]
+      );
+      if (!already[0]) {
+        await crystalService.award(dom[0].freelancer_id, 'deal_of_month', { meta: { contract_id: dom[0].id } });
+      }
+    }
+
+    console.log(`[Monitor] Месячные награды: rating_month ${topRated.length}, deal_of_month ${dom[0] ? 1 : 0}`);
+  } catch (err) {
+    console.error('[Monitor] Ошибка monthlyEconomyRewards:', err.message);
   }
 }
 

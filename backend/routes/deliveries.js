@@ -11,13 +11,24 @@ const tierService = require('../services/tierService');
 const crystalService = require('../services/crystalService');
 const { User } = require('../../database/models');
 
-// Кристальные вехи при закрытии сделки (level_up + достижения).
+// Кристальные вехи при закрытии сделки (level_up + достижения + реферал).
 // level = GREATEST(1, deals_completed/2) → растёт на чётных deals_completed ≥ 4.
 function awardDealMilestones(userId, deals) {
   if (!userId || !deals) return;
   if (deals >= 4 && deals % 2 === 0) crystalService.award(userId, 'level_up').catch(() => {});
   const ach = { 10: 'deals_10', 50: 'deals_50', 100: 'deals_100' }[deals];
   if (ach) crystalService.award(userId, ach).catch(() => {});
+  // Реферер получает referral_first_deal, когда приглашённый закрывает ПЕРВУЮ сделку
+  if (deals === 1) checkReferralFirstDeal(userId).catch(() => {});
+}
+
+// Наградить реферера за первую закрытую сделку приглашённого пользователя.
+async function checkReferralFirstDeal(userId) {
+  const { rows } = await query(`SELECT referred_by FROM users WHERE id = $1`, [userId]);
+  const refTg = rows[0] && rows[0].referred_by;
+  if (!refTg) return;
+  const { rows: ref } = await query(`SELECT id FROM users WHERE telegram_id = $1`, [refTg]);
+  if (ref[0]) crystalService.award(ref[0].id, 'referral_first_deal').catch(() => {});
 }
 
 // ============================================================

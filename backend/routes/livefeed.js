@@ -1,6 +1,7 @@
 const express = require('express');
 const router  = express.Router();
 const { query } = require('../../database/db');
+const crystalService = require('../services/crystalService');
 
 // ============================================================
 // GET /api/livefeed — Real-time deal feed + platform stats
@@ -14,6 +15,13 @@ const { query } = require('../../database/db');
  */
 router.get('/', async (req, res) => {
   try {
+    // Кристаллы за просмотр ленты (потолок 1/день; fire-and-forget — не тормозит ответ)
+    if (req.user?.telegramId) {
+      query(`SELECT id FROM users WHERE telegram_id = $1`, [req.user.telegramId])
+        .then(r => { if (r.rows[0]) crystalService.award(r.rows[0].id, 'live_feed_check').catch(() => {}); })
+        .catch(() => {});
+    }
+
     // ---- Platform stats ----
     const statsRes = await query(`
       SELECT
