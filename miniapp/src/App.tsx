@@ -22,6 +22,7 @@ import { Notifications }   from './pages/Notifications';
 import { Quests }          from './pages/Quests';
 import { Board }           from './pages/Board';
 import { Subscription }    from './pages/Subscription';
+import { Crystals }        from './pages/Crystals';
 import './styles/globals.css';
 
 // ============================================================
@@ -145,6 +146,7 @@ const SCREEN_ROUTES: Record<string, string> = {
   new_deal    : '/new-deal',
   job_board   : '/jobs',
   subscription: '/subscription',
+  crystals    : '/crystals',
   review      : '/review', // требует ?id=
 };
 
@@ -245,6 +247,7 @@ export default function App() {
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/quests"        element={<Quests />} />
         <Route path="/subscription"  element={<Subscription />} />
+        <Route path="/crystals"      element={<Crystals />} />
       </Routes>
 
       <BottomNav />

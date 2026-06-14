@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PixelScene } from '../components/PixelScene';
 import { DataRow } from '../components/GlassCard';
 import { users as usersApi } from '../utils/api';
@@ -56,6 +57,7 @@ function SectionLabel({ label }: { label: string }) {
 }
 
 export function Profile() {
+  const navigate = useNavigate();
   const { user, tg } = useTelegram();
   const { address: tonAddress, isConnected: walletConnected, connect: connectWallet, disconnect: disconnectWallet } = useTonWalletConnect();
   const [profile,   setProfile]   = useState<any>(null);
@@ -479,6 +481,10 @@ export function Profile() {
                   <DataRow label="Rating"          value={profile.rating > 0 ? `⭐ ${profile.rating}` : 'None'} color="#ffaa00" />
                   <DataRow label="🔥 Streak"       value={`${profile.streak_days} days`} />
                   <DataRow label="🪙 Safe Crystals"     value={String(profile.safe_crystals)} color="#cc44ff" />
+                  <button className="btn btn-y btn-full" style={{ fontSize: '7px', margin: '4px 0 8px' }}
+                    onClick={() => navigate('/crystals')}>
+                    [ 💎 EARN & SPEND CRYSTALS ]
+                  </button>
                   <DataRow label="Total XP"        value={String(profile.xp)} color="#0088ff" />
                   {profile.role    && <DataRow label="Role"     value={profile.role.toUpperCase()} />}
                   {profile.country && <DataRow label="Country"  value={profile.country} />}

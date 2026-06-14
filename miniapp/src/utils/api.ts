@@ -18,6 +18,16 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// ---- Кристаллы (soft-валюта) ----
+export const crystals = {
+  get:            ()              => api.get('/crystals'),
+  shop:           ()              => api.get('/crystals/shop'),
+  spend:          (key: string)   => api.post(`/crystals/spend/${key}`),
+  packages:       ()              => api.get('/crystals/packages'),
+  buyPackage:     (id: number)    => api.post(`/crystals/packages/${id}/purchase`),
+  confirmPackage: (body: { package_id: number; tx_hash: string }) => api.post('/crystals/packages/confirm', body),
+};
+
 // ---- Контракты ----
 export const contracts = {
   create: (data: any)             => api.post('/contracts', data),
