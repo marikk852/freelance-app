@@ -220,6 +220,7 @@ select.inp{cursor:pointer}
     <div class="nav-item" onclick="nav('finance')" data-i18n="nav_finance">💰 Finance</div>
     <div class="nav-item" onclick="nav('commission')" data-i18n="nav_commission">💸 Commissions</div>
     <div class="nav-item" onclick="nav('quests')">🎯 Quests</div>
+    <div class="nav-item" onclick="nav('economy')">💎 Economy</div>
     <div class="nav-item" onclick="nav('settings')" data-i18n="nav_settings">⚙️ Settings</div>
     <div class="nav-item" onclick="nav('broadcast')" data-i18n="nav_broadcast">📢 Broadcast</div>
     <div class="sidebar-footer"><span id="admin-time">--:--</span><a id="lang-btn" onclick="toggleLang()" title="Language" style="cursor:pointer">🇷🇺</a><a id="theme-btn" onclick="toggleTheme()" title="Toggle theme">🌙</a><a onclick="logout()" data-i18n="logout">Logout</a></div>
@@ -425,6 +426,46 @@ select.inp{cursor:pointer}
           </tr></thead>
           <tbody id="quests-body"><tr><td colspan="8" class="loading">Loading...</td></tr></tbody>
         </table>
+      </div>
+    </section>
+
+    <section id="s-economy" class="section">
+      <div class="page-title">💎 Economy</div>
+      <div class="page-sub">Tier config, crystal packages, earning &amp; shop — all editable. NULL limit = unlimited (∞).</div>
+
+      <div class="table-wrap" style="margin-bottom:16px">
+        <div class="table-header"><span class="table-title">📦 Subscription tiers</span></div>
+        <div style="overflow-x:auto"><table style="font-size:11px"><thead><tr>
+          <th>Plan</th><th>Comm %</th><th>$ early</th><th>$ std</th><th>Max $</th><th>Active</th>
+          <th>Portf</th><th>Apps</th><th>Jobs</th><th>💎/mo</th><th>Starter</th><th>Bonus%</th>
+          <th>LVL</th><th>eLVL</th><th></th>
+        </tr></thead><tbody id="eco-plans-body"></tbody></table></div>
+        <div style="font-size:10px;color:var(--muted);padding:6px 0">Пустое поле лимита = ∞ (безлимит).</div>
+      </div>
+
+      <div class="table-wrap" style="margin-bottom:16px">
+        <div class="table-header"><span class="table-title">🛒 Crystal packages (real → 💎)</span>
+          <button class="btn btn-green" style="font-size:10px;padding:4px 10px" onclick="ecoAddPackage()">+ Add</button></div>
+        <div style="overflow-x:auto"><table style="font-size:11px"><thead><tr>
+          <th>💎</th><th>Bonus</th><th>$ price</th><th>Sort</th><th>Active</th><th></th>
+        </tr></thead><tbody id="eco-packages-body"></tbody></table></div>
+      </div>
+
+      <div class="table-wrap" style="margin-bottom:16px">
+        <div class="table-header"><span class="table-title">⛏ Crystal earning (actions)</span>
+          <button class="btn btn-green" style="font-size:10px;padding:4px 10px" onclick="ecoAddAction()">+ Add</button></div>
+        <div style="overflow-x:auto"><table style="font-size:11px"><thead><tr>
+          <th>Key</th><th>Label</th><th>💎</th><th>Category</th><th>Daily cap</th><th>Active</th><th></th>
+        </tr></thead><tbody id="eco-actions-body"></tbody></table></div>
+        <div style="font-size:10px;color:var(--muted);padding:6px 0">Пустой daily cap = без потолка.</div>
+      </div>
+
+      <div class="table-wrap" style="margin-bottom:16px">
+        <div class="table-header"><span class="table-title">🏷 Crystal shop (spend — soft-only)</span>
+          <button class="btn btn-green" style="font-size:10px;padding:4px 10px" onclick="ecoAddShop()">+ Add</button></div>
+        <div style="overflow-x:auto"><table style="font-size:11px"><thead><tr>
+          <th>Key</th><th>Label</th><th>Cost 💎</th><th>Category</th><th>Active</th><th></th>
+        </tr></thead><tbody id="eco-shop-body"></tbody></table></div>
       </div>
     </section>
 
@@ -788,6 +829,7 @@ function nav(s){
   if(s==='settings')loadSettings();
   if(s==='broadcast')loadBcQueue();
   if(s==='quests')loadQuests();
+  if(s==='economy')loadEconomy();
 }
 
 function _handleResp(r){if(r.status===401){logout();return Promise.reject(new Error('Session expired'))}return r.json().then(function(d){if(!r.ok)throw new Error(d.error||r.statusText);return d})}
@@ -795,6 +837,7 @@ function get(url){return fetch(BASE+url,{headers:{'X-Admin-Token':TOKEN}}).then(
 function post(url,body){return fetch(BASE+url,{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Token':TOKEN},body:JSON.stringify(body)}).then(_handleResp)}
 function patch(url,body){return fetch(BASE+url,{method:'PATCH',headers:{'Content-Type':'application/json','X-Admin-Token':TOKEN},body:JSON.stringify(body)}).then(_handleResp)}
 function del(url){return fetch(BASE+url,{method:'DELETE',headers:{'X-Admin-Token':TOKEN}}).then(_handleResp)}
+function put(url,body){return fetch(BASE+url,{method:'PUT',headers:{'Content-Type':'application/json','X-Admin-Token':TOKEN},body:JSON.stringify(body)}).then(_handleResp)}
 
 function toast(msg,type){
   type=type||'ok';
@@ -1115,6 +1158,120 @@ function toggleQuest(id, active){
 function deleteQuest(id, title){
   if(!confirm('Delete quest "'+title+'"?'))return;
   del('/admark/api/quests/'+id).then(function(){toast('Deleted');loadQuests()}).catch(function(e){toast('Error: '+e.message,'err')});
+}
+
+// ===== ECONOMY (Phase 0 config) =====
+function _ein(id,val,w){return '<input id="'+id+'" value="'+(val==null?'':val)+'" style="width:'+(w||56)+'px;padding:3px 5px;font-size:11px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:4px;color:var(--text)">';}
+function _ev(id){var e=document.getElementById(id);return e?e.value.trim():'';}
+function _enum(id){var v=_ev(id);return v===''?null:Number(v);}
+function _ecoToggle(prefix,id,active){return '<button class="btn" onclick="toggleEco(this,\''+prefix+'\','+id+')" data-active="'+(active?1:0)+'" style="font-size:10px;padding:3px 9px;background:'+(active?'rgba(0,255,136,.1)':'rgba(255,68,68,.1)')+';color:'+(active?'var(--green)':'var(--red)')+';border-color:'+(active?'var(--green)':'var(--red)')+'">'+(active?'ON':'OFF')+'</button>';}
+function _ecoDelBtn(kind,id){return '<button class="btn" style="font-size:10px;padding:3px 8px;background:rgba(255,68,68,.08);color:var(--red);border-color:rgba(255,68,68,.3)" onclick="delEco(\''+kind+'\','+id+')">🗑</button>';}
+function _ecoSaveBtn(fn,id){return '<button class="btn btn-green" style="font-size:10px;padding:3px 8px;margin-right:4px" onclick="'+fn+'('+id+')">💾</button>';}
+
+function loadEconomy(){loadEcoPlans();loadEcoPackages();loadEcoActions();loadEcoShop();}
+
+function toggleEco(btn,prefix,id){
+  var map={pk:'crystal-packages',ac:'crystal-actions',sh:'crystal-shop'};
+  var newActive = btn.getAttribute('data-active')!=='1';
+  put('/admark/api/'+map[prefix]+'/'+id,{is_active:newActive}).then(function(){
+    if(prefix==='pk')loadEcoPackages(); else if(prefix==='ac')loadEcoActions(); else loadEcoShop();
+  }).catch(function(e){toast('Error: '+e.message,'err')});
+}
+function delEco(kind,id){
+  if(!confirm('Delete?'))return;
+  del('/admark/api/'+kind+'/'+id).then(function(){toast('Deleted');loadEconomy()}).catch(function(e){toast('Error: '+e.message,'err')});
+}
+
+function loadEcoPlans(){
+  get('/admark/api/subscriptions/plans').then(function(rows){
+    document.getElementById('eco-plans-body').innerHTML = rows.map(function(p){
+      var k=p.key, col=(k==='pro'?'#cc44ff':k==='basic'?'#0088ff':'var(--muted)');
+      return '<tr><td style="font-weight:600;color:'+col+'">'+p.key+'</td>'+
+        '<td>'+_ein('pl-'+k+'-commission_percent',p.commission_percent,46)+'</td>'+
+        '<td>'+_ein('pl-'+k+'-price_early_usd',p.price_early_usd,52)+'</td>'+
+        '<td>'+_ein('pl-'+k+'-price_standard_usd',p.price_standard_usd,52)+'</td>'+
+        '<td>'+_ein('pl-'+k+'-deal_max_usd',p.deal_max_usd,62)+'</td>'+
+        '<td>'+_ein('pl-'+k+'-active_deals_limit',p.active_deals_limit,44)+'</td>'+
+        '<td>'+_ein('pl-'+k+'-portfolio_limit',p.portfolio_limit,44)+'</td>'+
+        '<td>'+_ein('pl-'+k+'-applications_limit',p.applications_limit,44)+'</td>'+
+        '<td>'+_ein('pl-'+k+'-job_posts_limit',p.job_posts_limit,44)+'</td>'+
+        '<td>'+_ein('pl-'+k+'-monthly_crystals',p.monthly_crystals,54)+'</td>'+
+        '<td>'+_ein('pl-'+k+'-starter_bonus_crystals',p.starter_bonus_crystals,54)+'</td>'+
+        '<td>'+_ein('pl-'+k+'-earning_bonus_percent',p.earning_bonus_percent,44)+'</td>'+
+        '<td>'+_ein('pl-'+k+'-level_gate',p.level_gate,40)+'</td>'+
+        '<td>'+_ein('pl-'+k+'-early_level_gate',p.early_level_gate,40)+'</td>'+
+        '<td><button class="btn btn-green" style="font-size:10px;padding:3px 10px" onclick="saveEcoPlan(\''+k+'\')">💾</button></td></tr>';
+    }).join('');
+  }).catch(function(e){toast('Error: '+e.message,'err')});
+}
+function saveEcoPlan(k){
+  var f=['commission_percent','price_early_usd','price_standard_usd','deal_max_usd','active_deals_limit','portfolio_limit','applications_limit','job_posts_limit','monthly_crystals','starter_bonus_crystals','earning_bonus_percent','level_gate','early_level_gate'];
+  var body={}; f.forEach(function(n){body[n]=_enum('pl-'+k+'-'+n);});
+  put('/admark/api/subscriptions/plans/'+k,body).then(function(){toast('Plan '+k+' saved')}).catch(function(e){toast('Error: '+e.message,'err')});
+}
+
+function loadEcoPackages(){
+  get('/admark/api/crystal-packages').then(function(rows){
+    document.getElementById('eco-packages-body').innerHTML = rows.map(function(p){
+      return '<tr>'+
+        '<td>'+_ein('pk-'+p.id+'-crystals',p.crystals,60)+'</td>'+
+        '<td>'+_ein('pk-'+p.id+'-bonus_crystals',p.bonus_crystals,52)+'</td>'+
+        '<td>'+_ein('pk-'+p.id+'-price_usd',p.price_usd,52)+'</td>'+
+        '<td>'+_ein('pk-'+p.id+'-sort_order',p.sort_order,40)+'</td>'+
+        '<td>'+_ecoToggle('pk',p.id,p.is_active)+'</td>'+
+        '<td style="white-space:nowrap">'+_ecoSaveBtn('saveEcoPackage',p.id)+_ecoDelBtn('crystal-packages',p.id)+'</td></tr>';
+    }).join('');
+  }).catch(function(e){toast('Error: '+e.message,'err')});
+}
+function saveEcoPackage(id){
+  put('/admark/api/crystal-packages/'+id,{crystals:_enum('pk-'+id+'-crystals'),bonus_crystals:_enum('pk-'+id+'-bonus_crystals'),price_usd:_enum('pk-'+id+'-price_usd'),sort_order:_enum('pk-'+id+'-sort_order')}).then(function(){toast('Package saved')}).catch(function(e){toast('Error: '+e.message,'err')});
+}
+function ecoAddPackage(){
+  var c=prompt('Crystals?');if(!c)return;var pr=prompt('Price USD?');if(!pr)return;
+  post('/admark/api/crystal-packages',{crystals:Number(c),price_usd:Number(pr),bonus_crystals:0,sort_order:99}).then(function(){toast('Added');loadEcoPackages()}).catch(function(e){toast('Error: '+e.message,'err')});
+}
+
+function loadEcoActions(){
+  get('/admark/api/crystal-actions').then(function(rows){
+    document.getElementById('eco-actions-body').innerHTML = rows.map(function(a){
+      return '<tr>'+
+        '<td style="font-family:monospace;font-size:10px;color:var(--muted)">'+a.key+'</td>'+
+        '<td>'+_ein('ac-'+a.id+'-label',a.label,150)+'</td>'+
+        '<td>'+_ein('ac-'+a.id+'-amount',a.amount,52)+'</td>'+
+        '<td>'+_ein('ac-'+a.id+'-category',a.category,80)+'</td>'+
+        '<td>'+_ein('ac-'+a.id+'-daily_cap',a.daily_cap,44)+'</td>'+
+        '<td>'+_ecoToggle('ac',a.id,a.is_active)+'</td>'+
+        '<td style="white-space:nowrap">'+_ecoSaveBtn('saveEcoAction',a.id)+_ecoDelBtn('crystal-actions',a.id)+'</td></tr>';
+    }).join('');
+  }).catch(function(e){toast('Error: '+e.message,'err')});
+}
+function saveEcoAction(id){
+  put('/admark/api/crystal-actions/'+id,{label:_ev('ac-'+id+'-label'),amount:_enum('ac-'+id+'-amount'),category:_ev('ac-'+id+'-category'),daily_cap:_enum('ac-'+id+'-daily_cap')}).then(function(){toast('Action saved')}).catch(function(e){toast('Error: '+e.message,'err')});
+}
+function ecoAddAction(){
+  var k=prompt('Key (unique)?');if(!k)return;var l=prompt('Label?');if(!l)return;var am=prompt('Amount 💎?');if(!am)return;
+  post('/admark/api/crystal-actions',{key:k,label:l,amount:Number(am),category:'general',sort_order:99}).then(function(){toast('Added');loadEcoActions()}).catch(function(e){toast('Error: '+e.message,'err')});
+}
+
+function loadEcoShop(){
+  get('/admark/api/crystal-shop').then(function(rows){
+    document.getElementById('eco-shop-body').innerHTML = rows.map(function(s){
+      return '<tr>'+
+        '<td style="font-family:monospace;font-size:10px;color:var(--muted)">'+s.key+'</td>'+
+        '<td>'+_ein('sh-'+s.id+'-label',s.label,170)+'</td>'+
+        '<td>'+_ein('sh-'+s.id+'-cost',s.cost,56)+'</td>'+
+        '<td>'+_ein('sh-'+s.id+'-category',s.category,90)+'</td>'+
+        '<td>'+_ecoToggle('sh',s.id,s.is_active)+'</td>'+
+        '<td style="white-space:nowrap">'+_ecoSaveBtn('saveEcoShop',s.id)+_ecoDelBtn('crystal-shop',s.id)+'</td></tr>';
+    }).join('');
+  }).catch(function(e){toast('Error: '+e.message,'err')});
+}
+function saveEcoShop(id){
+  put('/admark/api/crystal-shop/'+id,{label:_ev('sh-'+id+'-label'),cost:_enum('sh-'+id+'-cost'),category:_ev('sh-'+id+'-category')}).then(function(){toast('Item saved')}).catch(function(e){toast('Error: '+e.message,'err')});
+}
+function ecoAddShop(){
+  var k=prompt('Key (unique)?');if(!k)return;var l=prompt('Label?');if(!l)return;var c=prompt('Cost 💎?');if(!c)return;
+  post('/admark/api/crystal-shop',{key:k,label:l,cost:Number(c),category:'general',sort_order:99}).then(function(){toast('Added');loadEcoShop()}).catch(function(e){toast('Error: '+e.message,'err')});
 }
 
 // FINANCE
