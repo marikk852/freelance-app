@@ -138,6 +138,7 @@ app.use('/api/notifications',  require('./routes/notifications'));
 app.use('/api/quests',         require('./routes/quests'));
 app.use('/api/subscriptions',  require('./routes/subscriptions'));
 app.use('/api/referrals',      require('./routes/referrals'));
+app.use('/api/crystals',       require('./routes/crystals'));
 
 // ---------- Webhook для бота (production) ----------
 if (process.env.NODE_ENV === 'production') {

@@ -6,6 +6,7 @@ const { Room, Contract, AuditLog } = require('../../database/models');
 const escrowService = require('../services/escrowService');
 const notificationService = require('../services/notificationService');
 const tierService = require('../services/tierService');
+const crystalService = require('../services/crystalService');
 const { getBotUsername } = require('../services/botInfo');
 
 // ============================================================
@@ -86,8 +87,9 @@ router.post('/', async (req, res) => {
     // Client automatically signs upon creation (they are the initiator)
     await Contract.sign(contract.id, 'client');
 
-    // +50 XP за создание сделки
+    // +50 XP + кристаллы за создание сделки
     await query('SELECT add_xp($1, 50)', [users[0].id]).catch(() => {});
+    crystalService.award(users[0].id, 'deal_create').catch(() => {});
 
     await AuditLog.log({
       contract_id : contract.id,

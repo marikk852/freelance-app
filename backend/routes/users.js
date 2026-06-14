@@ -7,6 +7,7 @@ const multer  = require('multer');
 const sharp   = require('sharp');
 const { query } = require('../../database/db');
 const { User } = require('../../database/models');
+const crystalService = require('../services/crystalService');
 
 const BANNERS_DIR = path.join(__dirname, '../../storage/banners');
 const AVATARS_DIR = path.join(__dirname, '../../storage/avatars');
@@ -88,6 +89,8 @@ router.get('/me', async (req, res) => {
     // Streak обновляется при каждом открытии Mini App, не только через /start бота
     // (SQL update_streak идемпотентна в пределах дня)
     await User.updateStreak(me.id);
+    // Кристаллы за ежедневный вход (daily_cap=1 → раз в день)
+    crystalService.award(me.id, 'daily_login').catch(() => {});
 
     const { rows } = await query(
       `SELECT
@@ -305,7 +308,11 @@ router.patch('/me/wallet', async (req, res) => {
 
     const user = await User.setWallet(req.user.telegramId, walletAddress);
     // Привязка кошелька могла открыть критерий заработанной верификации
-    if (user) User.checkEarnedVerification(user.id).catch(() => {});
+    if (user) {
+      User.checkEarnedVerification(user.id)
+        .then(granted => { if (granted) crystalService.award(user.id, 'account_verified').catch(() => {}); })
+        .catch(() => {});
+    }
     res.json(user);
   } catch (err) {
     res.status(500).json({ error: 'Internal server error' });

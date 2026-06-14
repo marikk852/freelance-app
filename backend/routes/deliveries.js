@@ -8,6 +8,7 @@ const fileProtection = require('../services/fileProtection');
 const escrowService  = require('../services/escrowService');
 const notificationService = require('../services/notificationService');
 const tierService = require('../services/tierService');
+const crystalService = require('../services/crystalService');
 const { User } = require('../../database/models');
 
 // ============================================================
@@ -421,7 +422,7 @@ router.post('/:id/approve', async (req, res) => {
               uc.telegram_id AS client_tg_id,
               uf.telegram_id AS freelancer_tg_id,
               uf.id AS freelancer_db_id,
-              c.crypto_amount, c.currency
+              c.crypto_amount, c.currency, c.deadline
        FROM deliveries d
        JOIN contracts c ON c.id = d.contract_id
        JOIN rooms r ON r.id = c.room_id
@@ -496,11 +497,12 @@ router.post('/:id/approve', async (req, res) => {
         );
         visible = pc[0].n < ptier.portfolio_limit;
       }
-      await query(
+      const { rows: pins } = await query(
         `INSERT INTO portfolio_items
            (freelancer_id, contract_id, title, description, is_visible)
          VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT DO NOTHING`,
+         ON CONFLICT DO NOTHING
+         RETURNING id`,
         [
           delivery.freelancer_db_id,
           delivery.contract_id,
@@ -509,6 +511,10 @@ router.post('/:id/approve', async (req, res) => {
           visible,
         ]
       );
+      // Кристаллы за добавление видимой работы в портфолио
+      if (pins[0] && visible) {
+        crystalService.award(delivery.freelancer_db_id, 'portfolio_add').catch(() => {});
+      }
     } catch (err) { console.error('[Portfolio] Error creating entry:', err.message); }
 
     // +200 XP for completing a deal (freelancer)
@@ -517,8 +523,21 @@ router.post('/:id/approve', async (req, res) => {
       [delivery.freelancer_tg_id]
     ).catch(() => {});
 
+    // Кристаллы фрилансеру за закрытие сделки (+ бонусы)
+    crystalService.award(delivery.freelancer_db_id, 'deal_close').catch(() => {});
+    // Быстрое закрытие — до дедлайна
+    if (delivery.deadline && new Date(delivery.deadline) > new Date()) {
+      crystalService.award(delivery.freelancer_db_id, 'deal_fast_close').catch(() => {});
+    }
+    // Без споров — если по контракту нет ни одного спора
+    query(`SELECT 1 FROM disputes WHERE contract_id = $1 LIMIT 1`, [delivery.contract_id])
+      .then(d => { if (!d.rows[0]) crystalService.award(delivery.freelancer_db_id, 'deal_no_dispute').catch(() => {}); })
+      .catch(() => {});
+
     // Проверяем заработанную верификацию (FREE: ≥3 закрытых сделки + кошелёк ≥14д)
-    User.checkEarnedVerification(delivery.freelancer_db_id).catch(() => {});
+    User.checkEarnedVerification(delivery.freelancer_db_id)
+      .then(granted => { if (granted) crystalService.award(delivery.freelancer_db_id, 'account_verified').catch(() => {}); })
+      .catch(() => {});
 
     // +200 XP for the client
     await query(

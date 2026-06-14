@@ -56,9 +56,19 @@ async function getTierLimitsByTelegramId(telegramId) {
   return getTierLimits(rows[0] || {});
 }
 
+/** То же, но по внутреннему id пользователя. */
+async function getTierLimitsByUserId(userId) {
+  const { rows } = await query(
+    `SELECT subscription_plan, subscription_expires FROM users WHERE id = $1`,
+    [userId]
+  );
+  return getTierLimits(rows[0] || {});
+}
+
 module.exports = {
   getTierLimits,
   getTierLimitsByTelegramId,
+  getTierLimitsByUserId,
   tierKeyFromUser,
   invalidate,
 };
