@@ -2,6 +2,7 @@ const express = require('express');
 const router  = express.Router();
 const Joi     = require('joi');
 const { query } = require('../../database/db');
+const tierService = require('../services/tierService');
 
 // ============================================================
 // Routes: /api/jobs — job board
@@ -182,10 +183,25 @@ router.post('/:id/apply', async (req, res) => {
     const { cover_letter, proposed_amount } = req.body;
 
     const { rows: users } = await query(
-      'SELECT id FROM users WHERE telegram_id = $1',
+      'SELECT id, subscription_plan, subscription_expires FROM users WHERE telegram_id = $1',
       [req.user.telegramId]
     );
     if (!users[0]) return res.status(404).json({ error: 'User not found' });
+
+    // Тарифный лимит активных откликов (NULL = ∞)
+    const tier = await tierService.getTierLimits(users[0]);
+    if (tier.applications_limit != null) {
+      const { rows: ac } = await query(
+        `SELECT COUNT(*)::int AS n FROM job_applications
+         WHERE freelancer_id = $1 AND status = 'pending'`,
+        [users[0].id]
+      );
+      if (ac[0].n >= tier.applications_limit) {
+        return res.status(403).json({
+          error: `You have ${ac[0].n} active application(s) — your ${tier.name} plan allows ${tier.applications_limit}. Upgrade to apply to more jobs.`,
+        });
+      }
+    }
 
     const { rows } = await query(
       `INSERT INTO job_applications (job_post_id, freelancer_id, cover_letter, proposed_amount)

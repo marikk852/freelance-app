@@ -7,6 +7,8 @@ const { query, transaction } = require('../../database/db');
 const fileProtection = require('../services/fileProtection');
 const escrowService  = require('../services/escrowService');
 const notificationService = require('../services/notificationService');
+const tierService = require('../services/tierService');
+const { User } = require('../../database/models');
 
 // ============================================================
 // Routes: /api/deliveries — freelancer work submission
@@ -476,25 +478,47 @@ router.post('/:id/approve', async (req, res) => {
       console.error('[Delivery] Error releasing files:', err.message);
     }
 
-    // Create portfolio entry for the freelancer
-    await query(
-      `INSERT INTO portfolio_items
-         (freelancer_id, contract_id, title, description, is_visible)
-       VALUES ($1, $2, $3, $4, TRUE)
-       ON CONFLICT DO NOTHING`,
-      [
-        delivery.freelancer_db_id,
-        delivery.contract_id,
-        delivery.title,
-        delivery.contract_description || '',
-      ]
-    ).catch(err => console.error('[Portfolio] Error creating entry:', err.message));
+    // Create portfolio entry for the freelancer.
+    // Тарифный лимит видимых работ (FREE 3 / BASIC 10 / PRO ∞): сверх лимита —
+    // создаём скрытой (is_visible=FALSE), апгрейд тарифа откроет её.
+    try {
+      const { rows: fr } = await query(
+        `SELECT subscription_plan, subscription_expires FROM users WHERE id = $1`,
+        [delivery.freelancer_db_id]
+      );
+      const ptier = await tierService.getTierLimits(fr[0] || {});
+      let visible = true;
+      if (ptier.portfolio_limit != null) {
+        const { rows: pc } = await query(
+          `SELECT COUNT(*)::int AS n FROM portfolio_items
+           WHERE freelancer_id = $1 AND is_visible = TRUE`,
+          [delivery.freelancer_db_id]
+        );
+        visible = pc[0].n < ptier.portfolio_limit;
+      }
+      await query(
+        `INSERT INTO portfolio_items
+           (freelancer_id, contract_id, title, description, is_visible)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT DO NOTHING`,
+        [
+          delivery.freelancer_db_id,
+          delivery.contract_id,
+          delivery.title,
+          delivery.contract_description || '',
+          visible,
+        ]
+      );
+    } catch (err) { console.error('[Portfolio] Error creating entry:', err.message); }
 
     // +200 XP for completing a deal (freelancer)
     await query(
       `SELECT add_xp(id, 200) FROM users WHERE telegram_id = $1`,
       [delivery.freelancer_tg_id]
     ).catch(() => {});
+
+    // Проверяем заработанную верификацию (FREE: ≥3 закрытых сделки + кошелёк ≥14д)
+    User.checkEarnedVerification(delivery.freelancer_db_id).catch(() => {});
 
     // +200 XP for the client
     await query(

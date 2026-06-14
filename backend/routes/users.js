@@ -103,6 +103,7 @@ router.get('/me', async (req, res) => {
          u.streak_days,
          u.safe_crystals,
          u.is_verified,
+         u.verification_type,
          u.bio,
          u.role,
          u.category,
@@ -303,6 +304,8 @@ router.patch('/me/wallet', async (req, res) => {
     }
 
     const user = await User.setWallet(req.user.telegramId, walletAddress);
+    // Привязка кошелька могла открыть критерий заработанной верификации
+    if (user) User.checkEarnedVerification(user.id).catch(() => {});
     res.json(user);
   } catch (err) {
     res.status(500).json({ error: 'Internal server error' });

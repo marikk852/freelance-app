@@ -106,11 +106,45 @@ const User = {
    */
   async setWallet(telegramId, walletAddress) {
     const { rows } = await query(
-      `UPDATE users SET ton_wallet_address = $2, updated_at = NOW()
+      `UPDATE users SET ton_wallet_address = $2,
+              wallet_linked_at = COALESCE(wallet_linked_at, NOW()),
+              updated_at = NOW()
        WHERE telegram_id = $1 RETURNING *`,
       [telegramId, walletAddress]
     );
     return rows[0] || null;
+  },
+
+  /**
+   * Проверить и выдать заработанную верификацию (FREE).
+   * Критерии: тариф free + deals_completed ≥ 3 + кошелёк привязан ≥ 14 дней.
+   * У подписчиков верификация идёт от тарифа (basic/pro) — здесь не трогаем.
+   * @param {number} userId
+   * @returns {Promise<boolean>} выдана ли сейчас
+   */
+  async checkEarnedVerification(userId) {
+    const { rows } = await query(
+      `SELECT is_verified, deals_completed, subscription_plan, subscription_expires,
+              ton_wallet_address, wallet_linked_at
+       FROM users WHERE id = $1`,
+      [userId]
+    );
+    const u = rows[0];
+    if (!u || u.is_verified) return false;
+    const isSubscriber = u.subscription_plan && u.subscription_expires
+      && new Date(u.subscription_expires) > new Date();
+    if (isSubscriber) return false; // у них верификация от тарифа
+    if (!u.ton_wallet_address || !u.wallet_linked_at) return false;
+    const ageDays = (Date.now() - new Date(u.wallet_linked_at).getTime()) / 864e5;
+    if (u.deals_completed >= 3 && ageDays >= 14) {
+      await query(
+        `UPDATE users SET is_verified = TRUE, verification_type = 'earned', updated_at = NOW()
+         WHERE id = $1`,
+        [userId]
+      );
+      return true;
+    }
+    return false;
   },
 
   /**
