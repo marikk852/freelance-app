@@ -11,6 +11,15 @@ const tierService = require('../services/tierService');
 const crystalService = require('../services/crystalService');
 const { User } = require('../../database/models');
 
+// Кристальные вехи при закрытии сделки (level_up + достижения).
+// level = GREATEST(1, deals_completed/2) → растёт на чётных deals_completed ≥ 4.
+function awardDealMilestones(userId, deals) {
+  if (!userId || !deals) return;
+  if (deals >= 4 && deals % 2 === 0) crystalService.award(userId, 'level_up').catch(() => {});
+  const ach = { 10: 'deals_10', 50: 'deals_50', 100: 'deals_100' }[deals];
+  if (ach) crystalService.award(userId, ach).catch(() => {});
+}
+
 // ============================================================
 // Routes: /api/deliveries — freelancer work submission
 // ============================================================
@@ -517,11 +526,12 @@ router.post('/:id/approve', async (req, res) => {
       }
     } catch (err) { console.error('[Portfolio] Error creating entry:', err.message); }
 
-    // +200 XP for completing a deal (freelancer)
-    await query(
-      `SELECT add_xp(id, 200) FROM users WHERE telegram_id = $1`,
+    // +200 XP фрилансеру (add_xp САМ инкрементирует deals_completed и уровень)
+    const { rows: frXp } = await query(
+      `SELECT add_xp(id, 200) AS deals FROM users WHERE telegram_id = $1`,
       [delivery.freelancer_tg_id]
-    ).catch(() => {});
+    ).catch(() => ({ rows: [] }));
+    awardDealMilestones(delivery.freelancer_db_id, frXp[0] && frXp[0].deals);
 
     // Кристаллы фрилансеру за закрытие сделки (+ бонусы)
     crystalService.award(delivery.freelancer_db_id, 'deal_close').catch(() => {});
@@ -539,18 +549,14 @@ router.post('/:id/approve', async (req, res) => {
       .then(granted => { if (granted) crystalService.award(delivery.freelancer_db_id, 'account_verified').catch(() => {}); })
       .catch(() => {});
 
-    // +200 XP for the client
-    await query(
-      `SELECT add_xp(id, 200) FROM users WHERE telegram_id = $1`,
+    // +200 XP клиенту (add_xp САМ инкрементирует deals_completed/уровень).
+    // NB: убран отдельный UPDATE deals_completed +1 — он давал ДВОЙНОЙ инкремент
+    // (add_xp уже считает), из-за чего уровни/гейтинг/верификация были 2× завышены.
+    const { rows: clXp } = await query(
+      `SELECT add_xp(id, 200) AS deals FROM users WHERE telegram_id = $1`,
       [delivery.client_tg_id]
-    ).catch(() => {});
-
-    // Increment deals_completed
-    await query(
-      `UPDATE users SET deals_completed = deals_completed + 1
-       WHERE telegram_id = ANY($1)`,
-      [[String(delivery.client_tg_id), String(delivery.freelancer_tg_id)]]
-    ).catch(() => {});
+    ).catch(() => ({ rows: [] }));
+    awardDealMilestones(delivery.client_id, clXp[0] && clXp[0].deals);
 
     await notificationService.notifyWorkApproved({
       freelancerTgId: delivery.freelancer_tg_id,

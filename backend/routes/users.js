@@ -136,6 +136,10 @@ router.get('/me', async (req, res) => {
     );
 
     if (!rows[0]) return res.status(404).json({ error: 'User not found' });
+    // Кристаллы за стрик (5×дней, потолок 1/день)
+    if (rows[0].streak_days > 0) {
+      crystalService.award(me.id, 'streak_day', { amountOverride: 5 * rows[0].streak_days }).catch(() => {});
+    }
     res.json(rows[0]);
   } catch (err) {
     console.error('[API] GET /users/me error:', err.message);
