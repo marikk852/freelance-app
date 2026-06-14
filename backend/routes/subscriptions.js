@@ -3,6 +3,7 @@ const router  = express.Router();
 const { query, transaction } = require('../../database/db');
 const { authMiddleware } = require("../middleware/auth");
 const tonService     = require('../services/tonService');
+const crystalService = require('../services/crystalService');
 const { fromNano, toNano } = require('@ton/ton');
 
 router.use(authMiddleware);
@@ -194,34 +195,44 @@ router.post('/confirm', async (req, res) => {
     const expiresAt = new Date();
     expiresAt.setMonth(expiresAt.getMonth() + 1);
 
+    // Стартовый бонус — только при ПЕРВОЙ подписке (любого тарифа)
+    const { rows: prior } = await query(
+      `SELECT 1 FROM user_subscriptions WHERE user_id = $1 LIMIT 1`, [userId]
+    );
+    const firstEver = prior.length === 0;
+
+    // Авто-продления нет: каждый месяц = новая покупка = новый ежемесячный грант,
+    // поэтому отдельный cron для monthly не нужен.
+    const monthlyGrant = Number(plan.monthly_crystals) || 0;
+    const starterGrant = firstEver ? (Number(plan.starter_bonus_crystals) || 0) : 0;
+
     await transaction(async (client) => {
-      // Expire previous subscriptions
       await client.query(
         `UPDATE user_subscriptions SET status = 'expired'
          WHERE user_id = $1 AND status = 'active'`,
         [userId]
       );
-
-      // Create new subscription
       await client.query(
         `INSERT INTO user_subscriptions
            (user_id, plan_id, expires_at, tx_hash, currency, amount_paid)
          VALUES ($1, $2, $3, $4, $5, $6)`,
         [userId, plan.id, expiresAt, tx_hash, currency, effectivePrice]
       );
-
-      // Award crystals
       await client.query(
-        `UPDATE users SET
-           safe_crystals = safe_crystals + $1,
-           subscription_plan = $2,
-           subscription_expires = $3
-         WHERE id = $4`,
-        [plan.crystals_reward, plan.key, expiresAt, userId]
+        `UPDATE users SET subscription_plan = $1, subscription_expires = $2 WHERE id = $3`,
+        [plan.key, expiresAt, userId]
       );
     });
 
-    res.json({ success: true, expires_at: expiresAt, crystals_awarded: plan.crystals_reward });
+    // Гранты кристаллов через ledger (вне основной транзакции, отдельными записями)
+    if (monthlyGrant > 0) {
+      await crystalService.grant(userId, monthlyGrant, { kind: 'grant', action_key: 'subscription_monthly', meta: { plan: plan.key } });
+    }
+    if (starterGrant > 0) {
+      await crystalService.grant(userId, starterGrant, { kind: 'grant', action_key: 'subscription_starter', meta: { plan: plan.key } });
+    }
+
+    res.json({ success: true, expires_at: expiresAt, crystals_awarded: monthlyGrant + starterGrant });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
