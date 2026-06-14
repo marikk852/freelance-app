@@ -29,6 +29,11 @@ export function DealRoom() {
   const [deal, setDeal]   = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [signing, setSigning] = useState(false);
+  // Отзыв после завершения сделки
+  const [rating, setRating]       = useState(0);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewed, setReviewed]   = useState(false);
+  const [submittingReview, setSubmittingReview] = useState(false);
   const inviteUrlFromState = (location.state as any)?.inviteUrl;
   // Restore inviteUrl from contract data if state was lost (refresh)
   const inviteUrl = inviteUrlFromState
@@ -84,6 +89,27 @@ export function DealRoom() {
   const go = (path: string) => {
     tg?.HapticFeedback?.impactOccurred('medium');
     navigate(path);
+  };
+
+  const submitReview = async () => {
+    if (rating < 1) { toast.error('Pick a star rating'); return; }
+    setSubmittingReview(true);
+    try {
+      await contractsApi.review(id!, { rating, comment: reviewComment.trim() || undefined });
+      tg?.HapticFeedback?.notificationOccurred('success');
+      toast.success('Review submitted! +25 XP');
+      setReviewed(true);
+    } catch (e: any) {
+      if (e.response?.status === 409) {
+        setReviewed(true);
+        toast('You already reviewed this deal', { icon: '✓' });
+      } else {
+        tg?.HapticFeedback?.notificationOccurred('error');
+        toast.error(e.response?.data?.error || 'Failed to submit review');
+      }
+    } finally {
+      setSubmittingReview(false);
+    }
   };
 
 
@@ -272,6 +298,55 @@ export function DealRoom() {
             {isFreelancer && deal.ton_contract_address && (
               <div style={{ fontSize: '7px', color: 'rgba(255,170,0,0.7)', marginTop: '8px', lineHeight: 2 }}>
                 +{deal.crypto_amount ? `${(Number(deal.crypto_amount) * 0.98).toFixed(4)} ${deal.currency}` : 'funds'} sent to your wallet
+              </div>
+            )}
+
+            {/* Отзыв о контрагенте */}
+            {(isClient || isFreelancer) && (
+              <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                {reviewed ? (
+                  <div className="px" style={{ fontSize: '7px', color: '#00ff88', lineHeight: 2 }}>
+                    ★ THANKS FOR YOUR REVIEW
+                  </div>
+                ) : (
+                  <>
+                    <div className="px" style={{ fontSize: '7px', color: 'rgba(255,255,255,0.6)', marginBottom: '10px' }}>
+                      RATE {isClient ? 'THE FREELANCER' : 'THE CLIENT'}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginBottom: '10px' }}>
+                      {[1, 2, 3, 4, 5].map(n => (
+                        <span
+                          key={n}
+                          onClick={() => { setRating(n); tg?.HapticFeedback?.impactOccurred('light'); }}
+                          style={{
+                            fontSize: '22px', cursor: 'pointer', lineHeight: 1,
+                            filter: n <= rating ? 'none' : 'grayscale(1)',
+                            opacity: n <= rating ? 1 : 0.3,
+                            transition: 'opacity 0.15s, filter 0.15s',
+                          }}
+                        >⭐</span>
+                      ))}
+                    </div>
+                    <textarea
+                      value={reviewComment}
+                      onChange={e => setReviewComment(e.target.value)}
+                      maxLength={1000}
+                      placeholder="Leave a comment (optional)…"
+                      rows={2}
+                      style={{
+                        width: '100%', boxSizing: 'border-box', resize: 'none',
+                        fontFamily: 'Inter, sans-serif', fontSize: '12px',
+                        padding: '8px 10px', borderRadius: '10px', marginBottom: '8px',
+                        background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)',
+                        color: '#fff', outline: 'none',
+                      }}
+                    />
+                    <button className="btn btn-g btn-full" style={{ fontSize: '8px' }}
+                      onClick={submitReview} disabled={submittingReview}>
+                      {submittingReview ? '[ ⏳ SENDING... ]' : '[ ★ SUBMIT REVIEW ]'}
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>
