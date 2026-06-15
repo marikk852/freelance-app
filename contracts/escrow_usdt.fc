@@ -1,0 +1,248 @@
+#include "imports/stdlib.fc";
+
+;; ============================================================
+;; SafeDeal Escrow (USD₮ jetton) — эскроу для нативного USD₮ на TON
+;;
+;; Отличие от escrow.fc (нативный TON):
+;;   - приём средств через jetton transfer_notification (а не OP_DEPOSIT)
+;;   - выплаты через jetton transfer своему jetton-wallet
+;;   - сумма считается в jetton-единицах (expected_amount), НЕ в my_balance
+;;
+;; ⚠️ НЕ ПОДКЛЮЧАТЬ К ДЕНЬГАМ без sandbox-тестов (эталонный jetton) и аудита.
+;; ============================================================
+
+;; ---------- Статусы ----------
+const int STATUS_WAITING  = 0;
+const int STATUS_FROZEN   = 1;
+const int STATUS_RELEASED = 2;
+const int STATUS_REFUNDED = 3;
+
+;; ---------- Op-коды управления (от арбитра) ----------
+const int OP_RELEASE           = 2;
+const int OP_REFUND            = 3;
+const int OP_SPLIT             = 4;
+const int OP_SET_JETTON_WALLET = 5;   ;; одноразовая установка адреса jetton-wallet эскроу
+
+;; ---------- Стандартные jetton op-коды (TEP-74) ----------
+const int OP_JETTON_TRANSFER        = 0xf8a7ea5;   ;; исходящая выплата
+const int OP_JETTON_TRANSFER_NOTIFY = 0x7362d09c;  ;; входящий депозит
+
+;; ---------- Ошибки ----------
+const int ERR_NOT_ARBITRATOR = 401;
+const int ERR_WRONG_STATUS   = 402;
+const int ERR_INVALID_SPLIT  = 406;
+const int ERR_NOT_JETTON_WALLET = 407;  ;; transfer_notification не от нашего jetton-wallet
+const int ERR_WALLET_ALREADY_SET = 408;
+const int ERR_WALLET_NOT_SET     = 409;
+const int ERR_LOW_GAS            = 410;  ;; не хватает TON на jetton-переводы
+
+;; Газ на один jetton-transfer (forward + комиссии)
+const int JETTON_SEND_GAS = 50000000;   ;; 0.05 TON
+const int GAS_RESERVE     = 20000000;   ;; 0.02 TON буфер на комиссии вычислений/действий
+
+;; ============================================================
+;; Хранилище (4 адреса не влезают в одну ячейку — лимит 1023 бита):
+;;   root:    status(8) | expected_amount(coins) | fee_percent(8) |
+;;            deadline(32) | jetton_wallet(addr) | ^parties
+;;   parties: client | freelancer | arbitrator
+;; jetton_wallet может быть addr_none до установки через OP_SET_JETTON_WALLET.
+;; Порядок возврата сохранён прежним, чтобы остальной код не менялся.
+;; ============================================================
+(int, slice, slice, slice, int, int, int, slice) load_data() inline {
+    slice ds = get_data().begin_parse();
+    int status        = ds~load_uint(8);
+    int amount        = ds~load_coins();
+    int fee_percent   = ds~load_uint(8);
+    int deadline      = ds~load_uint(32);
+    slice jetton_wallet = ds~load_msg_addr();
+    slice parties     = ds~load_ref().begin_parse();
+    slice client_addr     = parties~load_msg_addr();
+    slice freelancer_addr = parties~load_msg_addr();
+    slice arbitrator_addr = parties~load_msg_addr();
+    return (status, client_addr, freelancer_addr, arbitrator_addr,
+            amount, fee_percent, deadline, jetton_wallet);
+}
+
+() save_data(int status, slice client_addr, slice freelancer_addr, slice arbitrator_addr,
+             int amount, int fee_percent, int deadline, slice jetton_wallet) impure inline {
+    set_data(
+        begin_cell()
+            .store_uint(status, 8)
+            .store_coins(amount)
+            .store_uint(fee_percent, 8)
+            .store_uint(deadline, 32)
+            .store_slice(jetton_wallet)
+            .store_ref(begin_cell()
+                .store_slice(client_addr)
+                .store_slice(freelancer_addr)
+                .store_slice(arbitrator_addr)
+            .end_cell())
+        .end_cell()
+    );
+}
+
+int equal_slices(slice a, slice b) asm "SDEQ";
+int is_arbitrator(slice sender, slice arbitrator_addr) inline { return equal_slices(sender, arbitrator_addr); }
+
+;; addr_none = пустой адрес (2 нулевых бита). Проверка «не установлен».
+int is_addr_none(slice a) inline {
+    return a.slice_bits() < 3;
+}
+
+;; ============================================================
+;; Отправить jetton своему jetton-wallet → он переведёт получателю.
+;; ============================================================
+() send_jetton(slice jetton_wallet, slice to_addr, int jetton_amount) impure inline {
+    cell transfer_body = begin_cell()
+        .store_uint(OP_JETTON_TRANSFER, 32)
+        .store_uint(now(), 64)        ;; query_id
+        .store_coins(jetton_amount)   ;; сколько jetton перевести
+        .store_slice(to_addr)         ;; новый владелец
+        .store_slice(to_addr)         ;; response_destination (сдача газа получателю)
+        .store_uint(0, 1)             ;; custom_payload: нет
+        .store_coins(1)               ;; forward_ton_amount: 1 нанотон (уведомление)
+        .store_uint(0, 1)             ;; forward_payload: пусто (inline)
+    .end_cell();
+
+    cell msg = begin_cell()
+        .store_uint(0x18, 6)                ;; bounceable internal
+        .store_slice(jetton_wallet)
+        .store_coins(JETTON_SEND_GAS)
+        .store_uint(0, 1 + 4 + 4 + 64 + 32) ;; extra-currency, fees, lt, at = 0
+        .store_uint(0, 1)                   ;; нет state init
+        .store_uint(1, 1)                   ;; тело в ref
+        .store_ref(transfer_body)
+    .end_cell();
+
+    send_raw_message(msg, 1);  ;; mode 1: комиссии сверх value
+}
+
+;; ============================================================
+() recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
+    if (in_msg_body.slice_empty?()) { return (); }  ;; пополнение газа
+
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_uint(4);
+    if (flags & 1) { return (); }  ;; bounced
+    slice sender_addr = cs~load_msg_addr();
+
+    int op = in_msg_body~load_uint(32);
+
+    (int status, slice client_addr, slice freelancer_addr, slice arbitrator_addr,
+     int expected_amount, int fee_percent, int deadline, slice jetton_wallet) = load_data();
+
+    ;; ===== Входящий депозит USD₮ (от нашего jetton-wallet) =====
+    if (op == OP_JETTON_TRANSFER_NOTIFY) {
+        ;; КРИТИЧНО: уведомление принимаем ТОЛЬКО от нашего jetton-wallet
+        throw_if(ERR_WALLET_NOT_SET, is_addr_none(jetton_wallet));
+        throw_unless(ERR_NOT_JETTON_WALLET, equal_slices(sender_addr, jetton_wallet));
+
+        int query_id      = in_msg_body~load_uint(64);
+        int jetton_amount = in_msg_body~load_coins();
+        ;; slice from_addr = in_msg_body~load_msg_addr();  ;; отправитель jetton (клиент)
+
+        ;; Замораживаем при первом депозите; доплату/повторный депозит АККУМУЛИРУЕМ,
+        ;; иначе лишние jetton навсегда заперлись бы на нашем кошельке (throw нельзя —
+        ;; jetton уже у нас, откатить нечем). Просрочку обрабатывает арбитр через refund.
+        if (status == STATUS_WAITING) {
+            save_data(STATUS_FROZEN, client_addr, freelancer_addr, arbitrator_addr,
+                      jetton_amount, fee_percent, deadline, jetton_wallet);
+        } elseif (status == STATUS_FROZEN) {
+            save_data(STATUS_FROZEN, client_addr, freelancer_addr, arbitrator_addr,
+                      expected_amount + jetton_amount, fee_percent, deadline, jetton_wallet);
+        }
+        ;; terminal-статусы (RELEASED/REFUNDED): депозит после расчёта — редкий кейс,
+        ;; backend не отдаёт адрес после завершения; здесь просто игнорируем.
+        return ();
+    }
+
+    ;; ===== Одноразовая установка адреса нашего jetton-wallet =====
+    if (op == OP_SET_JETTON_WALLET) {
+        throw_unless(ERR_NOT_ARBITRATOR, is_arbitrator(sender_addr, arbitrator_addr));
+        throw_unless(ERR_WALLET_ALREADY_SET, is_addr_none(jetton_wallet));
+        slice new_wallet = in_msg_body~load_msg_addr();
+        save_data(status, client_addr, freelancer_addr, arbitrator_addr,
+                  expected_amount, fee_percent, deadline, new_wallet);
+        return ();
+    }
+
+    ;; ===== RELEASE: арбитр выплачивает фрилансеру =====
+    if (op == OP_RELEASE) {
+        throw_unless(ERR_NOT_ARBITRATOR, is_arbitrator(sender_addr, arbitrator_addr));
+        throw_unless(ERR_WRONG_STATUS, status == STATUS_FROZEN);
+        ;; До смены статуса проверяем газ на 2 перевода (фрилансер + комиссия).
+        ;; throw здесь откатывает compute-фазу → статус НЕ изменится без выплаты.
+        throw_unless(ERR_LOW_GAS, my_balance >= 2 * JETTON_SEND_GAS + GAS_RESERVE);
+
+        int fee           = (expected_amount * fee_percent) / 100;
+        int to_freelancer = expected_amount - fee;
+        send_jetton(jetton_wallet, freelancer_addr, to_freelancer);
+        if (fee > 0) { send_jetton(jetton_wallet, arbitrator_addr, fee); }
+
+        save_data(STATUS_RELEASED, client_addr, freelancer_addr, arbitrator_addr,
+                  expected_amount, fee_percent, deadline, jetton_wallet);
+        return ();
+    }
+
+    ;; ===== REFUND: арбитр возвращает клиенту =====
+    if (op == OP_REFUND) {
+        throw_unless(ERR_NOT_ARBITRATOR, is_arbitrator(sender_addr, arbitrator_addr));
+        int can_refund = (status == STATUS_FROZEN) |
+                         ((status == STATUS_WAITING) & (now() > deadline));
+        throw_unless(ERR_WRONG_STATUS, can_refund);
+        throw_unless(ERR_LOW_GAS, my_balance >= JETTON_SEND_GAS + GAS_RESERVE);
+
+        if (expected_amount > 0) { send_jetton(jetton_wallet, client_addr, expected_amount); }
+        save_data(STATUS_REFUNDED, client_addr, freelancer_addr, arbitrator_addr,
+                  expected_amount, fee_percent, deadline, jetton_wallet);
+        return ();
+    }
+
+    ;; ===== SPLIT: арбитр делит при споре =====
+    if (op == OP_SPLIT) {
+        throw_unless(ERR_NOT_ARBITRATOR, is_arbitrator(sender_addr, arbitrator_addr));
+        throw_unless(ERR_WRONG_STATUS, status == STATUS_FROZEN);
+        ;; До 3 переводов (фрилансер + клиент + комиссия)
+        throw_unless(ERR_LOW_GAS, my_balance >= 3 * JETTON_SEND_GAS + GAS_RESERVE);
+
+        int freelancer_percent = in_msg_body~load_uint(8);
+        throw_unless(ERR_INVALID_SPLIT, (freelancer_percent >= 0) & (freelancer_percent <= 100));
+
+        int fee           = (expected_amount * fee_percent) / 100;
+        int distributable = expected_amount - fee;
+        int to_freelancer = (distributable * freelancer_percent) / 100;
+        int to_client     = distributable - to_freelancer;
+
+        if (to_freelancer > 0) { send_jetton(jetton_wallet, freelancer_addr, to_freelancer); }
+        if (to_client > 0)     { send_jetton(jetton_wallet, client_addr, to_client); }
+        if (fee > 0)           { send_jetton(jetton_wallet, arbitrator_addr, fee); }
+
+        save_data(STATUS_REFUNDED, client_addr, freelancer_addr, arbitrator_addr,
+                  expected_amount, fee_percent, deadline, jetton_wallet);
+        return ();
+    }
+
+    throw(0xffff);
+}
+
+;; ============================================================
+;; GET-методы
+;; ============================================================
+int get_status() method_id {
+    (int status, _, _, _, _, _, _, _) = load_data();
+    return status;
+}
+
+(int, slice, slice, slice, int, int, int, slice) get_state() method_id {
+    return load_data();
+}
+
+slice get_jetton_wallet() method_id {
+    (_, _, _, _, _, _, _, slice jw) = load_data();
+    return jw;
+}
+
+int is_expired() method_id {
+    (int status, _, _, _, _, _, int deadline, _) = load_data();
+    return (status == STATUS_WAITING) & (now() > deadline);
+}
