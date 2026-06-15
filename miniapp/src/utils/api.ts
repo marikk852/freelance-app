@@ -41,6 +41,7 @@ export const contracts = {
   estimate: (id: string)          => api.get(`/contracts/${id}/estimate`),
   sign:   (id: string, role: string) => api.post(`/contracts/${id}/sign`, { role }),
   deploy: (id: string, data: any) => api.post(`/contracts/${id}/deploy`, data),
+  usdtPayment: (id: string)       => api.get(`/contracts/${id}/usdt-payment`),
   approve:         (id: string)   => api.post(`/contracts/${id}/approve`),
   simulatePayment: (id: string)   => api.post(`/contracts/${id}/simulate-payment`),
   review: (id: string, body: { rating: number; comment?: string }) => api.post(`/contracts/${id}/review`, body),

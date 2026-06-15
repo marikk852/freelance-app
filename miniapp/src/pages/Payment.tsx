@@ -158,20 +158,33 @@ export function Payment() {
     tg?.HapticFeedback?.impactOccurred('heavy');
     setStage('wallet');
     try {
-      // Gas buffer: 0.15 TON covers arbitrator costs (0.05 deploy + 0.05 release + 0.05 reserve)
-      const GAS_BUFFER_NANO = BigInt(150_000_000); // 0.15 TON
-      const nanotons = (BigInt(Math.round(deployed.cryptoAmount * 1e9)) + GAS_BUFFER_NANO).toString();
-
-      // OP_DEPOSIT = 1, pre-encoded BOC: beginCell().storeUint(1,32).endCell().toBoc().toString('base64')
-      const payload = 'te6cckEBAQEABgAACAAAAAHgg8T9';
-
-      await tonConnectUI.sendTransaction({
-        validUntil: Math.floor(Date.now() / 1000) + 600,
-        messages: [{
+      let message;
+      if (deal?.currency === 'USDT') {
+        // USD₮ — jetton: backend строит payload и адрес jetton-wallet клиента.
+        // Клиент шлёт jetton transfer на СВОЙ jetton-wallet (не на эскроу).
+        const { data } = await contractsApi.usdtPayment(id!);
+        message = {
+          address: data.jettonWalletAddress,
+          amount : data.amountTon,
+          payload: data.payloadBoc,
+        };
+      } else {
+        // TON — прямой депозит на эскроу с OP_DEPOSIT payload.
+        // Gas buffer: 0.15 TON покрывает расходы арбитра (deploy + release + резерв).
+        const GAS_BUFFER_NANO = BigInt(150_000_000); // 0.15 TON
+        const nanotons = (BigInt(Math.round(deployed.cryptoAmount * 1e9)) + GAS_BUFFER_NANO).toString();
+        // OP_DEPOSIT = 1, pre-encoded BOC: beginCell().storeUint(1,32).endCell().toBoc().toString('base64')
+        const payload = 'te6cckEBAQEABgAACAAAAAHgg8T9';
+        message = {
           address: deployed.tonContractAddress,
           amount : nanotons,
           payload,
-        }],
+        };
+      }
+
+      await tonConnectUI.sendTransaction({
+        validUntil: Math.floor(Date.now() / 1000) + 600,
+        messages: [message],
       });
       tg?.HapticFeedback?.notificationOccurred('success');
       waitForFrozen();
@@ -189,7 +202,12 @@ export function Payment() {
   const dataLoaded = deal !== null && profile !== null;
   const hasWallet  = dataLoaded && !!profile?.ton_wallet_address;
   const busy       = stage !== 'idle';
-  const totalTon   = deployed ? (deployed.cryptoAmount + 0.15).toFixed(4) : null;
+  const isUsdt     = deal?.currency === 'USDT';
+  // USD₮ — jetton: сумма уходит в USDT, газ платится отдельно в TON (~0.3).
+  const USDT_GAS_TON = 0.3;
+  const totalTon   = deployed
+    ? (isUsdt ? deployed.cryptoAmount.toFixed(2) : (deployed.cryptoAmount + 0.15).toFixed(4))
+    : null;
 
   const stepLabel = deployed ? 'STEP 2/2 · FUND ESCROW' : 'STEP 1/2 · CREATE ESCROW';
 
@@ -258,11 +276,17 @@ export function Payment() {
                 value={`${deployed ? deployed.cryptoAmount.toFixed(4) : `≈ ${estimate?.ton_amount}`} ${deal.currency}`}
                 color="#0088ff"
               />
-              <DataRow label="Network fees (incl.)" value={`+0.15 ${deal.currency}`} color="rgba(255,255,255,0.3)" />
+              <DataRow
+                label="Network fees"
+                value={isUsdt ? `+~${USDT_GAS_TON} TON (gas)` : `+0.15 ${deal.currency}`}
+                color="rgba(255,255,255,0.3)"
+              />
               <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', margin: '8px 0' }} />
               <DataRow
                 label="TOTAL TO SEND"
-                value={`${deployed ? totalTon : `≈ ${(Number(estimate?.ton_amount) + 0.15).toFixed(4)}`} ${deal.currency}`}
+                value={isUsdt
+                  ? `${deployed ? totalTon : Number(deal.amount_usd).toFixed(2)} USDT + ~${USDT_GAS_TON} TON`
+                  : `${deployed ? totalTon : `≈ ${(Number(estimate?.ton_amount) + 0.15).toFixed(4)}`} ${deal.currency}`}
                 color="#ffaa00"
               />
             </>
@@ -342,7 +366,9 @@ export function Payment() {
                     ? '[ ⏳ FREEZING FUNDS... ]'
                     : wallet
                       ? `[ 💎 PAY ${totalTon} ${deal?.currency || 'TON'} ]`
-                      : `[ 💎 CONNECT WALLET & PAY ]`}
+                      : isUsdt
+                        ? `[ 💎 CONNECT WALLET & PAY USDT ]`
+                        : `[ 💎 CONNECT WALLET & PAY ]`}
               </button>
               {stage === 'freezing' && (
                 <div style={{ fontSize: '12px', fontFamily: 'Inter, sans-serif', color: 'rgba(0,255,136,0.7)', textAlign: 'center', marginBottom: '8px', lineHeight: 1.6 }}>

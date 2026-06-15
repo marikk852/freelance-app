@@ -17,7 +17,8 @@ const OP = {
   RELEASE           : 2,
   REFUND            : 3,
   SPLIT             : 4,
-  SET_JETTON_WALLET : 5,   // только escrow_usdt.fc — одноразовая установка jetton-wallet
+  SET_JETTON_WALLET : 5,           // только escrow_usdt.fc — одноразовая установка jetton-wallet
+  JETTON_TRANSFER   : 0xf8a7ea5,   // TEP-74 transfer (клиент → свой jetton-wallet → эскроу)
 };
 
 // Газ для транзакций арбитра (TON-эскроу)
@@ -37,6 +38,10 @@ const USDT_GAS = {
   refund  : toNano('0.2'),   // 1 jetton-перевод
   split   : toNano('0.4'),   // до 3 jetton-переводов
 };
+// Депозит USD₮: клиент шлёт jetton transfer на свой jetton-wallet.
+// forward_ton_amount должен быть > 0, иначе эскроу не получит transfer_notification.
+const USDT_DEPOSIT_FORWARD_TON = toNano('0.15');   // → эскроу (notification + буфер баланса)
+const USDT_DEPOSIT_MSG_TON     = toNano('0.3');    // общий TON: forward + газ wallet→wallet
 
 /** Газ для управляющего сообщения с учётом валюты эскроу. */
 function arbitratorGas(currency, op) {
@@ -618,6 +623,44 @@ async function computeJettonWalletAddress(ownerAddress) {
 }
 
 /**
+ * Построить параметры TonConnect-сообщения для оплаты USD₮-сделки.
+ *
+ * USD₮ — это jetton: клиент НЕ шлёт деньги напрямую на эскроу. Он шлёт
+ * jetton transfer (op 0xf8a7ea5) на СВОЙ jetton-wallet, указав destination =
+ * адрес эскроу и forward_ton_amount > 0. Тогда jetton-wallet эскроу пришлёт
+ * контракту transfer_notification, и тот заморозит средства.
+ *
+ * Payload строится здесь (на backend с @ton/core), а не во фронте — фронт
+ * только подставляет готовые значения в tonConnectUI.sendTransaction.
+ *
+ * @param {{ escrowAddress: string, clientAddress: string, amountUsd: number }} p
+ * @returns {{ jettonWalletAddress: string, payloadBoc: string, amountTon: string }}
+ *   jettonWalletAddress — куда слать сообщение (jetton-wallet клиента);
+ *   payloadBoc — base64 тела jetton transfer; amountTon — TON (нанотоны, строка).
+ */
+async function buildUsdtPaymentParams({ escrowAddress, clientAddress, amountUsd }) {
+  const jettonWalletAddress = await computeJettonWalletAddress(clientAddress);
+  const jettonAmount = BigInt(Math.round(amountUsd * USDT_DECIMALS_FACTOR));
+
+  const body = beginCell()
+    .storeUint(OP.JETTON_TRANSFER, 32)
+    .storeUint(0, 64)                              // query_id
+    .storeCoins(jettonAmount)                      // сколько USD₮ перевести (6 знаков)
+    .storeAddress(Address.parse(escrowAddress))    // destination = эскроу (новый владелец)
+    .storeAddress(Address.parse(clientAddress))    // response_destination = клиент (сдача газа)
+    .storeBit(false)                               // custom_payload: нет
+    .storeCoins(USDT_DEPOSIT_FORWARD_TON)          // forward_ton_amount > 0 → transfer_notification
+    .storeBit(false)                               // forward_payload пуст (в этом слайсе)
+    .endCell();
+
+  return {
+    jettonWalletAddress,
+    payloadBoc: body.toBoc().toString('base64'),
+    amountTon : USDT_DEPOSIT_MSG_TON.toString(),
+  };
+}
+
+/**
  * Задеплоить контракт с StateInit.
  * @returns {string} хэш деплой-транзакции
  */
@@ -641,4 +684,5 @@ module.exports = {
   releaseEscrow,
   refundEscrow,
   splitEscrow,
+  buildUsdtPaymentParams,
 };

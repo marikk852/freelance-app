@@ -448,6 +448,45 @@ router.post('/:id/deploy', async (req, res) => {
 });
 
 /**
+ * GET /api/contracts/:id/usdt-payment
+ * Параметры TonConnect-сообщения для оплаты USD₮-сделки (jetton transfer).
+ * Возвращает адрес jetton-wallet клиента, payload и сумму TON на газ.
+ * Только для currency=USDT и уже задеплоенного контракта.
+ */
+router.get('/:id/usdt-payment', async (req, res) => {
+  try {
+    const contract = await Contract.findById(req.params.id);
+    if (!contract) return res.status(404).json({ error: 'Contract not found' });
+    if (contract.currency !== 'USDT') {
+      return res.status(400).json({ error: 'Not a USDT deal' });
+    }
+    if (!contract.ton_contract_address) {
+      return res.status(400).json({ error: 'Contract not deployed yet' });
+    }
+
+    // Кошелёк клиента — отправитель jetton
+    const { rows } = await query(
+      `SELECT uc.ton_wallet_address AS client_wallet
+       FROM rooms r JOIN users uc ON uc.id = r.client_id
+       WHERE r.id = $1`,
+      [contract.room_id]
+    );
+    const clientWallet = rows[0]?.client_wallet;
+    if (!clientWallet) return res.status(400).json({ error: 'Client wallet not linked' });
+
+    const params = await escrowService.buildUsdtPaymentParams({
+      escrowAddress: contract.ton_contract_address,
+      clientAddress: clientWallet,
+      amountUsd    : Number(contract.amount_usd),
+    });
+    res.json(params);
+  } catch (err) {
+    console.error('[API] GET /contracts/:id/usdt-payment error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
  * POST /api/contracts/:id/approve
  * Client approves work → triggers release().
  * SECURITY: only the contract client can call approve.
