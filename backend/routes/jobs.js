@@ -57,12 +57,13 @@ router.get('/', async (req, res) => {
     const { rows } = await query(
       `SELECT jp.*,
               u.username AS client_username, u.rating AS client_rating,
+              u.telegram_id AS client_tg,
               COUNT(ja.id) AS applications_count
        FROM job_posts jp
        JOIN users u ON u.id = jp.client_id
        LEFT JOIN job_applications ja ON ja.job_post_id = jp.id
        ${whereClause}
-       GROUP BY jp.id, u.username, u.rating
+       GROUP BY jp.id, u.username, u.rating, u.telegram_id
        ORDER BY (jp.boosted_until > NOW()) DESC NULLS LAST,
                 jp.boosted_until DESC NULLS LAST,
                 jp.created_at DESC

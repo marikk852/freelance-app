@@ -71,13 +71,37 @@ function ProfileIncompletePopup({ role, onClose, onGo }: { role: string; onClose
 export function Board() {
   const navigate      = useNavigate();
   const [params]      = useSearchParams();
-  const { tg }        = useTelegram();
+  const { tg, user }  = useTelegram();
   const initialTab    = params.get('tab') === 'freelancers' ? 'freelancers' : 'jobs';
   const [tab, setTab] = useState<'jobs' | 'freelancers'>(initialTab as any);
 
   // Jobs state
   const [jobs,       setJobs]       = useState<any[]>([]);
   const [jobsLoaded, setJobsLoaded] = useState(false);
+  const [boostJob,   setBoostJob]   = useState<any>(null);
+  const [boosting,   setBoosting]   = useState(false);
+
+  const BOOST_OPTIONS = [
+    { key: 'boost_top_24h',   label: 'Top for 24h',     cost: 300 },
+    { key: 'boost_top_72h',   label: 'Top for 72h',     cost: 700 },
+    { key: 'highlight_color', label: 'Highlight color',  cost: 150 },
+    { key: 'urgent_badge',    label: 'Urgent badge',     cost: 200 },
+  ];
+
+  const doBoost = async (key: string) => {
+    if (!boostJob) return;
+    setBoosting(true);
+    try {
+      const r = await jobsApi.boost(boostJob.id, key);
+      tg?.HapticFeedback?.notificationOccurred('success');
+      toast.success(`Boosted! ${r.data.balance} 💎 left`);
+      setBoostJob(null);
+      jobsApi.list().then(res => setJobs(res.data)).catch(() => {});
+    } catch (e: any) {
+      tg?.HapticFeedback?.notificationOccurred('error');
+      toast.error(e.response?.status === 402 ? 'Not enough crystals' : (e.response?.data?.error || 'Failed'));
+    } finally { setBoosting(false); }
+  };
   const [category,   setCategory]   = useState('all');
   const [search,     setSearch]     = useState('');
   const [showCreate, setShowCreate] = useState(false);
@@ -158,10 +182,21 @@ export function Board() {
   };
 
   // ---- Job card ----
-  const JobCard = ({ job }: { job: any }) => (
-    <div className="gl" style={{ marginBottom: '8px', borderColor: 'rgba(255,170,0,0.15)', cursor: 'pointer' }}
+  const JobCard = ({ job }: { job: any }) => {
+   const isBoosted = job.boosted_until && new Date(job.boosted_until) > new Date();
+   const isOwn = user && Number(job.client_tg) === Number(user.id);
+   return (
+    <div className="gl" style={{ marginBottom: '8px', cursor: 'pointer',
+      borderColor: job.highlighted ? 'rgba(204,68,255,0.5)' : isBoosted ? 'rgba(255,170,0,0.5)' : 'rgba(255,170,0,0.15)',
+      boxShadow: job.highlighted ? '0 0 16px rgba(204,68,255,0.25)' : isBoosted ? '0 0 12px rgba(255,170,0,0.2)' : 'none' }}
       onClick={() => go(`/jobs/${job.id}`)}>
       <div className="pxgrid" /><div className="sh" />
+      {(isBoosted || job.urgent) && (
+        <div style={{ display: 'flex', gap: '5px', marginBottom: '6px', position: 'relative', zIndex: 2 }}>
+          {isBoosted && <span className="px" style={{ fontSize: '5px', color: '#000', background: '#ffaa00', padding: '3px 6px', borderRadius: '4px' }}>⬆ TOP</span>}
+          {job.urgent && <span className="px" style={{ fontSize: '5px', color: '#fff', background: '#ff4466', padding: '3px 6px', borderRadius: '4px' }}>🔥 URGENT</span>}
+        </div>
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px', position: 'relative', zIndex: 2 }}>
         <div style={{ flex: 1, marginRight: '8px' }}>
           <div style={{ fontFamily: '"Press Start 2P", monospace', fontSize: '8px', color: '#ffaa00', lineHeight: 1.5, marginBottom: '4px' }}>
@@ -198,8 +233,16 @@ export function Board() {
           ))}
         </div>
       )}
+      {isOwn && job.status === 'open' && (
+        <button
+          onClick={(e) => { e.stopPropagation(); setBoostJob(job); }}
+          className="btn" style={{ marginTop: '8px', fontSize: '7px', background: 'rgba(255,170,0,0.12)', border: '1px solid rgba(255,170,0,0.4)', color: '#ffaa00' }}>
+          [ ⬆ BOOST THIS JOB ]
+        </button>
+      )}
     </div>
-  );
+   );
+  };
 
   // ---- Freelancer card ----
   const FreCard = ({ f }: { f: any }) => (
@@ -370,6 +413,25 @@ export function Board() {
           onClose={() => setShowIncomplete(false)}
           onGo={() => { setShowIncomplete(false); go('/profile'); }}
         />
+      )}
+
+      {/* Boost picker */}
+      {boostJob && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 9999, display: 'flex', alignItems: 'flex-end' }}
+          onClick={() => setBoostJob(null)}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', background: 'var(--bg-dark2,#08080e)', borderTop: '1px solid rgba(255,170,0,0.4)', borderRadius: '18px 18px 0 0', padding: '16px', paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+            <div className="px" style={{ fontSize: '9px', color: '#ffaa00', marginBottom: '4px' }}>⬆ BOOST JOB</div>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginBottom: '12px' }}>{boostJob.title}</div>
+            {BOOST_OPTIONS.map(o => (
+              <button key={o.key} disabled={boosting} onClick={() => doBoost(o.key)}
+                className="gl-sm" style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 12px', marginBottom: '7px', border: '1px solid rgba(255,170,0,0.25)', cursor: 'pointer', background: 'rgba(255,255,255,0.03)' }}>
+                <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: '#fff' }}>{o.label}</span>
+                <span className="px" style={{ fontSize: '8px', color: '#ffaa00' }}>{o.cost} 💎</span>
+              </button>
+            ))}
+            <button className="btn btn-gr btn-full" style={{ fontSize: '7px', marginTop: '4px' }} onClick={() => setBoostJob(null)}>[ CANCEL ]</button>
+          </div>
+        </div>
       )}
     </div>
   );

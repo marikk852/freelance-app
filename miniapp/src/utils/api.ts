@@ -118,6 +118,7 @@ export const jobs = {
   create:       (data: any)             => api.post('/jobs', data),
   apply:        (id: string, data: any) => api.post(`/jobs/${id}/apply`, data),
   applications: (id: string)            => api.get(`/jobs/${id}/applications`),
+  boost:        (id: string, key: string) => api.post(`/jobs/${id}/boost`, { key }),
 };
 
 // ---- Квесты ----
