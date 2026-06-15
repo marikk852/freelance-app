@@ -3,6 +3,15 @@ const router  = express.Router();
 const Joi     = require('joi');
 const { query } = require('../../database/db');
 const tierService = require('../services/tierService');
+const crystalService = require('../services/crystalService');
+
+// Эффекты буста заказа за кристаллы (ключ shop-товара → действие над job_posts)
+const BOOST_EFFECTS = {
+  boost_top_24h  : `boosted_until = GREATEST(COALESCE(boosted_until, NOW()), NOW()) + INTERVAL '24 hours'`,
+  boost_top_72h  : `boosted_until = GREATEST(COALESCE(boosted_until, NOW()), NOW()) + INTERVAL '72 hours'`,
+  highlight_color: `highlighted = TRUE`,
+  urgent_badge   : `urgent = TRUE`,
+};
 
 // ============================================================
 // Routes: /api/jobs — job board
@@ -54,7 +63,9 @@ router.get('/', async (req, res) => {
        LEFT JOIN job_applications ja ON ja.job_post_id = jp.id
        ${whereClause}
        GROUP BY jp.id, u.username, u.rating
-       ORDER BY jp.created_at DESC
+       ORDER BY (jp.boosted_until > NOW()) DESC NULLS LAST,
+                jp.boosted_until DESC NULLS LAST,
+                jp.created_at DESC
        LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
       params
     );
@@ -223,6 +234,47 @@ router.post('/:id/apply', async (req, res) => {
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error('[API] POST /jobs/:id/apply error:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /api/jobs/:id/boost
+ * Поднять/выделить свой заказ за кристаллы. Body: { key }.
+ * Атомарно списывает кристаллы (shop-товар) и применяет эффект.
+ */
+router.post('/:id/boost', async (req, res) => {
+  try {
+    const { key } = req.body;
+    if (!BOOST_EFFECTS[key]) return res.status(400).json({ error: 'Invalid boost' });
+
+    const { rows: users } = await query('SELECT id FROM users WHERE telegram_id = $1', [req.user.telegramId]);
+    if (!users[0]) return res.status(404).json({ error: 'User not found' });
+
+    const { rows: job } = await query('SELECT client_id, status FROM job_posts WHERE id = $1', [req.params.id]);
+    if (!job[0]) return res.status(404).json({ error: 'Job not found' });
+    if (Number(job[0].client_id) !== Number(users[0].id)) return res.status(403).json({ error: 'Only the job owner can boost it' });
+    if (job[0].status !== 'open') return res.status(400).json({ error: 'Only open jobs can be boosted' });
+
+    // Списываем кристаллы (атомарно, бросит при нехватке)
+    let spend;
+    try {
+      spend = await crystalService.spend(users[0].id, key);
+    } catch (e) {
+      const code = e.message === 'Insufficient crystals' ? 402 : 404;
+      return res.status(code).json({ error: e.message });
+    }
+
+    // Применяем эффект к заказу
+    const { rows: upd } = await query(
+      `UPDATE job_posts SET ${BOOST_EFFECTS[key]} WHERE id = $1
+       RETURNING boosted_until, highlighted, urgent`,
+      [req.params.id]
+    );
+
+    res.json({ success: true, spent: spend.spent, balance: spend.balance, job: upd[0] });
+  } catch (err) {
+    console.error('[API] POST /jobs/:id/boost error:', err.message);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
