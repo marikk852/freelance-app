@@ -33,6 +33,8 @@ interface PublicUser {
   avatar_url?: string;
   slide_images?: string[];
   subscription_plan?: string;
+  is_verified?: boolean;
+  verification_type?: string;
   subscription_expires?: string;
 }
 
@@ -196,6 +198,12 @@ export function PublicProfile() {
             </span>
           )}
           {profile.role && <RolePill role={profile.role} />}
+          {profile.is_verified && (
+            <span style={{ fontSize: '6px', padding: '4px 10px', borderRadius: '100px', fontFamily: '"Press Start 2P", monospace',
+              background: `${profile.verification_type === 'pro' ? '#cc44ff' : profile.verification_type === 'basic' ? '#0088ff' : '#dfe7ef'}22`,
+              border: `1px solid ${profile.verification_type === 'pro' ? '#cc44ff' : profile.verification_type === 'basic' ? '#0088ff' : '#dfe7ef'}66`,
+              color: profile.verification_type === 'pro' ? '#cc44ff' : profile.verification_type === 'basic' ? '#0088ff' : '#dfe7ef' }}>✓ VERIFIED</span>
+          )}
           {profile.subscription_plan === 'basic' && profile.subscription_expires && new Date(profile.subscription_expires) > new Date() && (
             <span style={{ fontSize: '6px', padding: '4px 10px', borderRadius: '100px', background: 'rgba(0,136,255,0.15)', border: '1px solid rgba(0,136,255,0.4)', color: '#0088ff', fontFamily: '"Press Start 2P", monospace' }}>✦ BASIC</span>
           )}

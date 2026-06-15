@@ -400,6 +400,12 @@ export function Profile() {
                 {profile && (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
                     <div className="gl-pill lvl" style={{ padding: '4px 10px' }}>⚔ LVL {profile.level}</div>
+                    {profile.is_verified && (
+                      <div style={{ padding: '4px 10px', borderRadius: '100px', fontSize: '7px', fontFamily: '"Press Start 2P", monospace',
+                        background: `${profile.verification_type === 'pro' ? '#cc44ff' : profile.verification_type === 'basic' ? '#0088ff' : '#dfe7ef'}22`,
+                        border: `1px solid ${profile.verification_type === 'pro' ? '#cc44ff' : profile.verification_type === 'basic' ? '#0088ff' : '#dfe7ef'}66`,
+                        color: profile.verification_type === 'pro' ? '#cc44ff' : profile.verification_type === 'basic' ? '#0088ff' : '#dfe7ef' }}>✓ VERIFIED</div>
+                    )}
                     {profile.subscription_plan === 'basic' && new Date(profile.subscription_expires) > new Date() && (
                       <div style={{ padding: '4px 10px', borderRadius: '100px', background: 'rgba(0,136,255,0.15)', border: '1px solid rgba(0,136,255,0.4)', fontSize: '7px', color: '#0088ff', fontFamily: '"Press Start 2P", monospace' }}>✦ BASIC</div>
                     )}

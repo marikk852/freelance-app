@@ -114,6 +114,17 @@ export function JoinDeal() {
         </div>
       </div>
 
+      {/* Milestone-сделка: подсказка */}
+      {deal.deal_group_id && (
+        <div className="gl" style={{ padding: '10px 14px', marginBottom: '8px', borderColor: 'rgba(204,68,255,0.3)', background: 'rgba(204,68,255,0.05)' }}>
+          <div className="pxgrid" />
+          <div className="px" style={{ fontSize: '7px', color: '#cc44ff', marginBottom: '6px' }}>🪜 MILESTONE DEAL · {deal.group_stages} STAGES</div>
+          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: 'rgba(255,255,255,0.55)', lineHeight: 1.5 }}>
+            Total ${Number(deal.group_total).toLocaleString()} across {deal.group_stages} stages. Accepting commits you to the whole deal; each stage is funded and approved one at a time. This is stage 1.
+          </div>
+        </div>
+      )}
+
       {/* Критерии приёмки */}
       {deal.criteria?.length > 0 && (
         <div className="gl card-stagger-3">
