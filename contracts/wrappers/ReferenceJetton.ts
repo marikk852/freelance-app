@@ -32,6 +32,11 @@ export class JettonMinter implements Contract {
     return new JettonMinter(contractAddress(workchain, init), init);
   }
 
+  /** Открыть уже задеплоенный minter по адресу (для get-методов, напр. get_wallet_address). */
+  static createFromAddress(address: Address): JettonMinter {
+    return new JettonMinter(address);
+  }
+
   async sendDeploy(provider: ContractProvider, via: Sender, value: bigint = toNano('0.5')): Promise<void> {
     await provider.internal(via, { value, sendMode: SendMode.PAY_GAS_SEPARATELY, body: beginCell().endCell() });
   }
