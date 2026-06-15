@@ -18,6 +18,12 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// ---- AI помощник по заказу (PRO) ----
+export const ai = {
+  draftDeal: (messages: { role: 'user' | 'assistant'; content: string }[]) =>
+    api.post('/ai/draft-deal', { messages }),
+};
+
 // ---- Кристаллы (soft-валюта) ----
 export const crystals = {
   get:            ()              => api.get('/crystals'),

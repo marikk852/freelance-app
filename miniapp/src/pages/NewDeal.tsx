@@ -1,9 +1,12 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { PixelScene } from '../components/PixelScene';
-import { contracts } from '../utils/api';
+import { contracts, ai } from '../utils/api';
 import { useTelegram } from '../hooks/useTelegram';
 import toast from 'react-hot-toast';
+
+type ChatMsg = { role: 'user' | 'assistant'; content: string };
 
 interface Criterion { text: string; required: boolean; }
 
@@ -26,10 +29,54 @@ export function NewDeal() {
     { text: '', required: true },
   ]);
 
+  // AI помощник по заказу (PRO)
+  const [aiOpen,     setAiOpen]     = useState(false);
+  const [aiMessages, setAiMessages] = useState<ChatMsg[]>([]);
+  const [aiInput,    setAiInput]    = useState('');
+  const [aiBusy,     setAiBusy]     = useState(false);
+
+  const sendAi = async () => {
+    const text = aiInput.trim();
+    if (!text || aiBusy) return;
+    const history = [...aiMessages, { role: 'user' as const, content: text }];
+    setAiMessages(history);
+    setAiInput('');
+    setAiBusy(true);
+    try {
+      const r = await ai.draftDeal(history);
+      const { reply, ready, draft } = r.data;
+      setAiMessages(h => [...h, { role: 'assistant', content: reply }]);
+      if (ready && draft) applyDraft(draft);
+    } catch (e: any) {
+      if (e.response?.status === 403) {
+        toast.error('AI assistant is a PRO feature');
+        setAiOpen(false);
+        navigate('/subscription');
+      } else {
+        toast.error(e.response?.data?.error || 'AI unavailable');
+      }
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
+  const applyDraft = (d: any) => {
+    if (d.title) setTitle(String(d.title).slice(0, 256));
+    if (d.description) setDescription(String(d.description));
+    if (d.budget_usd) setAmountUsd(String(d.budget_usd));
+    if (Array.isArray(d.criteria) && d.criteria.length) {
+      setCriteria(d.criteria.map((c: string) => ({ text: String(c), required: true })));
+    }
+    tg?.HapticFeedback?.notificationOccurred('success');
+    toast.success('Draft applied — review and create');
+    setAiOpen(false);
+    setStep(0);
+  };
+
   const canNext = () => {
     if (step === 0) return title.trim().length >= 3;
     if (step === 1) return description.trim().length >= 10;
-    if (step === 2) return Number(amountUsd) > 0 && Number(amountUsd) <= 500;
+    if (step === 2) return Number(amountUsd) > 0 && Number(amountUsd) <= 10000;
     if (step === 3) return !!deadline && new Date(deadline) > new Date();
     if (step === 4) return criteria.filter(c => c.text.trim()).length >= 3;
     return true;
@@ -70,6 +117,15 @@ export function NewDeal() {
       <PixelScene scene="new_deal" width={252} height={56} />
 
       <div className="sec card-stagger-1">⚔ NEW QUEST</div>
+
+      {/* AI помощник по заказу (PRO) */}
+      <button className="btn card-stagger-1" style={{
+        fontSize: '8px', marginBottom: '8px',
+        background: 'linear-gradient(175deg,#cc44ff,#8822bb)', color: '#fff',
+        border: '1px solid #cc44ff', boxShadow: '0 0 14px rgba(204,68,255,0.35)',
+      }} onClick={() => { setAiOpen(true); if (aiMessages.length === 0) setAiMessages([{ role: 'assistant', content: 'Describe your project in a few words — I\'ll turn it into a ready deal (title, criteria, budget). ✦✦ PRO' }]); }}>
+        [ ✨ AI ASSISTANT — DRAFT MY DEAL ]
+      </button>
 
       {/* Step progress */}
       <div className="gl card-stagger-2" style={{ padding: '12px 16px' }}>
@@ -221,6 +277,51 @@ export function NewDeal() {
           </button>
         )}
       </div>
+
+      {/* AI chat modal — через портал в body, чтобы перекрыть глобальный BottomNav */}
+      {aiOpen && createPortal((
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 99999, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}
+          onClick={() => setAiOpen(false)}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: 'var(--bg-dark2,#08080e)', borderTop: '1px solid rgba(204,68,255,0.4)',
+            borderRadius: '18px 18px 0 0', maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+            boxShadow: '0 -8px 40px rgba(204,68,255,0.2)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <span className="px" style={{ fontSize: '9px', color: '#cc44ff' }}>✨ AI ASSISTANT</span>
+              <button onClick={() => setAiOpen(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: '18px', cursor: 'pointer' }}>×</button>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {aiMessages.map((m, i) => (
+                <div key={i} style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
+                  <div style={{
+                    fontFamily: 'Inter, sans-serif', fontSize: '13px', lineHeight: 1.5, padding: '9px 12px', borderRadius: '12px',
+                    background: m.role === 'user' ? 'rgba(204,68,255,0.18)' : 'rgba(255,255,255,0.05)',
+                    border: `1px solid ${m.role === 'user' ? 'rgba(204,68,255,0.35)' : 'rgba(255,255,255,0.1)'}`,
+                    color: m.role === 'user' ? '#fff' : 'rgba(255,255,255,0.85)',
+                  }}>{m.content}</div>
+                </div>
+              ))}
+              {aiBusy && <div className="px" style={{ fontSize: '7px', color: 'rgba(204,68,255,0.7)', alignSelf: 'flex-start' }}>⏳ THINKING…</div>}
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
+              <input
+                value={aiInput}
+                onChange={e => setAiInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') sendAi(); }}
+                placeholder="Describe your project…"
+                style={{ flex: 1, fontFamily: 'Inter, sans-serif', fontSize: '13px', padding: '10px 12px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff', outline: 'none' }}
+              />
+              <button onClick={sendAi} disabled={aiBusy || !aiInput.trim()} style={{
+                padding: '0 16px', borderRadius: '12px', border: 'none', cursor: aiBusy ? 'not-allowed' : 'pointer',
+                background: aiInput.trim() && !aiBusy ? '#cc44ff' : 'rgba(255,255,255,0.08)', color: '#fff', fontSize: '16px',
+              }}>↑</button>
+            </div>
+          </div>
+        </div>
+      ), document.body)}
     </div>
   );
 }
