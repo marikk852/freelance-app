@@ -3,6 +3,8 @@ const router  = express.Router();
 const { query } = require('../../database/db');
 const escrowService = require('../services/escrowService');
 const notificationService = require('../services/notificationService');
+const tierService = require('../services/tierService');
+const crystalService = require('../services/crystalService');
 
 // ============================================================
 // Routes: /api/disputes — dispute management
@@ -59,16 +61,21 @@ router.post('/', async (req, res) => {
 
     const isClient = Number(p.client_tg_id) === Number(telegramId);
 
+    // Приоритет по тарифу открывшего: FREE 0 / BASIC 1 / PRO 2 (VIP)
+    const tier = await tierService.getTierLimitsByUserId(openedBy);
+    const priority = { free: 0, basic: 1, pro: 2 }[tier.key] ?? 0;
+
     const { rows } = await query(
-      `INSERT INTO disputes (contract_id, opened_by, reason, client_evidence, freelancer_evidence)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO disputes (contract_id, opened_by, reason, client_evidence, freelancer_evidence, priority)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
       [
         contractId,
         openedBy,
         reason,
-        isClient ? evidenceJson : null,
-        !isClient ? evidenceJson : null,
+        isClient ? (evidenceJson || '[]') : '[]',   // NOT NULL — пустой массив вместо null
+        !isClient ? (evidenceJson || '[]') : '[]',
+        priority,
       ]
     );
 
@@ -214,6 +221,50 @@ router.post('/:id/resolve', async (req, res) => {
   } catch (err) {
     console.error('[API] POST /disputes/:id/resolve error:', err.message);
     res.status(400).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/disputes/:id/expedite
+ * Срочный арбитраж за кристаллы — поднимает спор в начало очереди.
+ * Участник спора тратит urgent_arbitration и priority → 5.
+ */
+router.post('/:id/expedite', async (req, res) => {
+  try {
+    const { telegramId } = req.user;
+    const { rows } = await query(
+      `SELECT d.status, u.id AS user_id,
+              uc.telegram_id AS client_tg, uf.telegram_id AS freelancer_tg
+       FROM disputes d
+       JOIN contracts c ON c.id = d.contract_id
+       JOIN rooms r ON r.id = c.room_id
+       JOIN users uc ON uc.id = r.client_id
+       JOIN users uf ON uf.id = r.freelancer_id
+       JOIN users u ON u.telegram_id = $2
+       WHERE d.id = $1`,
+      [req.params.id, telegramId]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Dispute not found' });
+    const d = rows[0];
+    if (![d.client_tg, d.freelancer_tg].map(Number).includes(Number(telegramId))) {
+      return res.status(403).json({ error: 'Only deal participants can expedite' });
+    }
+    if (d.status !== 'open') return res.status(400).json({ error: 'Only open disputes can be expedited' });
+
+    // Списываем кристаллы (атомарно)
+    let spend;
+    try {
+      spend = await crystalService.spend(d.user_id, 'urgent_arbitration');
+    } catch (e) {
+      const code = e.message === 'Insufficient crystals' ? 402 : 404;
+      return res.status(code).json({ error: e.message });
+    }
+
+    await query(`UPDATE disputes SET priority = GREATEST(priority, 5) WHERE id = $1`, [req.params.id]);
+    res.json({ success: true, spent: spend.spent, balance: spend.balance });
+  } catch (err) {
+    console.error('[API] POST /disputes/:id/expedite error:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

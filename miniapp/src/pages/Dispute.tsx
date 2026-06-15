@@ -52,6 +52,20 @@ export function Dispute() {
     } finally { setLoading(false); }
   };
 
+  const expedite = async () => {
+    if (!existingDispute) return;
+    tg?.HapticFeedback?.impactOccurred('medium');
+    try {
+      const r = await disputesApi.expedite(existingDispute.id);
+      tg?.HapticFeedback?.notificationOccurred('success');
+      toast.success(`Expedited! ${r.data.balance} 💎 left`);
+      setExistingDispute({ ...existingDispute, priority: 5 });
+    } catch (e: any) {
+      tg?.HapticFeedback?.notificationOccurred('error');
+      toast.error(e.response?.status === 402 ? 'Not enough crystals (need 400)' : (e.response?.data?.error || 'Error'));
+    }
+  };
+
   if (checkingStatus) return (
     <div className="page" style={{ textAlign: 'center', paddingTop: '60px' }}>
       <div style={{ fontSize: '28px', animation: 'float 2s ease-in-out infinite' }}>⚖️</div>
@@ -90,7 +104,16 @@ export function Dispute() {
               <span>Decision: <span style={{ color: '#00ff88' }}>{existingDispute.decision?.replace(/_/g, ' ').toUpperCase()}</span></span>
             )}
           </div>
-          <button className="btn btn-gr btn-full" style={{ marginTop: '14px' }}
+          {existingDispute.status === 'open' && (
+            existingDispute.priority >= 5 ? (
+              <div className="px" style={{ fontSize: '7px', color: '#00ff88', marginTop: '14px', lineHeight: 2 }}>⚡ EXPEDITED — TOP OF THE QUEUE</div>
+            ) : (
+              <button className="btn btn-y btn-full" style={{ marginTop: '14px', fontSize: '8px' }} onClick={expedite}>
+                [ ⚡ EXPEDITE — URGENT ARBITRATION (400 💎) ]
+              </button>
+            )
+          )}
+          <button className="btn btn-gr btn-full" style={{ marginTop: '8px' }}
             onClick={() => navigate(`/deal/${id}`)}>
             [ ◀ BACK TO DEAL ]
           </button>

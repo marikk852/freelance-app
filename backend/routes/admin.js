@@ -400,7 +400,7 @@ router.get('/api/disputes', async (req, res) => {
   try {
     const { status = 'open' } = req.query;
     const { rows } = await query(`
-      SELECT d.id, d.reason, d.status, d.decision, d.split_percent,
+      SELECT d.id, d.reason, d.status, d.decision, d.split_percent, d.priority,
              d.created_at, d.resolved_at,
              c.id AS contract_id, c.title AS contract_title, c.amount_usd, c.currency,
              uc.username AS client_username, uc.telegram_id AS client_tg_id,
@@ -412,7 +412,7 @@ router.get('/api/disputes', async (req, res) => {
       JOIN users uc ON uc.id=r.client_id
       LEFT JOIN users uf ON uf.id=r.freelancer_id
       WHERE d.status=$1
-      ORDER BY d.created_at DESC
+      ORDER BY d.priority DESC, d.created_at ASC
     `, [status]);
     res.json(rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
