@@ -16,7 +16,7 @@ const SKILL_CATEGORIES = ['design', 'dev', 'writing', 'video', 'marketing', 'oth
 type SkillCategory = typeof SKILL_CATEGORIES[number];
 type Role = 'client' | 'freelancer' | 'both';
 type AccountType = 'individual' | 'company';
-type Tab = 'stats' | 'portfolio' | 'reviews' | 'edit';
+type Tab = 'stats' | 'analytics' | 'portfolio' | 'reviews' | 'edit';
 
 interface EditForm {
   bio: string;
@@ -65,6 +65,7 @@ export function Profile() {
   const [reviews,   setReviews]   = useState<any[]>([]);
   const [wallet,    setWallet]    = useState('');
   const [tab,       setTab]       = useState<Tab>('stats');
+  const [analytics, setAnalytics] = useState<any>(null);
   const [loading,   setLoading]   = useState(false);
   const [saving,           setSaving]           = useState(false);
   const [bannerUploading,  setBannerUploading]  = useState(false);
@@ -254,6 +255,9 @@ export function Profile() {
   const switchTab = (t: Tab) => {
     tg?.HapticFeedback?.selectionChanged();
     setTab(t);
+    if (t === 'analytics' && !analytics) {
+      usersApi.analytics().then(r => setAnalytics(r.data)).catch(() => setAnalytics({ error: true }));
+    }
   };
 
   const setE = <K extends keyof EditForm>(key: K, val: EditForm[K]) =>
@@ -465,9 +469,9 @@ export function Profile() {
 
             {/* Tabs */}
             <div className="filter-row card-stagger-4" style={{ display: 'flex', gap: '4px', marginBottom: '10px' }}>
-              {(['stats', 'portfolio', 'reviews', 'edit'] as Tab[]).map(t => (
+              {(['stats', 'analytics', 'portfolio', 'reviews', 'edit'] as Tab[]).map(t => (
                 <button key={t} onClick={() => switchTab(t)} className={`fb ${tab === t ? 'fb-on' : 'fb-off'}`}>
-                  {t === 'stats' ? '📊 STATS' : t === 'portfolio' ? '📁 PORT' : t === 'reviews' ? '⭐ REV' : '✏️ EDIT'}
+                  {t === 'stats' ? '📊 STATS' : t === 'analytics' ? '📈 ANALYTICS' : t === 'portfolio' ? '📁 PORT' : t === 'reviews' ? '⭐ REV' : '✏️ EDIT'}
                 </button>
               ))}
             </div>
@@ -590,6 +594,63 @@ export function Profile() {
                 {/* Mobile: full wallet UI */}
                 <div className="mobile-only"><WalletPanel /></div>
               </>
+            )}
+
+            {/* ── ANALYTICS TAB ── */}
+            {tab === 'analytics' && (
+              <div className="gl" style={{ padding: '14px' }}>
+                <div className="pxgrid" />
+                {!analytics ? (
+                  <div className="px" style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', textAlign: 'center', padding: '20px' }}>LOADING…</div>
+                ) : analytics.error ? (
+                  <div className="px" style={{ fontSize: '7px', color: '#ff4466', textAlign: 'center', padding: '20px' }}>FAILED TO LOAD</div>
+                ) : analytics.locked ? (
+                  <div style={{ textAlign: 'center', padding: '12px 4px' }}>
+                    <div style={{ fontSize: '28px', marginBottom: '10px' }}>🔒</div>
+                    <div className="px" style={{ fontSize: '8px', color: '#cc44ff', marginBottom: '8px' }}>ANALYTICS IS A PLAN PERK</div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, marginBottom: '12px' }}>
+                      Upgrade to BASIC for extended stats, or PRO for full analytics (views, conversion, earnings by month).
+                    </div>
+                    <button className="btn btn-y btn-full" style={{ fontSize: '8px' }} onClick={() => navigate('/subscription')}>
+                      [ ✦ VIEW PLANS ]
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <DataRow label="Completed deals"  value={`${analytics.completed_deals} / ${analytics.total_deals}`} color="#00ff88" />
+                    <DataRow label="Success rate"     value={`${analytics.success_rate}%`} color={analytics.success_rate >= 80 ? '#00ff88' : '#ffaa00'} />
+                    <DataRow label="Avg deal value"   value={`$${analytics.avg_deal_value}`} color="#ffaa00" />
+                    <DataRow label="Total earned"     value={`$${analytics.total_earned}`} color="#00ff88" />
+                    <DataRow label="Repeat clients"   value={String(analytics.repeat_clients)} color="#0088ff" />
+                    <DataRow label="Rating"           value={analytics.rating > 0 ? `⭐ ${analytics.rating}` : 'None'} color="#ffaa00" />
+
+                    {analytics.tier === 'pro' && (
+                      <>
+                        <div className="sec" style={{ margin: '12px 0 6px', color: 'rgba(204,68,255,0.6)' }}>-- PRO ANALYTICS --</div>
+                        <DataRow label="Profile views"       value={String(analytics.profile_views)} color="#cc44ff" />
+                        <DataRow label="Application → hire"   value={`${analytics.application_conversion}% (${analytics.applications_total})`} color="#cc44ff" />
+                        {analytics.earnings_by_month?.length > 0 && (
+                          <div style={{ marginTop: '10px' }}>
+                            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginBottom: '8px' }}>EARNINGS BY MONTH</div>
+                            {(() => {
+                              const max = Math.max(...analytics.earnings_by_month.map((m: any) => m.earned), 1);
+                              return analytics.earnings_by_month.map((m: any) => (
+                                <div key={m.month} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
+                                  <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', color: 'rgba(255,255,255,0.5)', width: '52px', flexShrink: 0 }}>{m.month}</span>
+                                  <div style={{ flex: 1, height: '8px', borderRadius: '4px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                                    <div style={{ width: `${(m.earned / max) * 100}%`, height: '100%', background: 'linear-gradient(90deg,#cc44ff,#00ff88)' }} />
+                                  </div>
+                                  <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', color: '#00ff88', width: '52px', textAlign: 'right', flexShrink: 0 }}>${m.earned}</span>
+                                </div>
+                              ));
+                            })()}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
             )}
 
             {/* ── PORTFOLIO TAB ── */}

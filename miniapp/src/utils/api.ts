@@ -62,6 +62,7 @@ export const disputes = {
 // ---- Пользователи ----
 export const users = {
   me:            ()                          => api.get('/users/me'),
+  analytics:     ()                          => api.get('/users/analytics'),
   myDeals:       ()                          => api.get('/users/me/deals'),
   setWallet:     (addr: string)              => api.patch('/users/me/wallet', { walletAddress: addr }),
   portfolio:     (tgId: number)              => api.get(`/users/${tgId}/portfolio`),

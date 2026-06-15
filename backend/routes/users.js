@@ -8,6 +8,7 @@ const sharp   = require('sharp');
 const { query } = require('../../database/db');
 const { User } = require('../../database/models');
 const crystalService = require('../services/crystalService');
+const tierService = require('../services/tierService');
 
 const BANNERS_DIR = path.join(__dirname, '../../storage/banners');
 const AVATARS_DIR = path.join(__dirname, '../../storage/avatars');
@@ -523,11 +524,95 @@ router.get('/freelancers', async (req, res) => {
  * IMPORTANT: Must be declared before /:telegramId/portfolio and /:telegramId/reviews
  * so Express matches it correctly.
  */
+/**
+ * GET /api/users/analytics
+ * Аналитика профиля (Фаза 4). FREE → заблокировано (upsell).
+ * BASIC — расширенная статистика; PRO — полная (+ просмотры, конверсия, по месяцам).
+ * ВАЖНО: объявлен ДО /:telegramId, иначе перехватится param-роутом.
+ */
+router.get('/analytics', async (req, res) => {
+  try {
+    const { rows: us } = await query(
+      `SELECT id, rating, profile_views, subscription_plan, subscription_expires
+       FROM users WHERE telegram_id = $1`, [req.user.telegramId]
+    );
+    if (!us[0]) return res.status(404).json({ error: 'User not found' });
+    const u = us[0];
+    const tierKey = tierService.tierKeyFromUser(u);
+    if (tierKey === 'free') {
+      return res.json({ tier: 'free', locked: true });
+    }
+
+    // Базовые метрики сделок (как фрилансер). Net = за вычетом комиссии тарифа сделки.
+    const { rows: dealRows } = await query(
+      `SELECT
+         COUNT(*)::int AS total_deals,
+         COUNT(*) FILTER (WHERE c.status = 'completed')::int AS completed_deals,
+         COALESCE(ROUND(AVG(c.amount_usd) FILTER (WHERE c.status = 'completed'), 2), 0) AS avg_deal_value,
+         COALESCE(ROUND(SUM(c.amount_usd * (1 - COALESCE(c.commission_percent, 5) / 100.0))
+                  FILTER (WHERE c.status = 'completed'), 2), 0) AS total_earned
+       FROM contracts c JOIN rooms r ON r.id = c.room_id
+       WHERE r.freelancer_id = $1`, [u.id]
+    );
+    const { rows: repeatRows } = await query(
+      `SELECT COUNT(*)::int AS repeat_clients FROM (
+         SELECT r.client_id FROM contracts c JOIN rooms r ON r.id = c.room_id
+         WHERE r.freelancer_id = $1 AND c.status = 'completed'
+         GROUP BY r.client_id HAVING COUNT(*) > 1
+       ) t`, [u.id]
+    );
+
+    const total = dealRows[0].total_deals;
+    const completed = dealRows[0].completed_deals;
+    const analytics = {
+      tier: tierKey, locked: false,
+      rating: u.rating,
+      completed_deals: completed,
+      total_deals: total,
+      success_rate: total > 0 ? Math.round((completed / total) * 100) : 0,
+      avg_deal_value: Number(dealRows[0].avg_deal_value),
+      total_earned: Number(dealRows[0].total_earned),
+      repeat_clients: repeatRows[0].repeat_clients,
+    };
+
+    if (tierKey === 'pro') {
+      const { rows: appRows } = await query(
+        `SELECT COUNT(*)::int AS total,
+                COUNT(*) FILTER (WHERE status = 'accepted')::int AS accepted
+         FROM job_applications WHERE freelancer_id = $1`, [u.id]
+      );
+      const { rows: monthly } = await query(
+        `SELECT to_char(date_trunc('month', c.updated_at), 'YYYY-MM') AS month,
+                ROUND(SUM(c.amount_usd * (1 - COALESCE(c.commission_percent, 5) / 100.0)), 2) AS earned
+         FROM contracts c JOIN rooms r ON r.id = c.room_id
+         WHERE r.freelancer_id = $1 AND c.status = 'completed'
+           AND c.updated_at >= date_trunc('month', NOW()) - INTERVAL '5 months'
+         GROUP BY 1 ORDER BY 1`, [u.id]
+      );
+      analytics.profile_views = u.profile_views;
+      analytics.application_conversion = appRows[0].total > 0
+        ? Math.round((appRows[0].accepted / appRows[0].total) * 100) : 0;
+      analytics.applications_total = appRows[0].total;
+      analytics.earnings_by_month = monthly.map(m => ({ month: m.month, earned: Number(m.earned) }));
+    }
+
+    res.json(analytics);
+  } catch (err) {
+    console.error('[API] GET /users/analytics error:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.get('/:telegramId', async (req, res) => {
   try {
     const telegramId = parseInt(req.params.telegramId, 10);
     if (isNaN(telegramId)) {
       return res.status(400).json({ error: 'telegramId must be a number' });
+    }
+
+    // Счётчик просмотров профиля (не считаем свои; fire-and-forget) — для аналитики PRO
+    if (Number(req.user?.telegramId) !== telegramId) {
+      query(`UPDATE users SET profile_views = profile_views + 1 WHERE telegram_id = $1`, [telegramId]).catch(() => {});
     }
 
     const { rows } = await query(
