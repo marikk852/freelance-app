@@ -479,13 +479,40 @@ router.post('/:id/approve', async (req, res) => {
          WHERE id = $1`,
         [delivery.contract_id]
       );
-      // Update room
+      // Закрываем комнату только для обычных сделок. Для milestone-сделки комната
+      // остаётся активной до завершения последнего этапа (см. оркестрацию ниже).
       await client.query(
         `UPDATE rooms SET status = 'completed', closed_at = NOW()
-         WHERE id = (SELECT room_id FROM contracts WHERE id = $1)`,
+         WHERE id = (SELECT room_id FROM contracts WHERE id = $1)
+           AND NOT EXISTS (SELECT 1 FROM contracts WHERE id = $1 AND deal_group_id IS NOT NULL)`,
         [delivery.contract_id]
       );
     });
+
+    // Milestone-оркестрация: разблокировать следующий этап или завершить группу
+    try {
+      const { rows: mc } = await query(
+        `SELECT deal_group_id, milestone_idx FROM contracts WHERE id = $1`, [delivery.contract_id]
+      );
+      if (mc[0] && mc[0].deal_group_id) {
+        const gid = mc[0].deal_group_id, idx = mc[0].milestone_idx;
+        const { rows: nxt } = await query(
+          `UPDATE contracts SET status = 'signed', updated_at = NOW()
+           WHERE deal_group_id = $1 AND milestone_idx = $2 AND status = 'draft'
+             AND signed_by_client = TRUE AND signed_by_freelancer = TRUE
+           RETURNING id`,
+          [gid, idx + 1]
+        );
+        if (nxt.length === 0) {
+          // Этапов больше нет → группа и комната завершены
+          await query(`UPDATE deal_groups SET status = 'completed' WHERE id = $1`, [gid]);
+          await query(
+            `UPDATE rooms SET status = 'completed', closed_at = NOW()
+             WHERE id = (SELECT room_id FROM deal_groups WHERE id = $1)`, [gid]
+          );
+        }
+      }
+    } catch (err) { console.error('[Milestone] orchestration error:', err.message); }
 
     // Trigger escrow release
     const txHash = await escrowService.releaseEscrow(delivery.contract_id, telegramId);

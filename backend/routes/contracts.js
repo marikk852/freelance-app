@@ -154,6 +154,125 @@ router.get('/:id', async (req, res) => {
 });
 
 /**
+ * POST /api/contracts/milestone-deal
+ * Создать сделку с этапами (PRO, заказ >$10k). Каждый этап ≤$10k — обычный контракт.
+ * Body: { title, description, currency, milestones: [{ title, amount_usd, criteria[], deadline }] }
+ */
+router.post('/milestone-deal', async (req, res) => {
+  try {
+    const { telegramId } = req.user;
+    const { title, description = '', currency, milestones } = req.body;
+
+    if (!['TON', 'USDT'].includes(currency)) return res.status(400).json({ error: 'currency must be TON or USDT' });
+    if (!title || title.length < 3) return res.status(400).json({ error: 'title too short' });
+    if (!Array.isArray(milestones) || milestones.length < 2 || milestones.length > 10) {
+      return res.status(400).json({ error: 'milestones: 2–10 stages required' });
+    }
+
+    // Валидация каждого этапа
+    let total = 0;
+    for (const [i, m] of milestones.entries()) {
+      const amt = Number(m.amount_usd);
+      if (!(amt > 0) || amt > 10000) return res.status(400).json({ error: `Stage ${i + 1}: amount must be 1–10000` });
+      if (!m.title || String(m.title).length < 3) return res.status(400).json({ error: `Stage ${i + 1}: title too short` });
+      const crit = (m.criteria || []).filter(c => c && String(c.text || c).trim());
+      if (crit.length < 3) return res.status(400).json({ error: `Stage ${i + 1}: at least 3 criteria` });
+      if (!m.deadline || new Date(m.deadline) <= new Date()) return res.status(400).json({ error: `Stage ${i + 1}: deadline must be in the future` });
+      total += amt;
+    }
+    if (total <= 10000) return res.status(400).json({ error: 'Milestone deals are for totals over $10,000 — use a normal deal otherwise' });
+
+    const { rows: users } = await query(
+      'SELECT id, subscription_plan, subscription_expires FROM users WHERE telegram_id = $1', [telegramId]
+    );
+    if (!users[0]) return res.status(404).json({ error: 'User not found' });
+
+    const tier = await tierService.getTierLimits(users[0]);
+    if (tier.key !== 'pro') return res.status(403).json({ error: 'Milestone deals are a PRO feature' });
+
+    // room + deal_group + N контрактов-этапов
+    const room = await Room.create(users[0].id);
+    const { rows: grp } = await query(
+      `INSERT INTO deal_groups (room_id, title, description, total_usd, currency)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [room.id, title, description, total, currency]
+    );
+    const group = grp[0];
+
+    for (const [i, m] of milestones.entries()) {
+      const crit = (m.criteria || [])
+        .map(c => (typeof c === 'string' ? { text: c, required: true } : { text: c.text, required: c.required !== false }))
+        .filter(c => c.text && c.text.trim());
+      const contract = await Contract.create({
+        room_id           : room.id,
+        title             : m.title,
+        description        : m.description || description,
+        amount_usd        : Number(m.amount_usd),
+        currency,
+        deadline          : m.deadline,
+        criteria          : crit,
+        commission_percent: tier.commission_percent,
+      });
+      // Клиент подписывает все этапы сразу; этап 0 ждёт фрилансера, остальные заблокированы (draft)
+      await query(
+        `UPDATE contracts SET deal_group_id = $1, milestone_idx = $2,
+                signed_by_client = TRUE,
+                status = $3
+         WHERE id = $4`,
+        [group.id, i, i === 0 ? 'pending_signature' : 'draft', contract.id]
+      );
+    }
+
+    await AuditLog.log({
+      action: 'milestone_deal_created', performed_by: users[0].id,
+      details: { group_id: group.id, total, stages: milestones.length },
+    }).catch(() => {});
+
+    const botUsername = await getBotUsername();
+    const inviteUrl = botUsername
+      ? `https://t.me/${botUsername}?start=room_${room.invite_link}`
+      : `${process.env.WEBAPP_URL}?room=${room.invite_link}`;
+
+    res.status(201).json({ groupId: group.id, roomId: room.id, inviteLink: room.invite_link, inviteUrl, total, stages: milestones.length });
+  } catch (err) {
+    console.error('[API] POST /contracts/milestone-deal error:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/contracts/group/:groupId
+ * Группа этапов + список этапов со статусами (для milestone-обзора).
+ */
+router.get('/group/:groupId', async (req, res) => {
+  try {
+    const { telegramId } = req.user;
+    const { rows: g } = await query(
+      `SELECT dg.*, uc.telegram_id AS client_tg, uf.telegram_id AS freelancer_tg
+       FROM deal_groups dg
+       JOIN rooms r ON r.id = dg.room_id
+       JOIN users uc ON uc.id = r.client_id
+       LEFT JOIN users uf ON uf.id = r.freelancer_id
+       WHERE dg.id = $1`, [req.params.groupId]
+    );
+    if (!g[0]) return res.status(404).json({ error: 'Deal group not found' });
+    const isParticipant = [g[0].client_tg, g[0].freelancer_tg].map(Number).includes(Number(telegramId));
+    if (!isParticipant) return res.status(403).json({ error: 'Access denied' });
+
+    const { rows: stages } = await query(
+      `SELECT c.id, c.title, c.amount_usd, c.status, c.milestone_idx,
+              c.ton_contract_address, e.status AS escrow_status
+       FROM contracts c LEFT JOIN escrow e ON e.contract_id = c.id
+       WHERE c.deal_group_id = $1 ORDER BY c.milestone_idx`, [req.params.groupId]
+    );
+    res.json({ group: g[0], stages });
+  } catch (err) {
+    console.error('[API] GET /contracts/group/:groupId error:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
  * GET /api/contracts/:id/estimate
  * Оценка депозита в TON по текущему курсу — показывается клиенту
  * ДО деплоя контракта (deploy фиксирует точную сумму сам).
@@ -208,7 +327,7 @@ router.post('/:id/sign', async (req, res) => {
 
     // Fetch room and participants to verify role
     const { rows: contractRows } = await query(
-      `SELECT c.room_id,
+      `SELECT c.room_id, c.deal_group_id,
               uc.telegram_id AS client_tg_id,
               r.freelancer_id
        FROM contracts c
@@ -249,6 +368,17 @@ router.post('/:id/sign', async (req, res) => {
     const contract = await Contract.sign(req.params.id, role);
     if (!contract) return res.status(404).json({ error: 'Contract not found' });
 
+    // Milestone-сделка: подпись фрилансера на этапе = принятие всей сделки →
+    // авто-подписываем фрилансера на всех остальных этапах группы (они остаются
+    // заблокированными 'draft', пока не дойдёт очередь по последовательности).
+    if (role === 'freelancer' && cr.deal_group_id) {
+      await query(
+        `UPDATE contracts SET signed_by_freelancer = TRUE, updated_at = NOW()
+         WHERE deal_group_id = $1 AND id != $2`,
+        [cr.deal_group_id, req.params.id]
+      );
+    }
+
     res.json({ status: contract.status, contract });
   } catch (err) {
     console.error('[API] POST /contracts/:id/sign error:', err.message);
@@ -265,6 +395,17 @@ router.post('/:id/deploy', async (req, res) => {
   try {
     const contract = await Contract.findById(req.params.id);
     if (!contract) return res.status(404).json({ error: 'Contract not found' });
+
+    // Milestone-gate: этап i можно деплоить только после completed этапа i-1
+    if (contract.deal_group_id && contract.milestone_idx > 0) {
+      const { rows: prev } = await query(
+        `SELECT status FROM contracts WHERE deal_group_id = $1 AND milestone_idx = $2`,
+        [contract.deal_group_id, contract.milestone_idx - 1]
+      );
+      if (!prev[0] || prev[0].status !== 'completed') {
+        return res.status(409).json({ error: 'Previous milestone must be completed first' });
+      }
+    }
 
     if (contract.status !== 'signed') {
       return res.status(400).json({ error: 'Contract must be signed by both parties' });

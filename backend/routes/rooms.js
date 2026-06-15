@@ -26,19 +26,34 @@ router.get('/join/:inviteLink', async (req, res) => {
          c.status,
          c.signed_by_client,
          c.signed_by_freelancer,
+         c.deal_group_id,
          r.invite_link,
          r.status         AS room_status,
          r.freelancer_id,
          uc.first_name    AS client_first_name,
-         uc.username      AS client_username
+         uc.username      AS client_username,
+         dg.title         AS group_title,
+         dg.total_usd     AS group_total
        FROM rooms r
        JOIN contracts c  ON c.room_id = r.id
        JOIN users uc     ON uc.id = r.client_id
-       WHERE r.invite_link = $1`,
+       LEFT JOIN deal_groups dg ON dg.room_id = r.id
+       WHERE r.invite_link = $1
+       ORDER BY c.milestone_idx ASC NULLS FIRST
+       LIMIT 1`,
       [req.params.inviteLink]
     );
 
     if (!rows[0]) return res.status(404).json({ error: 'Room not found' });
+
+    // Для milestone-сделки добавим число этапов
+    if (rows[0].deal_group_id) {
+      const { rows: cnt } = await query(
+        `SELECT COUNT(*)::int AS stages FROM contracts WHERE deal_group_id = $1`,
+        [rows[0].deal_group_id]
+      );
+      rows[0].group_stages = cnt[0].stages;
+    }
 
     res.json(rows[0]);
   } catch (err) {
