@@ -127,6 +127,14 @@ export function NewDeal() {
         [ ✨ AI ASSISTANT — DRAFT MY DEAL ]
       </button>
 
+      {/* Big project → milestone deal (PRO) */}
+      <button className="btn card-stagger-1" style={{
+        fontSize: '7px', marginBottom: '8px',
+        background: 'rgba(204,68,255,0.1)', border: '1px solid rgba(204,68,255,0.3)', color: '#cc44ff',
+      }} onClick={() => navigate('/new-milestone')}>
+        [ 🪜 BIG PROJECT (&gt;$10K)? SPLIT INTO MILESTONES — PRO ]
+      </button>
+
       {/* Step progress */}
       <div className="gl card-stagger-2" style={{ padding: '12px 16px' }}>
         <div className="pxgrid" />

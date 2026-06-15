@@ -44,6 +44,8 @@ export const contracts = {
   approve:         (id: string)   => api.post(`/contracts/${id}/approve`),
   simulatePayment: (id: string)   => api.post(`/contracts/${id}/simulate-payment`),
   review: (id: string, body: { rating: number; comment?: string }) => api.post(`/contracts/${id}/review`, body),
+  createMilestoneDeal: (body: any) => api.post('/contracts/milestone-deal', body),
+  group: (groupId: string) => api.get(`/contracts/group/${groupId}`),
 };
 
 // ---- Сдача работы ----

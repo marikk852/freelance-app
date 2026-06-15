@@ -23,6 +23,8 @@ import { Quests }          from './pages/Quests';
 import { Board }           from './pages/Board';
 import { Subscription }    from './pages/Subscription';
 import { Crystals }        from './pages/Crystals';
+import { MilestoneDeal }   from './pages/MilestoneDeal';
+import { MilestoneGroup }  from './pages/MilestoneGroup';
 import './styles/globals.css';
 
 // ============================================================
@@ -248,6 +250,8 @@ export default function App() {
         <Route path="/quests"        element={<Quests />} />
         <Route path="/subscription"  element={<Subscription />} />
         <Route path="/crystals"      element={<Crystals />} />
+        <Route path="/new-milestone" element={<MilestoneDeal />} />
+        <Route path="/group/:groupId" element={<MilestoneGroup />} />
       </Routes>
 
       <BottomNav />
