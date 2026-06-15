@@ -55,6 +55,19 @@ describe('Escrow USDT (jetton)', () => {
     expect((await escrow.getState()).jettonWallet!.equals(jwallet.address)).toBe(true);     // не перезаписан
   });
 
+  it('deploy + set jetton wallet in one message (backend deploy path)', async () => {
+    // Свежий эскроу: первое же сообщение от арбитра = StateInit + OP_SET_JETTON_WALLET
+    const e = bc.openContract(EscrowUsdtContract.createFromConfig({
+      clientAddr: client.address, freelancerAddr: freelancer.address,
+      arbitratorAddr: arbitrator.address, amountUsd: AMOUNT, feePercent: FEE, deadline: FUTURE + 2,
+    }, code));
+    await e.sendDeployAndSetWallet(arbitrator.getSender(), jwallet.address);
+    expect((await e.getState()).jettonWallet!.equals(jwallet.address)).toBe(true);
+    // и сразу принимает депозит
+    await e.sendTransferNotification(jwallet.getSender(), AMOUNT, client.address);
+    expect(await e.getStatus()).toBe(EscrowStatus.FROZEN);
+  });
+
   // ---------- Депозит ----------
   it('rejects deposit before jetton wallet is set (funds-safety)', async () => {
     const r = await deposit(AMOUNT);

@@ -11,16 +11,37 @@ const { Contract, Escrow, AuditLog } = require('../../database/models');
 // ПРАВИЛО: деньги освобождаются ТОЛЬКО при delivery_approved
 // ============================================================
 
-// Op-коды (должны совпадать с escrow.fc)
+// Op-коды (должны совпадать с escrow.fc / escrow_usdt.fc)
 const OP = {
-  DEPOSIT : 1,
-  RELEASE : 2,
-  REFUND  : 3,
-  SPLIT   : 4,
+  DEPOSIT           : 1,
+  RELEASE           : 2,
+  REFUND            : 3,
+  SPLIT             : 4,
+  SET_JETTON_WALLET : 5,   // только escrow_usdt.fc — одноразовая установка jetton-wallet
 };
 
-// Газ для транзакций арбитра
+// Газ для транзакций арбитра (TON-эскроу)
 const ARBITRATOR_GAS = toNano('0.05');
+
+// ============================================================
+// USD₮ (нативный jetton на TON) — отдельный контракт escrow_usdt.fc.
+// Контракт сам шлёт jetton-переводы (~0.05 TON каждый), поэтому управляющим
+// сообщениям нужен бо́льший газ, чем TON-эскроу. Значения согласованы с
+// gas-check в контракте (my_balance >= N*0.05 + 0.02 TON).
+// ============================================================
+const USDT_DECIMALS_FACTOR = 1e6;   // нативный USD₮ на TON имеет 6 знаков
+const USDT_MASTER_MAINNET  = 'EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs';
+const USDT_GAS = {
+  deploy  : toNano('0.1'),   // деплой + OP_SET_JETTON_WALLET в одном сообщении
+  release : toNano('0.3'),   // 2 jetton-перевода (фрилансер + комиссия)
+  refund  : toNano('0.2'),   // 1 jetton-перевод
+  split   : toNano('0.4'),   // до 3 jetton-переводов
+};
+
+/** Газ для управляющего сообщения с учётом валюты эскроу. */
+function arbitratorGas(currency, op) {
+  return currency === 'USDT' ? USDT_GAS[op] : ARBITRATOR_GAS;
+}
 
 /**
  * Задеплоить новый экземпляр эскроу смарт-контракта для сделки.
@@ -66,9 +87,9 @@ async function deployContract({
     cryptoAmount   = amountUsd / tonPrice;
     amountNano     = toNano(cryptoAmount.toFixed(9));
   } else {
-    // USDT — 1:1 к USD (jUSDT на TON)
+    // USDT — 1:1 к USD (нативный USD₮ на TON, 6 знаков)
     cryptoAmount = amountUsd;
-    amountNano   = BigInt(Math.round(amountUsd * 1e6)); // jUSDT имеет 6 decimals
+    amountNano   = BigInt(Math.round(amountUsd * USDT_DECIMALS_FACTOR));
   }
 
   const deadline = Math.floor(deadlineDate.getTime() / 1000);
@@ -106,26 +127,54 @@ async function deployContract({
   const arbitratorAddress = tonService.getArbitratorAddress();
   if (!arbitratorAddress) throw new Error('[Escrow] Арбитр-кошелёк не инициализирован');
 
-  // Загружаем скомпилированный код контракта
-  const contractCode = await loadContractCode();
+  const isUsdt = currency === 'USDT';
 
-  // Строим init data ячейку
-  const initData = buildInitData({
-    clientAddr    : Address.parse(clientAddress),
-    freelancerAddr: Address.parse(freelancerAddress),
-    arbitratorAddr: Address.parse(arbitratorAddress),
-    amountNano,
-    feePercent,
-    deadline,
-  });
+  // Загружаем скомпилированный код нужного контракта
+  const contractCode = await loadContractCode(isUsdt ? 'escrow_usdt' : 'escrow');
 
-  // Вычисляем адрес контракта (deteministic из code + data)
+  // Строим init data ячейку (раскладка различается: USD₮ хранит участников в ref-ячейке)
+  const initData = isUsdt
+    ? buildInitDataUsdt({
+        clientAddr    : Address.parse(clientAddress),
+        freelancerAddr: Address.parse(freelancerAddress),
+        arbitratorAddr: Address.parse(arbitratorAddress),
+        amountNano, feePercent, deadline,
+      })
+    : buildInitData({
+        clientAddr    : Address.parse(clientAddress),
+        freelancerAddr: Address.parse(freelancerAddress),
+        arbitratorAddr: Address.parse(arbitratorAddress),
+        amountNano, feePercent, deadline,
+      });
+
+  // Вычисляем адрес контракта (детерминированный из code + data)
   const { contractAddress } = require('@ton/core');
   const init = { code: contractCode, data: initData };
   const tonAddress = contractAddress(0, init).toString();
 
-  // Деплоим контракт (отправляем первую транзакцию с StateInit)
-  const txHash = await deployStateInit(tonAddress, contractCode, initData);
+  let txHash;
+  let jettonWalletAddress = null;
+
+  if (isUsdt) {
+    // Адрес jetton-wallet эскроу детерминирован: спрашиваем у мастера USD₮.
+    // (адрес эскроу уже известен — он тоже детерминирован из code+data)
+    jettonWalletAddress = await computeJettonWalletAddress(tonAddress);
+
+    // Деплой + OP_SET_JETTON_WALLET в ОДНОМ сообщении от арбитра.
+    // На uninit-аккаунте StateInit инициализирует контракт, затем тело
+    // обрабатывает установку jetton-wallet (sender == арбитр). Атомарно,
+    // без гонки «контракт ещё не активен». Путь покрыт тестом
+    // escrow_usdt.spec.ts › "deploy + set jetton wallet in one message".
+    const setBody = beginCell()
+      .storeUint(OP.SET_JETTON_WALLET, 32)
+      .storeAddress(Address.parse(jettonWalletAddress))
+      .endCell();
+    txHash = await tonService.sendArbitratorMessage(tonAddress, USDT_GAS.deploy, setBody, init);
+    console.log(`[Escrow] USD₮ эскроу ${tonAddress}, jetton-wallet ${jettonWalletAddress}`);
+  } else {
+    // Деплоим TON-контракт (отправляем первую транзакцию с StateInit)
+    txHash = await deployStateInit(tonAddress, contractCode, initData);
+  }
 
   // Обновляем БД в транзакции
   await transaction(async (client) => {
@@ -163,6 +212,7 @@ async function deployContract({
           amountUsd,
           feePercent,
           deadline: deadlineDate.toISOString(),
+          ...(jettonWalletAddress ? { jettonWalletAddress } : {}),
         }),
         txHash,
       ]
@@ -288,7 +338,7 @@ async function releaseEscrow(contractId, approvedBy) {
   const body = beginCell().storeUint(OP.RELEASE, 32).endCell();
   const txHash = await tonService.sendArbitratorMessage(
     escrowRow.ton_contract_address,
-    ARBITRATOR_GAS,
+    arbitratorGas(escrowRow.currency, 'release'),
     body
   );
 
@@ -370,7 +420,7 @@ async function refundEscrow(contractId, requestedBy) {
   const body = beginCell().storeUint(OP.REFUND, 32).endCell();
   const txHash = await tonService.sendArbitratorMessage(
     escrowRow.ton_contract_address,
-    ARBITRATOR_GAS,
+    arbitratorGas(escrowRow.currency, 'refund'),
     body
   );
 
@@ -454,7 +504,7 @@ async function splitEscrow(contractId, freelancerPercent, resolvedBy) {
 
   const txHash = await tonService.sendArbitratorMessage(
     escrowRow.ton_contract_address,
-    ARBITRATOR_GAS,
+    arbitratorGas(escrowRow.currency, 'split'),
     body
   );
 
@@ -499,15 +549,16 @@ async function splitEscrow(contractId, freelancerPercent, resolvedBy) {
 /**
  * Загрузить скомпилированный FunC код контракта.
  * Компилируется через `cd contracts && npm run build`.
+ * @param {string} name - 'escrow' (TON) или 'escrow_usdt' (USD₮ jetton)
  */
-async function loadContractCode() {
+async function loadContractCode(name = 'escrow') {
   const fs   = require('fs');
   const path = require('path');
-  const jsonPath = path.join(__dirname, '../../contracts/build/escrow.compiled.json');
+  const jsonPath = path.join(__dirname, `../../contracts/build/${name}.compiled.json`);
 
   if (!fs.existsSync(jsonPath)) {
     throw new Error(
-      '[Escrow] Контракт не скомпилирован. Запусти: cd contracts && npm run build'
+      `[Escrow] Контракт ${name} не скомпилирован. Запусти: cd contracts && npm run build`
     );
   }
 
@@ -516,7 +567,7 @@ async function loadContractCode() {
 }
 
 /**
- * Построить ячейку init data для смарт-контракта.
+ * Построить ячейку init data для TON-контракта (escrow.fc).
  */
 function buildInitData({ clientAddr, freelancerAddr, arbitratorAddr, amountNano, feePercent, deadline }) {
   return beginCell()
@@ -528,6 +579,42 @@ function buildInitData({ clientAddr, freelancerAddr, arbitratorAddr, amountNano,
     .storeUint(feePercent, 8)
     .storeUint(deadline, 32)
     .endCell();
+}
+
+/**
+ * Построить init data для USD₮-контракта (escrow_usdt.fc).
+ * ВАЖНО: раскладка ДОЛЖНА совпадать с load_data в escrow_usdt.fc и
+ * EscrowUsdtContract.buildInitData — 4 адреса не влезают в одну ячейку,
+ * поэтому участники вынесены в ref, а jetton_wallet = addr_none (ставится
+ * отдельным OP_SET_JETTON_WALLET при деплое).
+ */
+function buildInitDataUsdt({ clientAddr, freelancerAddr, arbitratorAddr, amountNano, feePercent, deadline }) {
+  return beginCell()
+    .storeUint(0, 8)            // STATUS_WAITING = 0
+    .storeCoins(amountNano)
+    .storeUint(feePercent, 8)
+    .storeUint(deadline, 32)
+    .storeAddress(null)         // jetton_wallet = addr_none
+    .storeRef(beginCell()
+      .storeAddress(clientAddr)
+      .storeAddress(freelancerAddr)
+      .storeAddress(arbitratorAddr)
+      .endCell())
+    .endCell();
+}
+
+/**
+ * Вычислить адрес jetton-wallet владельца через get_wallet_address мастера USD₮.
+ * Детерминированно — не требует, чтобы кошелёк уже был задеплоен.
+ * @param {string} ownerAddress - адрес владельца (наш эскроу-контракт)
+ * @returns {Promise<string>} адрес jetton-wallet
+ */
+async function computeJettonWalletAddress(ownerAddress) {
+  const master = process.env.USDT_MASTER_ADDRESS || USDT_MASTER_MAINNET;
+  const result = await tonService.runGetMethod(master, 'get_wallet_address', [
+    { type: 'slice', cell: beginCell().storeAddress(Address.parse(ownerAddress)).endCell() },
+  ]);
+  return result.stack.readAddress().toString();
 }
 
 /**

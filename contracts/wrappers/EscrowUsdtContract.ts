@@ -57,6 +57,18 @@ export class EscrowUsdtContract implements Contract {
     });
   }
 
+  /**
+   * Деплой + установка jetton-wallet ОДНИМ сообщением (StateInit + body).
+   * Так делает backend: первое сообщение от арбитра инициализирует контракт
+   * и сразу обрабатывает OP_SET_JETTON_WALLET. Отправитель ДОЛЖЕН быть арбитром.
+   */
+  async sendDeployAndSetWallet(provider: ContractProvider, via: Sender, wallet: Address, value: bigint = toNano('0.1')): Promise<void> {
+    await provider.internal(via, {
+      value, sendMode: SendMode.PAY_GAS_SEPARATELY,
+      body: beginCell().storeUint(OP.SET_JETTON_WALLET, 32).storeAddress(wallet).endCell(),
+    });
+  }
+
   /** Симуляция входящего депозита: transfer_notification ОТ jetton-wallet (via). */
   async sendTransferNotification(
     provider: ContractProvider, via: Sender, jettonAmount: bigint, from: Address, value: bigint = toNano('0.1')
