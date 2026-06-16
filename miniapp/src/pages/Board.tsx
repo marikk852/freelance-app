@@ -17,6 +17,19 @@ const EXP_COLOR: Record<string, string> = {
   junior: '#00ff88', middle: '#ffaa00', senior: '#cc44ff',
 };
 
+// Относительное время «2d ago» для карточек вакансий
+function timeAgo(dateStr: string): string {
+  const d = new Date(dateStr).getTime();
+  if (!d) return '';
+  const s = Math.floor((Date.now() - d) / 1000);
+  if (s < 60) return 'just now';
+  const m = Math.floor(s / 60);  if (m < 60)  return `${m}m ago`;
+  const h = Math.floor(m / 60);  if (h < 24)  return `${h}h ago`;
+  const days = Math.floor(h / 24); if (days < 30) return `${days}d ago`;
+  const mo = Math.floor(days / 30); if (mo < 12) return `${mo}mo ago`;
+  return `${Math.floor(mo / 12)}y ago`;
+}
+
 // Profile completion check popup
 function ProfileIncompletePopup({ role, onClose, onGo }: { role: string; onClose: () => void; onGo: () => void }) {
   const missing = role === 'freelancer'
@@ -76,10 +89,15 @@ export function Board() {
   const [tab, setTab] = useState<'jobs' | 'freelancers'>(initialTab as any);
 
   // Jobs state
-  const [jobs,       setJobs]       = useState<any[]>([]);
-  const [jobsLoaded, setJobsLoaded] = useState(false);
-  const [boostJob,   setBoostJob]   = useState<any>(null);
-  const [boosting,   setBoosting]   = useState(false);
+  const PAGE = 20;
+  const [jobs,        setJobs]        = useState<any[]>([]);
+  const [jobsLoaded,  setJobsLoaded]  = useState(false);
+  const [jobsError,   setJobsError]   = useState(false);
+  const [jobsOffset,  setJobsOffset]  = useState(0);
+  const [jobsHasMore, setJobsHasMore] = useState(false);
+  const [jobsMore,    setJobsMore]    = useState(false);  // дозагрузка
+  const [boostJob,    setBoostJob]    = useState<any>(null);
+  const [boosting,    setBoosting]    = useState(false);
 
   const BOOST_OPTIONS = [
     { key: 'boost_top_24h',   label: 'Top for 24h',     cost: 300 },
@@ -96,7 +114,7 @@ export function Board() {
       tg?.HapticFeedback?.notificationOccurred('success');
       toast.success(`Boosted! ${r.data.balance} 💎 left`);
       setBoostJob(null);
-      jobsApi.list().then(res => setJobs(res.data)).catch(() => {});
+      loadJobs(true);   // перезагрузить с учётом текущего фильтра/поиска
     } catch (e: any) {
       tg?.HapticFeedback?.notificationOccurred('error');
       toast.error(e.response?.status === 402 ? 'Not enough crystals' : (e.response?.data?.error || 'Failed'));
@@ -105,10 +123,19 @@ export function Board() {
   const [category,   setCategory]   = useState('all');
   const [search,     setSearch]     = useState('');
   const [showCreate, setShowCreate] = useState(false);
+  const [creating,   setCreating]   = useState(false);
+  const [form, setForm] = useState({
+    title: '', description: '', budget_min: '', budget_max: '',
+    deadline: '', category: 'dev', skills_required: '',
+  });
 
   // Freelancers state
   const [freelancers,   setFreelancers]   = useState<any[]>([]);
   const [freLoaded,     setFreLoaded]     = useState(false);
+  const [freError,      setFreError]      = useState(false);
+  const [freOffset,     setFreOffset]     = useState(0);
+  const [freHasMore,    setFreHasMore]    = useState(false);
+  const [freMore,       setFreMore]       = useState(false);
   const [freSearch,     setFreSearch]     = useState('');
   const [freCat,        setFreCat]        = useState('all');
 
@@ -126,40 +153,54 @@ export function Board() {
     usersApi.me().then(r => setMeProfile(r.data)).catch(() => {});
   }, []);
 
-  // Fetch jobs
+  // Серверная пагинация + поиск/категория. reset=true → новый запрос с offset 0,
+  // иначе дозагрузка (append). Поиск/фильтр выполняет БД, а не клиент по 20 строкам.
+  const loadJobs = (reset = false) => {
+    const offset = reset ? 0 : jobsOffset;
+    if (reset) setJobsError(false); else setJobsMore(true);
+    const params: any = { limit: PAGE, offset };
+    if (category !== 'all') params.category = category;
+    if (search.trim())      params.search   = search.trim();
+    jobsApi.list(params)
+      .then(r => {
+        const data = r.data || [];
+        setJobs(prev => reset ? data : [...prev, ...data]);
+        setJobsOffset(offset + data.length);
+        setJobsHasMore(data.length === PAGE);
+        setJobsLoaded(true);
+      })
+      .catch(() => { if (reset) { setJobsError(true); setJobsLoaded(true); } })
+      .finally(() => { if (!reset) setJobsMore(false); });
+  };
+  // Дебаунс: при смене вкладки/категории/поиска перезагружаем с нуля
   useEffect(() => {
-    if (tab !== 'jobs' || jobsLoaded) return;
-    jobsApi.list().then(r => { setJobs(r.data); setJobsLoaded(true); }).catch(() => {});
-  }, [tab, jobsLoaded]);
+    if (tab !== 'jobs') return;
+    const t = setTimeout(() => { setJobsLoaded(false); loadJobs(true); }, 300);
+    return () => clearTimeout(t);
+  }, [tab, category, search]);
 
-  // Fetch freelancers
+  const loadFre = (reset = false) => {
+    const offset = reset ? 0 : freOffset;
+    if (reset) setFreError(false); else setFreMore(true);
+    const params: any = { limit: PAGE, offset };
+    if (freCat !== 'all') params.category = freCat;
+    if (freSearch.trim()) params.search   = freSearch.trim();
+    usersApi.freelancers(params)
+      .then(r => {
+        const data = r.data || [];
+        setFreelancers(prev => reset ? data : [...prev, ...data]);
+        setFreOffset(offset + data.length);
+        setFreHasMore(data.length === PAGE);
+        setFreLoaded(true);
+      })
+      .catch(() => { if (reset) { setFreError(true); setFreLoaded(true); } })
+      .finally(() => { if (!reset) setFreMore(false); });
+  };
   useEffect(() => {
-    if (tab !== 'freelancers' || freLoaded) return;
-    usersApi.freelancers().then(r => { setFreelancers(r.data); setFreLoaded(true); }).catch(() => {});
-  }, [tab, freLoaded]);
-
-  // Filter jobs
-  const filteredJobs = jobs.filter(j => {
-    if (category !== 'all' && j.category !== category) return false;
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      return (j.title || '').toLowerCase().includes(q) || (j.description || '').toLowerCase().includes(q);
-    }
-    return true;
-  });
-
-  // Filter freelancers
-  const filteredFre = freelancers.filter(f => {
-    if (freCat !== 'all' && f.category !== freCat) return false;
-    if (freSearch.trim()) {
-      const q = freSearch.toLowerCase();
-      return (f.first_name || '').toLowerCase().includes(q) ||
-             (f.username || '').toLowerCase().includes(q) ||
-             (f.bio || '').toLowerCase().includes(q) ||
-             (f.skills || []).some((s: string) => s.toLowerCase().includes(q));
-    }
-    return true;
-  });
+    if (tab !== 'freelancers') return;
+    const t = setTimeout(() => { setFreLoaded(false); loadFre(true); }, 300);
+    return () => clearTimeout(t);
+  }, [tab, freCat, freSearch]);
 
   // Check profile completeness before showing create form
   const isProfileComplete = () => {
@@ -178,6 +219,34 @@ export function Board() {
       setShowIncomplete(true);
     } else {
       setShowCreate(true);
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!form.title.trim() || !form.description.trim()) {
+      return toast.error('Title and description are required');
+    }
+    setCreating(true);
+    try {
+      await jobsApi.create({
+        title          : form.title.trim(),
+        description    : form.description.trim(),
+        budget_min     : form.budget_min ? Number(form.budget_min) : undefined,
+        budget_max     : form.budget_max ? Number(form.budget_max) : undefined,
+        deadline       : form.deadline ? Number(form.deadline) : undefined,
+        category       : form.category,
+        skills_required: form.skills_required.split(',').map(s => s.trim()).filter(Boolean),
+      });
+      tg?.HapticFeedback?.notificationOccurred('success');
+      toast.success('Job posted!');
+      setShowCreate(false);
+      setForm({ title: '', description: '', budget_min: '', budget_max: '', deadline: '', category: 'dev', skills_required: '' });
+      jobsApi.list().then(r => setJobs(r.data)).catch(() => {});   // обновить список
+    } catch (e: any) {
+      tg?.HapticFeedback?.notificationOccurred('error');
+      toast.error(e.response?.data?.error || 'Failed to post job');
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -233,6 +302,16 @@ export function Board() {
           ))}
         </div>
       )}
+      {/* Мета: отклики · свежесть · кто опубликовал */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', position: 'relative', zIndex: 2 }}>
+        <span style={{ fontSize: '6px', color: 'rgba(255,255,255,0.3)' }}>
+          📨 {Number(job.applications_count) || 0} {Number(job.applications_count) === 1 ? 'app' : 'apps'}
+          {job.created_at ? ` · ${timeAgo(job.created_at)}` : ''}
+        </span>
+        {job.client_username && (
+          <span style={{ fontSize: '6px', color: 'rgba(255,255,255,0.25)' }}>@{job.client_username}</span>
+        )}
+      </div>
       {isOwn && job.status === 'open' && (
         <button
           onClick={(e) => { e.stopPropagation(); setBoostJob(job); }}
@@ -296,19 +375,52 @@ export function Board() {
     </div>
   );
 
+  // ---- Loading skeleton & error block ----
+  const Skeleton = () => (
+    <>
+      {[0, 1, 2].map(i => (
+        <div key={i} className="gl" style={{ padding: '14px', marginBottom: '8px' }}>
+          <div className="pxgrid" />
+          {[70, 90, 50].map((w, j) => (
+            <div key={j} style={{
+              height: '10px', width: `${w}%`, marginBottom: '8px', borderRadius: '5px',
+              background: 'rgba(255,255,255,0.06)', animation: 'pulse 1.2s infinite',
+            }} />
+          ))}
+        </div>
+      ))}
+    </>
+  );
+  const LoadError = ({ onRetry }: { onRetry: () => void }) => (
+    <div className="gl" style={{ textAlign: 'center', padding: '28px' }}>
+      <div className="pxgrid" /><div className="sh" />
+      <div style={{ fontSize: '24px', marginBottom: '8px' }}>⚠️</div>
+      <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.4)', lineHeight: 2, marginBottom: '12px' }}>
+        COULDN'T LOAD — CHECK CONNECTION
+      </div>
+      <button className="btn btn-y btn-full" style={{ fontSize: '8px' }} onClick={onRetry}>
+        [ ↻ RETRY ]
+      </button>
+    </div>
+  );
+
   return (
     <div className="page fade-in">
 
       {/* Header */}
       <div className="gl hud card-stagger-1" style={{ borderColor: 'rgba(255,170,0,0.3)' }}>
         <div className="pxgrid" /><div className="sh" />
-        <button onClick={() => navigate('/')} style={{
+        <button onClick={() => navigate('/')} aria-label="Back" style={{
           background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)',
-          fontFamily: '"Press Start 2P", monospace', fontSize: '7px', cursor: 'pointer', padding: 0,
+          fontFamily: '"Press Start 2P", monospace', fontSize: '9px', cursor: 'pointer',
+          // ≥40px тач-таргет; отрицательный margin держит визуальную позицию в хедере
+          padding: '10px 12px', margin: '-8px 0 -8px -8px', minWidth: '40px', minHeight: '40px',
         }}>←</button>
         <div className="logo" style={{ fontSize: '10px', color: '#ffaa00' }}>BOARD</div>
         <span className="gl-pill" style={{ fontSize: '7px', padding: '3px 8px', color: '#ffaa00', border: '1px solid rgba(255,170,0,0.4)' }}>
-          {tab === 'jobs' ? filteredJobs.length : filteredFre.length}
+          {tab === 'jobs'
+            ? `${jobs.length}${jobsHasMore ? '+' : ''}`
+            : `${freelancers.length}${freHasMore ? '+' : ''}`}
         </span>
       </div>
 
@@ -363,15 +475,25 @@ export function Board() {
           </button>
 
           {!jobsLoaded ? (
-            <div style={{ textAlign: 'center', padding: '40px', fontSize: '28px' }}>⏳</div>
-          ) : filteredJobs.length === 0 ? (
+            <Skeleton />
+          ) : jobsError ? (
+            <LoadError onRetry={() => setJobsLoaded(false)} />
+          ) : jobs.length === 0 ? (
             <div className="gl" style={{ textAlign: 'center', padding: '32px' }}>
               <div className="pxgrid" /><div className="sh" />
               <div style={{ fontSize: '28px', marginBottom: '10px' }}>📭</div>
               <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.35)', lineHeight: 2 }}>NO JOBS FOUND</div>
             </div>
           ) : (
-            filteredJobs.map(job => <JobCard key={job.id} job={job} />)
+            <>
+              {jobs.map(job => <JobCard key={job.id} job={job} />)}
+              {jobsHasMore && (
+                <button className="btn btn-gr btn-full" disabled={jobsMore} style={{ fontSize: '7px', marginTop: '4px' }}
+                  onClick={() => loadJobs(false)}>
+                  {jobsMore ? '[ ⏳ LOADING... ]' : '[ ↓ LOAD MORE ]'}
+                </button>
+              )}
+            </>
           )}
         </>
       )}
@@ -393,15 +515,25 @@ export function Board() {
           </div>
 
           {!freLoaded ? (
-            <div style={{ textAlign: 'center', padding: '40px', fontSize: '28px' }}>⏳</div>
-          ) : filteredFre.length === 0 ? (
+            <Skeleton />
+          ) : freError ? (
+            <LoadError onRetry={() => setFreLoaded(false)} />
+          ) : freelancers.length === 0 ? (
             <div className="gl" style={{ textAlign: 'center', padding: '32px' }}>
               <div className="pxgrid" /><div className="sh" />
               <div style={{ fontSize: '28px', marginBottom: '10px' }}>🔍</div>
               <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.35)', lineHeight: 2 }}>NO FREELANCERS FOUND</div>
             </div>
           ) : (
-            filteredFre.map(f => <FreCard key={f.telegram_id} f={f} />)
+            <>
+              {freelancers.map(f => <FreCard key={f.telegram_id} f={f} />)}
+              {freHasMore && (
+                <button className="btn btn-gr btn-full" disabled={freMore} style={{ fontSize: '7px', marginTop: '4px' }}
+                  onClick={() => loadFre(false)}>
+                  {freMore ? '[ ⏳ LOADING... ]' : '[ ↓ LOAD MORE ]'}
+                </button>
+              )}
+            </>
           )}
         </>
       )}
@@ -413,6 +545,70 @@ export function Board() {
           onClose={() => setShowIncomplete(false)}
           onGo={() => { setShowIncomplete(false); go('/profile'); }}
         />
+      )}
+
+      {/* Create job form (was missing — POST A JOB did nothing for complete profiles) */}
+      {showCreate && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 9999, display: 'flex', alignItems: 'flex-end' }}
+          onClick={() => !creating && setShowCreate(false)}>
+          <div onClick={e => e.stopPropagation()} style={{
+            width: '100%', maxHeight: '88vh', overflowY: 'auto',
+            background: 'var(--bg-dark2,#08080e)', borderTop: '1px solid rgba(255,170,0,0.4)',
+            borderRadius: '18px 18px 0 0', padding: '16px', paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
+          }}>
+            <div className="px" style={{ fontSize: '9px', color: '#ffaa00', marginBottom: '12px' }}>📌 POST A JOB</div>
+
+            <div style={{ marginBottom: '10px' }}>
+              <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>Title *</div>
+              <input className="input" placeholder="Website development..." value={form.title}
+                onChange={e => setForm(f => ({ ...f, title: e.target.value }))} style={{ width: '100%' }} />
+            </div>
+            <div style={{ marginBottom: '10px' }}>
+              <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>Description *</div>
+              <textarea className="input" placeholder="Detailed description (min 20 chars)..." value={form.description}
+                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                style={{ width: '100%', minHeight: '80px', resize: 'vertical' }} />
+            </div>
+            <div style={{ marginBottom: '10px' }}>
+              <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>Skills (comma-separated)</div>
+              <input className="input" placeholder="React, Node.js..." value={form.skills_required}
+                onChange={e => setForm(f => ({ ...f, skills_required: e.target.value }))} style={{ width: '100%' }} />
+            </div>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>Budget from ($)</div>
+                <input className="input" type="number" inputMode="numeric" placeholder="50" value={form.budget_min}
+                  onChange={e => setForm(f => ({ ...f, budget_min: e.target.value }))} style={{ width: '100%' }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>Budget to ($)</div>
+                <input className="input" type="number" inputMode="numeric" placeholder="500" value={form.budget_max}
+                  onChange={e => setForm(f => ({ ...f, budget_max: e.target.value }))} style={{ width: '100%' }} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>Deadline (days)</div>
+                <input className="input" type="number" inputMode="numeric" placeholder="7" value={form.deadline}
+                  onChange={e => setForm(f => ({ ...f, deadline: e.target.value }))} style={{ width: '100%' }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>Category</div>
+                <select className="input" value={form.category}
+                  onChange={e => setForm(f => ({ ...f, category: e.target.value }))} style={{ width: '100%' }}>
+                  {CATEGORIES.slice(1).map(c => <option key={c} value={c}>{CATEGORY_LABELS[c] || c}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <button className="btn btn-y btn-full" disabled={creating} style={{ fontSize: '8px', marginTop: '4px' }} onClick={handleCreate}>
+              {creating ? '[ ⏳ POSTING... ]' : '[ 📌 PUBLISH JOB ]'}
+            </button>
+            <button className="btn btn-gr btn-full" disabled={creating} style={{ fontSize: '7px', marginTop: '6px' }} onClick={() => setShowCreate(false)}>
+              [ CANCEL ]
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Boost picker */}

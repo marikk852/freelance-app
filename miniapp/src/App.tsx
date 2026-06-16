@@ -13,7 +13,6 @@ import { Review }      from './pages/Review';
 import { Dispute }     from './pages/Dispute';
 import { LiveDeals }   from './pages/LiveDeals';
 import { Profile }     from './pages/Profile';
-import { JobBoard }    from './pages/JobBoard';
 import { JoinDeal }    from './pages/JoinDeal';
 import { MyDeals }        from './pages/MyDeals';
 import { PublicProfile }   from './pages/PublicProfile';

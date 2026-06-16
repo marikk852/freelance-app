@@ -21,7 +21,7 @@ const createJobSchema = Joi.object({
   title          : Joi.string().min(5).max(256).required(),
   description    : Joi.string().min(20).required(),
   budget_min     : Joi.number().min(0).optional(),
-  budget_max     : Joi.number().max(500).optional(),
+  budget_max     : Joi.number().max(10000).optional(),   // было 500 (устаревший лимит эпохи $500); сделки до $10k
   currency       : Joi.string().valid('TON', 'USDT').default('USDT'),
   deadline       : Joi.number().integer().min(1).optional(), // days
   category       : Joi.string().max(64).optional(),
