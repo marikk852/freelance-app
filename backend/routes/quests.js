@@ -30,8 +30,15 @@ router.get('/', authMiddleware, async (req, res) => {
       [userId]
     );
 
-    // Auto-check and complete eligible quests
-    const completed = await autoCheckQuests(userId, req.user);
+    // Auto-check and complete eligible quests.
+    // Отказоустойчиво: сбой авто-проверки НЕ должен ронять всю страницу квестов —
+    // в худшем случае отдаём список без авто-начислений (догонятся при след. заходе).
+    let completed = [];
+    try {
+      completed = await autoCheckQuests(userId, req.user);
+    } catch (e) {
+      console.error('[Quests] autoCheck failed (non-fatal):', e.message);
+    }
 
     // Re-fetch if any were auto-completed
     if (completed.length > 0) {
@@ -91,14 +98,15 @@ router.post('/:key/claim', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Quest requirements not met' });
     }
 
-    // Award coins + record completion
+    // Award crystals + record completion
+    const reward = Number(quest.crystals) || 0;   // защита от NULL/некорректной награды
     await query(
       `INSERT INTO user_quests (user_id, quest_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
       [userId, quest.id]
     );
     await query(
       `UPDATE users SET safe_crystals = safe_crystals + $1, updated_at = NOW() WHERE id = $2`,
-      [quest.crystals, userId]
+      [reward, userId]
     );
 
     const { rows: updated } = await query(
@@ -106,7 +114,7 @@ router.post('/:key/claim', authMiddleware, async (req, res) => {
       [userId]
     );
 
-    res.json({ success: true, crystals: quest.crystals, totalCrystals: updated[0].safe_crystals });
+    res.json({ success: true, crystals: reward, totalCrystals: updated[0].safe_crystals });
   } catch (err) {
     console.error('[Quests] claim error:', err.message);
     res.status(500).json({ error: 'Failed to claim quest' });
@@ -129,30 +137,36 @@ async function autoCheckQuests(userId, user) {
   ];
 
   for (const key of autoKeys) {
-    const { rows: already } = await query(
-      `SELECT uq.id FROM user_quests uq
-       JOIN quests q ON q.id = uq.quest_id
-       WHERE uq.user_id = $1 AND q.key = $2`,
-      [userId, key]
-    );
-    if (already.length > 0) continue;
+    // Один проблемный квест не должен ломать остальные и всю страницу.
+    try {
+      const { rows: already } = await query(
+        `SELECT uq.id FROM user_quests uq
+         JOIN quests q ON q.id = uq.quest_id
+         WHERE uq.user_id = $1 AND q.key = $2`,
+        [userId, key]
+      );
+      if (already.length > 0) continue;
 
-    const eligible = await checkQuestEligibility(key, userId, user);
-    if (!eligible) continue;
+      const eligible = await checkQuestEligibility(key, userId, user);
+      if (!eligible) continue;
 
-    const { rows: qRows } = await query(`SELECT * FROM quests WHERE key = $1`, [key]);
-    if (!qRows[0]) continue;
-    const quest = qRows[0];
+      const { rows: qRows } = await query(`SELECT * FROM quests WHERE key = $1`, [key]);
+      if (!qRows[0]) continue;
+      const quest = qRows[0];
+      const reward = Number(quest.crystals) || 0;   // защита от NULL/некорректной награды
 
-    await query(
-      `INSERT INTO user_quests (user_id, quest_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-      [userId, quest.id]
-    );
-    await query(
-      `UPDATE users SET safe_crystals = safe_crystals + $1, updated_at = NOW() WHERE id = $2`,
-      [quest.crystals, userId]
-    );
-    completed.push({ key, title: quest.title, crystals: quest.crystals });
+      await query(
+        `INSERT INTO user_quests (user_id, quest_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [userId, quest.id]
+      );
+      await query(
+        `UPDATE users SET safe_crystals = safe_crystals + $1, updated_at = NOW() WHERE id = $2`,
+        [reward, userId]
+      );
+      completed.push({ key, title: quest.title, crystals: reward });
+    } catch (e) {
+      console.error(`[Quests] autoCheck '${key}' skipped:`, e.message);
+    }
   }
 
   return completed;
@@ -202,6 +216,7 @@ router.post('/:key/verify-channel', authMiddleware, async (req, res) => {
     }
 
     // Award crystals
+    const reward = Number(quest.crystals) || 0;   // защита от NULL/некорректной награды
     await transaction(async (client) => {
       await client.query(
         `INSERT INTO user_quests (user_id, quest_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
@@ -209,11 +224,11 @@ router.post('/:key/verify-channel', authMiddleware, async (req, res) => {
       );
       await client.query(
         `UPDATE users SET safe_crystals = safe_crystals + $1 WHERE id = $2`,
-        [quest.crystals, userId]
+        [reward, userId]
       );
     });
 
-    res.json({ success: true, crystals: quest.crystals });
+    res.json({ success: true, crystals: reward });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
