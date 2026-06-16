@@ -491,6 +491,25 @@ router.delete('/me/slides/:index', async (req, res) => {
  */
 router.get('/freelancers', async (req, res) => {
   try {
+    const { category, search } = req.query;
+    const limit  = Math.min(Number(req.query.limit) || 20, 50);
+    const offset = Number(req.query.offset) || 0;
+
+    let where = `WHERE u.profile_completed = TRUE AND u.role IN ('freelancer', 'both')`;
+    const params = [];
+    let i = 1;
+    if (category) {
+      where += ` AND u.category = $${i++}`;
+      params.push(category);
+    }
+    if (search) {
+      // имя/username/био + skills (JSONB → ::text для простого поиска по навыку)
+      where += ` AND (u.first_name ILIKE $${i} OR u.username ILIKE $${i} OR u.bio ILIKE $${i} OR u.skills::text ILIKE $${i})`;
+      params.push(`%${search}%`);
+      i++;
+    }
+    params.push(limit, offset);
+
     const { rows } = await query(
       `SELECT
          u.telegram_id,
@@ -506,10 +525,10 @@ router.get('/freelancers', async (req, res) => {
          u.deals_count AS deals_completed,
          u.level
        FROM users u
-       WHERE u.profile_completed = TRUE
-         AND u.role IN ('freelancer', 'both')
+       ${where}
        ORDER BY u.rating DESC, u.deals_count DESC
-       LIMIT 50`
+       LIMIT $${i++} OFFSET $${i}`,
+      params
     );
     res.json(rows);
   } catch (err) {

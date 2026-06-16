@@ -104,7 +104,7 @@ export const users = {
   reviews:       (tgId: number)              => api.get(`/users/${tgId}/reviews`),
   updateProfile:  (data: any)                  => api.patch('/users/me/profile', data),
   getPublic:      (telegramId: number | string) => api.get(`/users/${telegramId}`),
-  freelancers:    ()                            => api.get('/users/freelancers'),
+  freelancers:    (params?: any)                => api.get('/users/freelancers', { params }),
   uploadBanner:   (file: File) => {
     const fd = new FormData(); fd.append('banner', file);
     return api.post('/users/me/banner', fd, { headers: { 'Content-Type': 'multipart/form-data' } });

@@ -76,11 +76,15 @@ export function Board() {
   const [tab, setTab] = useState<'jobs' | 'freelancers'>(initialTab as any);
 
   // Jobs state
-  const [jobs,       setJobs]       = useState<any[]>([]);
-  const [jobsLoaded, setJobsLoaded] = useState(false);
-  const [jobsError,  setJobsError]  = useState(false);
-  const [boostJob,   setBoostJob]   = useState<any>(null);
-  const [boosting,   setBoosting]   = useState(false);
+  const PAGE = 20;
+  const [jobs,        setJobs]        = useState<any[]>([]);
+  const [jobsLoaded,  setJobsLoaded]  = useState(false);
+  const [jobsError,   setJobsError]   = useState(false);
+  const [jobsOffset,  setJobsOffset]  = useState(0);
+  const [jobsHasMore, setJobsHasMore] = useState(false);
+  const [jobsMore,    setJobsMore]    = useState(false);  // дозагрузка
+  const [boostJob,    setBoostJob]    = useState<any>(null);
+  const [boosting,    setBoosting]    = useState(false);
 
   const BOOST_OPTIONS = [
     { key: 'boost_top_24h',   label: 'Top for 24h',     cost: 300 },
@@ -97,7 +101,7 @@ export function Board() {
       tg?.HapticFeedback?.notificationOccurred('success');
       toast.success(`Boosted! ${r.data.balance} 💎 left`);
       setBoostJob(null);
-      jobsApi.list().then(res => setJobs(res.data)).catch(() => {});
+      loadJobs(true);   // перезагрузить с учётом текущего фильтра/поиска
     } catch (e: any) {
       tg?.HapticFeedback?.notificationOccurred('error');
       toast.error(e.response?.status === 402 ? 'Not enough crystals' : (e.response?.data?.error || 'Failed'));
@@ -116,6 +120,9 @@ export function Board() {
   const [freelancers,   setFreelancers]   = useState<any[]>([]);
   const [freLoaded,     setFreLoaded]     = useState(false);
   const [freError,      setFreError]      = useState(false);
+  const [freOffset,     setFreOffset]     = useState(0);
+  const [freHasMore,    setFreHasMore]    = useState(false);
+  const [freMore,       setFreMore]       = useState(false);
   const [freSearch,     setFreSearch]     = useState('');
   const [freCat,        setFreCat]        = useState('all');
 
@@ -133,52 +140,54 @@ export function Board() {
     usersApi.me().then(r => setMeProfile(r.data)).catch(() => {});
   }, []);
 
-  // Fetch jobs (с обработкой ошибки — раньше .catch глотал её → вечный спиннер)
-  const loadJobs = () => {
-    setJobsError(false);
-    jobsApi.list()
-      .then(r => { setJobs(r.data); setJobsLoaded(true); })
-      .catch(() => { setJobsError(true); setJobsLoaded(true); });
+  // Серверная пагинация + поиск/категория. reset=true → новый запрос с offset 0,
+  // иначе дозагрузка (append). Поиск/фильтр выполняет БД, а не клиент по 20 строкам.
+  const loadJobs = (reset = false) => {
+    const offset = reset ? 0 : jobsOffset;
+    if (reset) setJobsError(false); else setJobsMore(true);
+    const params: any = { limit: PAGE, offset };
+    if (category !== 'all') params.category = category;
+    if (search.trim())      params.search   = search.trim();
+    jobsApi.list(params)
+      .then(r => {
+        const data = r.data || [];
+        setJobs(prev => reset ? data : [...prev, ...data]);
+        setJobsOffset(offset + data.length);
+        setJobsHasMore(data.length === PAGE);
+        setJobsLoaded(true);
+      })
+      .catch(() => { if (reset) { setJobsError(true); setJobsLoaded(true); } })
+      .finally(() => { if (!reset) setJobsMore(false); });
+  };
+  // Дебаунс: при смене вкладки/категории/поиска перезагружаем с нуля
+  useEffect(() => {
+    if (tab !== 'jobs') return;
+    const t = setTimeout(() => { setJobsLoaded(false); loadJobs(true); }, 300);
+    return () => clearTimeout(t);
+  }, [tab, category, search]);
+
+  const loadFre = (reset = false) => {
+    const offset = reset ? 0 : freOffset;
+    if (reset) setFreError(false); else setFreMore(true);
+    const params: any = { limit: PAGE, offset };
+    if (freCat !== 'all') params.category = freCat;
+    if (freSearch.trim()) params.search   = freSearch.trim();
+    usersApi.freelancers(params)
+      .then(r => {
+        const data = r.data || [];
+        setFreelancers(prev => reset ? data : [...prev, ...data]);
+        setFreOffset(offset + data.length);
+        setFreHasMore(data.length === PAGE);
+        setFreLoaded(true);
+      })
+      .catch(() => { if (reset) { setFreError(true); setFreLoaded(true); } })
+      .finally(() => { if (!reset) setFreMore(false); });
   };
   useEffect(() => {
-    if (tab !== 'jobs' || jobsLoaded) return;
-    loadJobs();
-  }, [tab, jobsLoaded]);
-
-  // Fetch freelancers
-  const loadFre = () => {
-    setFreError(false);
-    usersApi.freelancers()
-      .then(r => { setFreelancers(r.data); setFreLoaded(true); })
-      .catch(() => { setFreError(true); setFreLoaded(true); });
-  };
-  useEffect(() => {
-    if (tab !== 'freelancers' || freLoaded) return;
-    loadFre();
-  }, [tab, freLoaded]);
-
-  // Filter jobs
-  const filteredJobs = jobs.filter(j => {
-    if (category !== 'all' && j.category !== category) return false;
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      return (j.title || '').toLowerCase().includes(q) || (j.description || '').toLowerCase().includes(q);
-    }
-    return true;
-  });
-
-  // Filter freelancers
-  const filteredFre = freelancers.filter(f => {
-    if (freCat !== 'all' && f.category !== freCat) return false;
-    if (freSearch.trim()) {
-      const q = freSearch.toLowerCase();
-      return (f.first_name || '').toLowerCase().includes(q) ||
-             (f.username || '').toLowerCase().includes(q) ||
-             (f.bio || '').toLowerCase().includes(q) ||
-             (f.skills || []).some((s: string) => s.toLowerCase().includes(q));
-    }
-    return true;
-  });
+    if (tab !== 'freelancers') return;
+    const t = setTimeout(() => { setFreLoaded(false); loadFre(true); }, 300);
+    return () => clearTimeout(t);
+  }, [tab, freCat, freSearch]);
 
   // Check profile completeness before showing create form
   const isProfileComplete = () => {
@@ -386,7 +395,9 @@ export function Board() {
         }}>←</button>
         <div className="logo" style={{ fontSize: '10px', color: '#ffaa00' }}>BOARD</div>
         <span className="gl-pill" style={{ fontSize: '7px', padding: '3px 8px', color: '#ffaa00', border: '1px solid rgba(255,170,0,0.4)' }}>
-          {tab === 'jobs' ? filteredJobs.length : filteredFre.length}
+          {tab === 'jobs'
+            ? `${jobs.length}${jobsHasMore ? '+' : ''}`
+            : `${freelancers.length}${freHasMore ? '+' : ''}`}
         </span>
       </div>
 
@@ -444,14 +455,22 @@ export function Board() {
             <Skeleton />
           ) : jobsError ? (
             <LoadError onRetry={() => setJobsLoaded(false)} />
-          ) : filteredJobs.length === 0 ? (
+          ) : jobs.length === 0 ? (
             <div className="gl" style={{ textAlign: 'center', padding: '32px' }}>
               <div className="pxgrid" /><div className="sh" />
               <div style={{ fontSize: '28px', marginBottom: '10px' }}>📭</div>
               <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.35)', lineHeight: 2 }}>NO JOBS FOUND</div>
             </div>
           ) : (
-            filteredJobs.map(job => <JobCard key={job.id} job={job} />)
+            <>
+              {jobs.map(job => <JobCard key={job.id} job={job} />)}
+              {jobsHasMore && (
+                <button className="btn btn-gr btn-full" disabled={jobsMore} style={{ fontSize: '7px', marginTop: '4px' }}
+                  onClick={() => loadJobs(false)}>
+                  {jobsMore ? '[ ⏳ LOADING... ]' : '[ ↓ LOAD MORE ]'}
+                </button>
+              )}
+            </>
           )}
         </>
       )}
@@ -476,14 +495,22 @@ export function Board() {
             <Skeleton />
           ) : freError ? (
             <LoadError onRetry={() => setFreLoaded(false)} />
-          ) : filteredFre.length === 0 ? (
+          ) : freelancers.length === 0 ? (
             <div className="gl" style={{ textAlign: 'center', padding: '32px' }}>
               <div className="pxgrid" /><div className="sh" />
               <div style={{ fontSize: '28px', marginBottom: '10px' }}>🔍</div>
               <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.35)', lineHeight: 2 }}>NO FREELANCERS FOUND</div>
             </div>
           ) : (
-            filteredFre.map(f => <FreCard key={f.telegram_id} f={f} />)
+            <>
+              {freelancers.map(f => <FreCard key={f.telegram_id} f={f} />)}
+              {freHasMore && (
+                <button className="btn btn-gr btn-full" disabled={freMore} style={{ fontSize: '7px', marginTop: '4px' }}
+                  onClick={() => loadFre(false)}>
+                  {freMore ? '[ ⏳ LOADING... ]' : '[ ↓ LOAD MORE ]'}
+                </button>
+              )}
+            </>
           )}
         </>
       )}
