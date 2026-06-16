@@ -1,4 +1,5 @@
 import axios from 'axios';
+import toast from 'react-hot-toast';
 
 // ============================================================
 // API клиент — все запросы к SafeDeal backend
@@ -17,6 +18,31 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// ============================================================
+// 401 = сессия Telegram устарела (initData протух >24ч) или приложение
+// открыто не через бота. Раньше это молча приводило к пустым данным
+// (выглядело как «пропали кристаллы» / «квесты не работают»). Теперь —
+// понятное сообщение с подсказкой переоткрыть. Один тост на серию
+// (id дедуплицирует параллельные 401), повтор не чаще раза в 30с.
+// ============================================================
+let sessionToastAt = 0;
+api.interceptors.response.use(
+  (res) => res,
+  (error) => {
+    if (error.response?.status === 401) {
+      const now = Date.now();
+      if (now - sessionToastAt > 30_000) {
+        sessionToastAt = now;
+        toast.error('Session expired — close and reopen the app from the bot', {
+          id: 'session-expired',
+          duration: 6000,
+        });
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 // ---- AI помощник по заказу (PRO) ----
 export const ai = {
