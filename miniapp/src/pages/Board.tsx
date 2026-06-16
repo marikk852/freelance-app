@@ -78,6 +78,7 @@ export function Board() {
   // Jobs state
   const [jobs,       setJobs]       = useState<any[]>([]);
   const [jobsLoaded, setJobsLoaded] = useState(false);
+  const [jobsError,  setJobsError]  = useState(false);
   const [boostJob,   setBoostJob]   = useState<any>(null);
   const [boosting,   setBoosting]   = useState(false);
 
@@ -114,6 +115,7 @@ export function Board() {
   // Freelancers state
   const [freelancers,   setFreelancers]   = useState<any[]>([]);
   const [freLoaded,     setFreLoaded]     = useState(false);
+  const [freError,      setFreError]      = useState(false);
   const [freSearch,     setFreSearch]     = useState('');
   const [freCat,        setFreCat]        = useState('all');
 
@@ -131,16 +133,28 @@ export function Board() {
     usersApi.me().then(r => setMeProfile(r.data)).catch(() => {});
   }, []);
 
-  // Fetch jobs
+  // Fetch jobs (с обработкой ошибки — раньше .catch глотал её → вечный спиннер)
+  const loadJobs = () => {
+    setJobsError(false);
+    jobsApi.list()
+      .then(r => { setJobs(r.data); setJobsLoaded(true); })
+      .catch(() => { setJobsError(true); setJobsLoaded(true); });
+  };
   useEffect(() => {
     if (tab !== 'jobs' || jobsLoaded) return;
-    jobsApi.list().then(r => { setJobs(r.data); setJobsLoaded(true); }).catch(() => {});
+    loadJobs();
   }, [tab, jobsLoaded]);
 
   // Fetch freelancers
+  const loadFre = () => {
+    setFreError(false);
+    usersApi.freelancers()
+      .then(r => { setFreelancers(r.data); setFreLoaded(true); })
+      .catch(() => { setFreError(true); setFreLoaded(true); });
+  };
   useEffect(() => {
     if (tab !== 'freelancers' || freLoaded) return;
-    usersApi.freelancers().then(r => { setFreelancers(r.data); setFreLoaded(true); }).catch(() => {});
+    loadFre();
   }, [tab, freLoaded]);
 
   // Filter jobs
@@ -329,15 +343,46 @@ export function Board() {
     </div>
   );
 
+  // ---- Loading skeleton & error block ----
+  const Skeleton = () => (
+    <>
+      {[0, 1, 2].map(i => (
+        <div key={i} className="gl" style={{ padding: '14px', marginBottom: '8px' }}>
+          <div className="pxgrid" />
+          {[70, 90, 50].map((w, j) => (
+            <div key={j} style={{
+              height: '10px', width: `${w}%`, marginBottom: '8px', borderRadius: '5px',
+              background: 'rgba(255,255,255,0.06)', animation: 'pulse 1.2s infinite',
+            }} />
+          ))}
+        </div>
+      ))}
+    </>
+  );
+  const LoadError = ({ onRetry }: { onRetry: () => void }) => (
+    <div className="gl" style={{ textAlign: 'center', padding: '28px' }}>
+      <div className="pxgrid" /><div className="sh" />
+      <div style={{ fontSize: '24px', marginBottom: '8px' }}>⚠️</div>
+      <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.4)', lineHeight: 2, marginBottom: '12px' }}>
+        COULDN'T LOAD — CHECK CONNECTION
+      </div>
+      <button className="btn btn-y btn-full" style={{ fontSize: '8px' }} onClick={onRetry}>
+        [ ↻ RETRY ]
+      </button>
+    </div>
+  );
+
   return (
     <div className="page fade-in">
 
       {/* Header */}
       <div className="gl hud card-stagger-1" style={{ borderColor: 'rgba(255,170,0,0.3)' }}>
         <div className="pxgrid" /><div className="sh" />
-        <button onClick={() => navigate('/')} style={{
+        <button onClick={() => navigate('/')} aria-label="Back" style={{
           background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)',
-          fontFamily: '"Press Start 2P", monospace', fontSize: '7px', cursor: 'pointer', padding: 0,
+          fontFamily: '"Press Start 2P", monospace', fontSize: '9px', cursor: 'pointer',
+          // ≥40px тач-таргет; отрицательный margin держит визуальную позицию в хедере
+          padding: '10px 12px', margin: '-8px 0 -8px -8px', minWidth: '40px', minHeight: '40px',
         }}>←</button>
         <div className="logo" style={{ fontSize: '10px', color: '#ffaa00' }}>BOARD</div>
         <span className="gl-pill" style={{ fontSize: '7px', padding: '3px 8px', color: '#ffaa00', border: '1px solid rgba(255,170,0,0.4)' }}>
@@ -396,7 +441,9 @@ export function Board() {
           </button>
 
           {!jobsLoaded ? (
-            <div style={{ textAlign: 'center', padding: '40px', fontSize: '28px' }}>⏳</div>
+            <Skeleton />
+          ) : jobsError ? (
+            <LoadError onRetry={() => setJobsLoaded(false)} />
           ) : filteredJobs.length === 0 ? (
             <div className="gl" style={{ textAlign: 'center', padding: '32px' }}>
               <div className="pxgrid" /><div className="sh" />
@@ -426,7 +473,9 @@ export function Board() {
           </div>
 
           {!freLoaded ? (
-            <div style={{ textAlign: 'center', padding: '40px', fontSize: '28px' }}>⏳</div>
+            <Skeleton />
+          ) : freError ? (
+            <LoadError onRetry={() => setFreLoaded(false)} />
           ) : filteredFre.length === 0 ? (
             <div className="gl" style={{ textAlign: 'center', padding: '32px' }}>
               <div className="pxgrid" /><div className="sh" />
