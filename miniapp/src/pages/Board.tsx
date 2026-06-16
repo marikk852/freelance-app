@@ -105,6 +105,11 @@ export function Board() {
   const [category,   setCategory]   = useState('all');
   const [search,     setSearch]     = useState('');
   const [showCreate, setShowCreate] = useState(false);
+  const [creating,   setCreating]   = useState(false);
+  const [form, setForm] = useState({
+    title: '', description: '', budget_min: '', budget_max: '',
+    deadline: '', category: 'dev', skills_required: '',
+  });
 
   // Freelancers state
   const [freelancers,   setFreelancers]   = useState<any[]>([]);
@@ -178,6 +183,34 @@ export function Board() {
       setShowIncomplete(true);
     } else {
       setShowCreate(true);
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!form.title.trim() || !form.description.trim()) {
+      return toast.error('Title and description are required');
+    }
+    setCreating(true);
+    try {
+      await jobsApi.create({
+        title          : form.title.trim(),
+        description    : form.description.trim(),
+        budget_min     : form.budget_min ? Number(form.budget_min) : undefined,
+        budget_max     : form.budget_max ? Number(form.budget_max) : undefined,
+        deadline       : form.deadline ? Number(form.deadline) : undefined,
+        category       : form.category,
+        skills_required: form.skills_required.split(',').map(s => s.trim()).filter(Boolean),
+      });
+      tg?.HapticFeedback?.notificationOccurred('success');
+      toast.success('Job posted!');
+      setShowCreate(false);
+      setForm({ title: '', description: '', budget_min: '', budget_max: '', deadline: '', category: 'dev', skills_required: '' });
+      jobsApi.list().then(r => setJobs(r.data)).catch(() => {});   // обновить список
+    } catch (e: any) {
+      tg?.HapticFeedback?.notificationOccurred('error');
+      toast.error(e.response?.data?.error || 'Failed to post job');
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -413,6 +446,70 @@ export function Board() {
           onClose={() => setShowIncomplete(false)}
           onGo={() => { setShowIncomplete(false); go('/profile'); }}
         />
+      )}
+
+      {/* Create job form (was missing — POST A JOB did nothing for complete profiles) */}
+      {showCreate && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 9999, display: 'flex', alignItems: 'flex-end' }}
+          onClick={() => !creating && setShowCreate(false)}>
+          <div onClick={e => e.stopPropagation()} style={{
+            width: '100%', maxHeight: '88vh', overflowY: 'auto',
+            background: 'var(--bg-dark2,#08080e)', borderTop: '1px solid rgba(255,170,0,0.4)',
+            borderRadius: '18px 18px 0 0', padding: '16px', paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
+          }}>
+            <div className="px" style={{ fontSize: '9px', color: '#ffaa00', marginBottom: '12px' }}>📌 POST A JOB</div>
+
+            <div style={{ marginBottom: '10px' }}>
+              <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>Title *</div>
+              <input className="input" placeholder="Website development..." value={form.title}
+                onChange={e => setForm(f => ({ ...f, title: e.target.value }))} style={{ width: '100%' }} />
+            </div>
+            <div style={{ marginBottom: '10px' }}>
+              <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>Description *</div>
+              <textarea className="input" placeholder="Detailed description (min 20 chars)..." value={form.description}
+                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                style={{ width: '100%', minHeight: '80px', resize: 'vertical' }} />
+            </div>
+            <div style={{ marginBottom: '10px' }}>
+              <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>Skills (comma-separated)</div>
+              <input className="input" placeholder="React, Node.js..." value={form.skills_required}
+                onChange={e => setForm(f => ({ ...f, skills_required: e.target.value }))} style={{ width: '100%' }} />
+            </div>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>Budget from ($)</div>
+                <input className="input" type="number" inputMode="numeric" placeholder="50" value={form.budget_min}
+                  onChange={e => setForm(f => ({ ...f, budget_min: e.target.value }))} style={{ width: '100%' }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>Budget to ($)</div>
+                <input className="input" type="number" inputMode="numeric" placeholder="500" value={form.budget_max}
+                  onChange={e => setForm(f => ({ ...f, budget_max: e.target.value }))} style={{ width: '100%' }} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>Deadline (days)</div>
+                <input className="input" type="number" inputMode="numeric" placeholder="7" value={form.deadline}
+                  onChange={e => setForm(f => ({ ...f, deadline: e.target.value }))} style={{ width: '100%' }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>Category</div>
+                <select className="input" value={form.category}
+                  onChange={e => setForm(f => ({ ...f, category: e.target.value }))} style={{ width: '100%' }}>
+                  {CATEGORIES.slice(1).map(c => <option key={c} value={c}>{CATEGORY_LABELS[c] || c}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <button className="btn btn-y btn-full" disabled={creating} style={{ fontSize: '8px', marginTop: '4px' }} onClick={handleCreate}>
+              {creating ? '[ ⏳ POSTING... ]' : '[ 📌 PUBLISH JOB ]'}
+            </button>
+            <button className="btn btn-gr btn-full" disabled={creating} style={{ fontSize: '7px', marginTop: '6px' }} onClick={() => setShowCreate(false)}>
+              [ CANCEL ]
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Boost picker */}
