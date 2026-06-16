@@ -17,6 +17,19 @@ const EXP_COLOR: Record<string, string> = {
   junior: '#00ff88', middle: '#ffaa00', senior: '#cc44ff',
 };
 
+// Относительное время «2d ago» для карточек вакансий
+function timeAgo(dateStr: string): string {
+  const d = new Date(dateStr).getTime();
+  if (!d) return '';
+  const s = Math.floor((Date.now() - d) / 1000);
+  if (s < 60) return 'just now';
+  const m = Math.floor(s / 60);  if (m < 60)  return `${m}m ago`;
+  const h = Math.floor(m / 60);  if (h < 24)  return `${h}h ago`;
+  const days = Math.floor(h / 24); if (days < 30) return `${days}d ago`;
+  const mo = Math.floor(days / 30); if (mo < 12) return `${mo}mo ago`;
+  return `${Math.floor(mo / 12)}y ago`;
+}
+
 // Profile completion check popup
 function ProfileIncompletePopup({ role, onClose, onGo }: { role: string; onClose: () => void; onGo: () => void }) {
   const missing = role === 'freelancer'
@@ -289,6 +302,16 @@ export function Board() {
           ))}
         </div>
       )}
+      {/* Мета: отклики · свежесть · кто опубликовал */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', position: 'relative', zIndex: 2 }}>
+        <span style={{ fontSize: '6px', color: 'rgba(255,255,255,0.3)' }}>
+          📨 {Number(job.applications_count) || 0} {Number(job.applications_count) === 1 ? 'app' : 'apps'}
+          {job.created_at ? ` · ${timeAgo(job.created_at)}` : ''}
+        </span>
+        {job.client_username && (
+          <span style={{ fontSize: '6px', color: 'rgba(255,255,255,0.25)' }}>@{job.client_username}</span>
+        )}
+      </div>
       {isOwn && job.status === 'open' && (
         <button
           onClick={(e) => { e.stopPropagation(); setBoostJob(job); }}
