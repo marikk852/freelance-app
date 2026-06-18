@@ -1,9 +1,10 @@
 const express = require('express');
 const router  = express.Router();
 const Joi     = require('joi');
-const { query } = require('../../database/db');
+const { query, transaction } = require('../../database/db');
 const tierService = require('../services/tierService');
 const crystalService = require('../services/crystalService');
+const notificationService = require('../services/notificationService');
 
 // Эффекты буста заказа за кристаллы (ключ shop-товара → действие над job_posts)
 const BOOST_EFFECTS = {
@@ -142,6 +143,62 @@ router.get('/my', async (req, res) => {
 });
 
 /**
+ * GET /api/jobs/:id
+ * Single job with client info, applications count, and — для текущего
+ * пользователя — флаг владельца и его собственный отклик (если есть).
+ * Объявлен ПОСЛЕ /my, чтобы /my не попал в :id.
+ */
+router.get('/:id', async (req, res) => {
+  try {
+    const { rows: users } = await query(
+      'SELECT id FROM users WHERE telegram_id = $1', [req.user.telegramId]
+    );
+    const me = users[0] || null;
+
+    const { rows } = await query(
+      `SELECT jp.*,
+              u.telegram_id       AS client_tg,
+              u.username          AS client_username,
+              u.first_name        AS client_name,
+              u.rating            AS client_rating,
+              u.deals_count       AS client_deals,
+              u.level             AS client_level,
+              u.verification_type AS client_verification,
+              u.created_at        AS client_since,
+              COUNT(ja.id)        AS applications_count
+       FROM job_posts jp
+       JOIN users u ON u.id = jp.client_id
+       LEFT JOIN job_applications ja ON ja.job_post_id = jp.id
+       WHERE jp.id = $1
+       GROUP BY jp.id, u.telegram_id, u.username, u.first_name,
+                u.rating, u.deals_count, u.level, u.verification_type, u.created_at`,
+      [req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Job not found' });
+
+    const job = rows[0];
+    job.is_owner = me ? Number(job.client_id) === Number(me.id) : false;
+
+    // Свой отклик текущего пользователя (если уже откликался)
+    if (me && !job.is_owner) {
+      const { rows: ap } = await query(
+        `SELECT id, status, cover_letter, proposed_amount, created_at
+         FROM job_applications WHERE job_post_id = $1 AND freelancer_id = $2`,
+        [req.params.id, me.id]
+      );
+      job.my_application = ap[0] || null;
+    } else {
+      job.my_application = null;
+    }
+
+    res.json(job);
+  } catch (err) {
+    console.error('[API] GET /jobs/:id error:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
  * GET /api/jobs/:id/applications
  * List of applications for a job (job owner only).
  */
@@ -182,6 +239,92 @@ router.get('/:id/applications', async (req, res) => {
     res.json(rows);
   } catch (err) {
     console.error('[API] GET /jobs/:id/applications error:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /api/jobs/:id/applications/:appId/decision
+ * Владелец заказа принимает или отклоняет отклик. Body: { decision: 'accept'|'reject' }.
+ * accept: отклик → accepted, заказ → taken, остальные pending → rejected, уведомления.
+ * reject: только этот отклик → rejected + уведомление фрилансеру.
+ */
+router.post('/:id/applications/:appId/decision', async (req, res) => {
+  try {
+    const { decision } = req.body;
+    if (decision !== 'accept' && decision !== 'reject') {
+      return res.status(400).json({ error: 'decision must be accept or reject' });
+    }
+
+    const { rows: users } = await query(
+      'SELECT id FROM users WHERE telegram_id = $1', [req.user.telegramId]
+    );
+    if (!users[0]) return res.status(404).json({ error: 'User not found' });
+
+    // Заказ существует и принадлежит запрашивающему
+    const { rows: jobRows } = await query(
+      'SELECT id, client_id, title, status FROM job_posts WHERE id = $1', [req.params.id]
+    );
+    if (!jobRows[0]) return res.status(404).json({ error: 'Job not found' });
+    if (Number(jobRows[0].client_id) !== Number(users[0].id)) {
+      return res.status(403).json({ error: 'Only the job owner can manage applications' });
+    }
+
+    // Отклик существует, относится к этому заказу и ещё pending
+    const { rows: appRows } = await query(
+      `SELECT ja.id, ja.status, u.telegram_id AS freelancer_tg
+       FROM job_applications ja JOIN users u ON u.id = ja.freelancer_id
+       WHERE ja.id = $1 AND ja.job_post_id = $2`,
+      [req.params.appId, req.params.id]
+    );
+    if (!appRows[0]) return res.status(404).json({ error: 'Application not found' });
+    if (appRows[0].status !== 'pending') {
+      return res.status(409).json({ error: `Application already ${appRows[0].status}` });
+    }
+
+    const jobTitle = jobRows[0].title;
+    const freelancerTg = appRows[0].freelancer_tg;
+
+    if (decision === 'reject') {
+      await query(`UPDATE job_applications SET status = 'rejected' WHERE id = $1`, [req.params.appId]);
+      notificationService.notify(
+        freelancerTg, 'application_rejected',
+        `Your application for *${jobTitle}* was not selected this time.`,
+        { jobId: req.params.id }
+      ).catch(() => {});
+      return res.json({ success: true, decision: 'rejected' });
+    }
+
+    // accept — атомарно: этот отклик accepted, заказ taken, остальные pending → rejected
+    const otherRejected = await transaction(async (client) => {
+      await client.query(`UPDATE job_applications SET status = 'accepted' WHERE id = $1`, [req.params.appId]);
+      await client.query(`UPDATE job_posts SET status = 'taken' WHERE id = $1`, [req.params.id]);
+      const { rows } = await client.query(
+        `UPDATE job_applications SET status = 'rejected'
+         WHERE job_post_id = $1 AND id <> $2 AND status = 'pending'
+         RETURNING (SELECT telegram_id FROM users WHERE users.id = job_applications.freelancer_id) AS tg`,
+        [req.params.id, req.params.appId]
+      );
+      return rows;
+    });
+
+    // Уведомления (вне транзакции, не критично к ошибке)
+    notificationService.notify(
+      freelancerTg, 'application_accepted',
+      `🎉 Your application for *${jobTitle}* was accepted! The client will set up the deal with you shortly.`,
+      { jobId: req.params.id }
+    ).catch(() => {});
+    for (const r of otherRejected) {
+      if (r.tg) notificationService.notify(
+        r.tg, 'application_rejected',
+        `The job *${jobTitle}* has been assigned to another freelancer.`,
+        { jobId: req.params.id }
+      ).catch(() => {});
+    }
+
+    res.json({ success: true, decision: 'accepted', rejected_others: otherRejected.length });
+  } catch (err) {
+    console.error('[API] POST /jobs/:id/applications/:appId/decision error:', err.message);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

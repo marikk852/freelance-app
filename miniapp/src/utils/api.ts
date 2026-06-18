@@ -141,10 +141,13 @@ export const livefeed = {
 // ---- Биржа заказов ----
 export const jobs = {
   list:         (params?: any)          => api.get('/jobs', { params }),
+  get:          (id: string)            => api.get(`/jobs/${id}`),
   my:           ()                      => api.get('/jobs/my'),
   create:       (data: any)             => api.post('/jobs', data),
   apply:        (id: string, data: any) => api.post(`/jobs/${id}/apply`, data),
   applications: (id: string)            => api.get(`/jobs/${id}/applications`),
+  decideApplication: (jobId: string, appId: string, decision: 'accept' | 'reject') =>
+    api.post(`/jobs/${jobId}/applications/${appId}/decision`, { decision }),
   boost:        (id: string, key: string) => api.post(`/jobs/${id}/boost`, { key }),
 };
 
