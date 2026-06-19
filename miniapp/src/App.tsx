@@ -187,7 +187,8 @@ export default function App() {
   const [maintenance, setMaintenance] = useState<{ active: boolean; message: string } | null>(null);
 
   useEffect(() => {
-    fetch('/admark/status')
+    const initData = window.Telegram?.WebApp?.initData;
+    fetch('/admark/status', initData ? { headers: { 'X-Telegram-Init-Data': initData } } : undefined)
       .then(r => r.json())
       .then(data => {
         if (data.maintenance) {

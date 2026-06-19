@@ -111,6 +111,19 @@ app.use('/api/rooms', require('./routes/rooms'));
 // ---------- Защищённые маршруты (требуют Telegram initData) ----------
 app.use('/api/', authMiddleware);
 
+// ---------- Maintenance gate ----------
+// Во время техработ пропускаем только белый список (и арбитра). Остальным —
+// 503 с флагом maintenance. Стоит ПОСЛЕ authMiddleware (нужен проверенный
+// req.user.telegramId) и fail-open при ошибке (не блокируем всех из-за сбоя БД).
+const maintenanceService = require('./services/maintenanceService');
+app.use('/api/', async (req, res, next) => {
+  try {
+    const cfg = await maintenanceService.getConfig();
+    if (!cfg.enabled || maintenanceService.canAccess(cfg, req.user?.telegramId)) return next();
+    return res.status(503).json({ error: 'Maintenance in progress', maintenance: true, message: cfg.message });
+  } catch { return next(); }
+});
+
 // ---------- Track user visit (for referral activity) ----------
 // ВАЖНО: до роутеров — роутеры завершают ответ без next(),
 // middleware после них никогда не выполняется
