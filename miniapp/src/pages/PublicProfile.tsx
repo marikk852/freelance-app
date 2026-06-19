@@ -13,6 +13,7 @@ interface PublicUser {
   id: number;
   telegram_id: number | string;
   username?: string;
+  display_name?: string;
   first_name?: string;
   bio?: string;
   country?: string;
@@ -184,7 +185,7 @@ export function PublicProfile() {
           <div style={{ fontSize: '36px', marginBottom: '8px' }}>🛡</div>
         )}
         <div className="logo" style={{ fontSize: '12px', marginBottom: '6px' }}>
-          {profile.first_name?.toUpperCase() || 'ANONYMOUS'}
+          {(profile.display_name || profile.first_name)?.toUpperCase() || 'ANONYMOUS'}
         </div>
         {profile.username && (
           <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.35)', marginBottom: '10px' }}>

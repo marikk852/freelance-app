@@ -19,6 +19,8 @@ type AccountType = 'individual' | 'company';
 type Tab = 'stats' | 'analytics' | 'portfolio' | 'reviews' | 'edit';
 
 interface EditForm {
+  display_name: string;
+  show_telegram_tag: boolean;
   bio: string;
   country: string;
   role: Role;
@@ -34,6 +36,8 @@ interface EditForm {
 }
 
 const defaultEdit: EditForm = {
+  display_name: '',
+  show_telegram_tag: true,
   bio: '',
   country: '',
   role: 'client',
@@ -92,6 +96,8 @@ export function Profile() {
         // Pre-fill edit form from loaded profile
         const d = p.data;
         setEdit({
+          display_name:      d.display_name      || '',
+          show_telegram_tag: d.show_telegram_tag !== false,
           bio:              d.bio              || '',
           country:          d.country          || '',
           role:             d.role             || 'client',
@@ -181,6 +187,8 @@ export function Profile() {
     setSaving(true);
     try {
       const payload: Record<string, any> = {
+        display_name:      edit.display_name.trim(),
+        show_telegram_tag: edit.show_telegram_tag,
         bio:           edit.bio.trim(),
         country:       edit.country.trim(),
         role:          edit.role,
@@ -195,7 +203,8 @@ export function Profile() {
         payload.company_name = edit.company_name.trim();
         payload.company_url  = edit.company_website.trim();
       }
-      await usersApi.updateProfile(payload);
+      const r = await usersApi.updateProfile(payload);
+      setProfile((p: any) => ({ ...p, ...r.data }));
       tg?.HapticFeedback?.notificationOccurred('success');
       toast.success('Profile saved!');
     } catch (e: any) {
@@ -395,7 +404,7 @@ export function Profile() {
                     <div style={{ fontSize: '30px' }}>🛡</div>
                   )}
                 </div>
-                <div className="logo" style={{ fontSize: '12px' }}>{user?.first_name?.toUpperCase() || 'GUEST'}</div>
+                <div className="logo" style={{ fontSize: '12px' }}>{(profile?.display_name || user?.first_name)?.toUpperCase() || 'GUEST'}</div>
                 {user?.username && <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.35)', marginTop: '5px' }}>@{user.username}</div>}
                 {profile && (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
@@ -761,6 +770,24 @@ export function Profile() {
                   <div className="pxgrid" /><div className="sh" />
 
                   <SectionLabel label="ABOUT" />
+                  <div style={{ marginBottom: '10px' }}>
+                    <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px' }}>NICKNAME</div>
+                    <input className="input" value={edit.display_name} maxLength={32} onChange={e => setE('display_name', e.target.value)}
+                      placeholder={user?.first_name || 'Your nickname'} style={{ width: '100%' }} />
+                    <div style={{ fontSize: '5px', color: 'rgba(255,255,255,0.2)', marginTop: '3px' }}>Shown instead of your Telegram name · leave empty to use it</div>
+                  </div>
+                  <div style={{ marginBottom: '10px' }}>
+                    <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px' }}>TELEGRAM @TAG</div>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      {toggleBtn('SHOW', edit.show_telegram_tag,  () => setE('show_telegram_tag', true))}
+                      {toggleBtn('HIDE', !edit.show_telegram_tag, () => setE('show_telegram_tag', false))}
+                    </div>
+                    <div style={{ fontSize: '5px', color: 'rgba(255,255,255,0.2)', marginTop: '3px' }}>
+                      {edit.show_telegram_tag
+                        ? user?.username ? `Others can see @${user.username}` : 'Others can see your @tag'
+                        : 'Your @tag is hidden from other users'}
+                    </div>
+                  </div>
                   <div style={{ marginBottom: '10px' }}>
                     <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px' }}>BIO</div>
                     <textarea className="input" value={edit.bio} maxLength={300} rows={3} onChange={e => setE('bio', e.target.value)} placeholder="Tell about yourself..."

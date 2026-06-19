@@ -57,14 +57,16 @@ router.get('/', async (req, res) => {
     params.push(limit, offset);
     const { rows } = await query(
       `SELECT jp.*,
-              u.username AS client_username, u.rating AS client_rating,
+              CASE WHEN u.show_telegram_tag THEN u.username ELSE NULL END AS client_username,
+              COALESCE(u.display_name, u.first_name) AS client_name,
+              u.rating AS client_rating,
               u.telegram_id AS client_tg,
               COUNT(ja.id) AS applications_count
        FROM job_posts jp
        JOIN users u ON u.id = jp.client_id
        LEFT JOIN job_applications ja ON ja.job_post_id = jp.id
        ${whereClause}
-       GROUP BY jp.id, u.username, u.rating, u.telegram_id
+       GROUP BY jp.id, u.username, u.show_telegram_tag, u.display_name, u.first_name, u.rating, u.telegram_id
        ORDER BY (jp.boosted_until > NOW()) DESC NULLS LAST,
                 jp.boosted_until DESC NULLS LAST,
                 jp.created_at DESC
@@ -158,8 +160,8 @@ router.get('/:id', async (req, res) => {
     const { rows } = await query(
       `SELECT jp.*,
               u.telegram_id       AS client_tg,
-              u.username          AS client_username,
-              u.first_name        AS client_name,
+              CASE WHEN u.show_telegram_tag THEN u.username ELSE NULL END AS client_username,
+              COALESCE(u.display_name, u.first_name) AS client_name,
               u.rating            AS client_rating,
               u.deals_count       AS client_deals,
               u.level             AS client_level,
@@ -170,7 +172,7 @@ router.get('/:id', async (req, res) => {
        JOIN users u ON u.id = jp.client_id
        LEFT JOIN job_applications ja ON ja.job_post_id = jp.id
        WHERE jp.id = $1
-       GROUP BY jp.id, u.telegram_id, u.username, u.first_name,
+       GROUP BY jp.id, u.telegram_id, u.username, u.show_telegram_tag, u.display_name, u.first_name,
                 u.rating, u.deals_count, u.level, u.verification_type, u.created_at`,
       [req.params.id]
     );
@@ -222,7 +224,7 @@ router.get('/:id/applications', async (req, res) => {
       `SELECT ja.*,
               u.telegram_id  AS freelancer_telegram_id,
               u.username     AS freelancer_username,
-              u.first_name   AS freelancer_name,
+              COALESCE(u.display_name, u.first_name) AS freelancer_name,
               u.bio          AS freelancer_bio,
               u.skills       AS freelancer_skills,
               u.experience   AS freelancer_experience,
