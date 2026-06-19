@@ -5,6 +5,8 @@ const axios    = require('axios');
 const { query } = require('../../database/db');
 const escrowService      = require('../services/escrowService');
 const tierService        = require('../services/tierService');
+const maintenanceService = require('../services/maintenanceService');
+const { verifyTelegramInitData } = require('../middleware/auth');
 const { sendBroadcast, sendToTargets, processPendingBroadcasts } = require('../services/broadcastService');
 
 // ============================================================
@@ -56,7 +58,8 @@ async function initAdminTables() {
       ('max_deal_amount_usd', '500'),
       ('simulate_payments', 'false'),
       ('maintenance_mode', 'false'),
-      ('maintenance_message', '')
+      ('maintenance_message', ''),
+      ('maintenance_allowlist', '[]')
     ON CONFLICT (key) DO NOTHING
   `);
 
@@ -540,20 +543,54 @@ router.get('/api/settings', async (req, res) => {
 router.post('/api/settings', async (req, res) => {
   try {
     const allowed = ['platform_fee_percent','max_deal_amount_usd',
-                     'simulate_payments','maintenance_mode','maintenance_message'];
+                     'simulate_payments','maintenance_mode','maintenance_message',
+                     'maintenance_allowlist'];
     const updates = [];
     for (const [key, value] of Object.entries(req.body)) {
       if (!allowed.includes(key)) continue;
+
+      let stored = String(value);
+      // Белый список: фронт шлёт записи (telegram_id или @username) через запятую/перенос.
+      // Нормализуем в JSON-массив числовых telegram_id (@username резолвим через users).
+      if (key === 'maintenance_allowlist') {
+        stored = JSON.stringify(await resolveAllowlist(value));
+      }
+
       await query(
         `INSERT INTO platform_settings (key, value, updated_at) VALUES ($1,$2,NOW())
          ON CONFLICT (key) DO UPDATE SET value=$2, updated_at=NOW()`,
-        [key, String(value)]
+        [key, stored]
       );
       updates.push(key);
     }
+    maintenanceService.bustCache();
     res.json({ success: true, updated: updates });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
+/**
+ * Преобразует ввод белого списка (строка или массив; элементы — telegram_id
+ * или @username) в массив строковых telegram_id. @username резолвится через users.
+ */
+async function resolveAllowlist(input) {
+  const raw = Array.isArray(input) ? input : String(input || '').split(/[\s,]+/);
+  const ids = new Set();
+  const usernames = [];
+  for (let entry of raw) {
+    entry = String(entry).trim().replace(/^@/, '');
+    if (!entry) continue;
+    if (/^\d+$/.test(entry)) ids.add(entry);
+    else usernames.push(entry);
+  }
+  if (usernames.length > 0) {
+    const { rows } = await query(
+      `SELECT telegram_id FROM users WHERE LOWER(username) = ANY($1)`,
+      [usernames.map(u => u.toLowerCase())]
+    );
+    rows.forEach(r => ids.add(String(r.telegram_id)));
+  }
+  return [...ids];
+}
 
 // ================================================================
 // JOB BOARD
@@ -936,16 +973,25 @@ router.delete('/api/crystal-shop/:id', async (req, res) => {
 
 // PUBLIC — platform status (for Mini App)
 // ================================================================
+// Публичный статус для Mini App. Учитывает белый список: если режим включён,
+// но пользователь (из проверенного initData) в списке/арбитр — отдаём maintenance:false.
 router.get('/status', async (req, res) => {
   try {
-    const { rows } = await query(
-      `SELECT key, value FROM platform_settings WHERE key IN ('maintenance_mode','maintenance_message')`
-    );
-    const s = Object.fromEntries(rows.map(r => [r.key, r.value]));
-    res.json({
-      maintenance: s.maintenance_mode === 'true',
-      message    : s.maintenance_message || '',
-    });
+    const cfg = await maintenanceService.getConfig();
+    if (!cfg.enabled) return res.json({ maintenance: false, message: '' });
+
+    // Определяем пользователя из initData (если передан и валиден)
+    let telegramId = null;
+    const initData = req.headers['x-telegram-init-data'];
+    if (initData) {
+      const { valid, user } = verifyTelegramInitData(initData, process.env.BOT_TOKEN);
+      if (valid) telegramId = user.id;
+    }
+
+    if (maintenanceService.canAccess(cfg, telegramId)) {
+      return res.json({ maintenance: false, message: '', bypass: true });
+    }
+    res.json({ maintenance: true, message: cfg.message });
   } catch { res.json({ maintenance: false, message: '' }); }
 });
 

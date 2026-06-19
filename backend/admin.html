@@ -688,6 +688,7 @@ const LANGS={
     s_maint_name:'Maintenance mode',s_maint_desc:'Blocks the Mini App for users',
     s_msg_name:'Maintenance message',s_msg_desc:'Shown to users in maintenance mode',
     s_msg_ph:'⚙️ Maintenance in progress...',
+    s_allow_name:'Maintenance allowlist',s_allow_desc:'These users keep access during maintenance. Telegram IDs or @usernames, separated by comma/space.',
   },
   ru:{
     login_pwd:'Пароль...',login_btn:'ВОЙТИ →',logout:'Выйти',
@@ -754,6 +755,7 @@ const LANGS={
     s_maint_name:'Технические работы',s_maint_desc:'Блокирует Mini App для пользователей',
     s_msg_name:'Сообщение о техработах',s_msg_desc:'Показывается пользователям при maintenance',
     s_msg_ph:'⚙️ Технические работы...',
+    s_allow_name:'Белый список доступа',s_allow_desc:'Эти пользователи сохраняют доступ во время техработ. Telegram ID или @username через запятую/пробел.',
   }
 };
 function t(k){return(LANGS[_lang]||LANGS.en)[k]||k}
@@ -1332,17 +1334,23 @@ function loadSettings(){
       '<div class="setting-row"><div class="setting-info"><div class="setting-name">'+t('s_max_name')+'</div><div class="setting-desc">'+t('s_max_desc')+'</div></div><input class="inp" type="number" id="s-maxdeal" value="'+(s.max_deal_amount_usd||500)+'" style="width:100px" min="10"></div>'+
       '<div class="setting-row"><div class="setting-info"><div class="setting-name">'+t('s_sim_name')+'</div><div class="setting-desc">'+t('s_sim_desc')+'</div></div><label class="toggle"><input type="checkbox" id="s-simulate" '+(s.simulate_payments==='true'?'checked':'')+"><span class=\"toggle-slider\"></span></label></div>"+
       '<div class="setting-row"><div class="setting-info"><div class="setting-name">'+t('s_maint_name')+'</div><div class="setting-desc">'+t('s_maint_desc')+'</div></div><label class="toggle"><input type="checkbox" id="s-maintenance" '+(s.maintenance_mode==='true'?'checked':'')+"><span class=\"toggle-slider\"></span></label></div>"+
-      '<div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:8px"><div class="setting-info"><div class="setting-name">'+t('s_msg_name')+'</div><div class="setting-desc">'+t('s_msg_desc')+'</div></div><input class="inp" type="text" id="s-mainmsg" value="'+(s.maintenance_message||'').replace(/"/g,'&quot;')+'" style="width:100%" placeholder="'+t('s_msg_ph')+'"></div>';
+      '<div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:8px"><div class="setting-info"><div class="setting-name">'+t('s_msg_name')+'</div><div class="setting-desc">'+t('s_msg_desc')+'</div></div><input class="inp" type="text" id="s-mainmsg" value="'+(s.maintenance_message||'').replace(/"/g,'&quot;')+'" style="width:100%" placeholder="'+t('s_msg_ph')+'"></div>'+
+      '<div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:8px"><div class="setting-info"><div class="setting-name">'+t('s_allow_name')+'</div><div class="setting-desc">'+t('s_allow_desc')+'</div></div><textarea class="inp" id="s-mainallow" rows="3" style="width:100%;resize:vertical" placeholder="123456789, @username">'+parseAllowlist(s.maintenance_allowlist).join(', ')+'</textarea></div>';
   }).catch(function(e){toast('Error: '+e.message,'err')});
 }
+function parseAllowlist(v){
+  try{var a=JSON.parse(v||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}
+}
 function saveSettings(){
+  var allow=document.getElementById('s-mainallow').value.split(/[\s,]+/).filter(Boolean);
   post('/admark/api/settings',{
     platform_fee_percent:document.getElementById('s-fee').value,
     max_deal_amount_usd:document.getElementById('s-maxdeal').value,
     simulate_payments:document.getElementById('s-simulate').checked?'true':'false',
     maintenance_mode:document.getElementById('s-maintenance').checked?'true':'false',
     maintenance_message:document.getElementById('s-mainmsg').value,
-  }).then(function(){toast('Settings saved ✅')}).catch(function(e){toast('Error: '+e.message,'err')});
+    maintenance_allowlist:allow,
+  }).then(function(){toast('Settings saved ✅');loadSettings();}).catch(function(e){toast('Error: '+e.message,'err')});
 }
 
 // ── BROADCAST ──────────────────────────────────────────────
