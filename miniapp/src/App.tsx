@@ -20,6 +20,7 @@ import { FreelancerList }  from './pages/FreelancerList';
 import { Notifications }   from './pages/Notifications';
 import { Quests }          from './pages/Quests';
 import { Board }           from './pages/Board';
+import { JobDetail }       from './pages/JobDetail';
 import { Subscription }    from './pages/Subscription';
 import { Crystals }        from './pages/Crystals';
 import { MilestoneDeal }   from './pages/MilestoneDeal';
@@ -241,6 +242,7 @@ export default function App() {
         <Route path="/live"        element={<LiveDeals />} />
         <Route path="/profile"     element={<Profile />} />
         <Route path="/profile/:telegramId" element={<PublicProfile />} />
+        <Route path="/jobs/:id"      element={<JobDetail />} />
         <Route path="/jobs"          element={<Board />} />
         <Route path="/board"         element={<Board />} />
         <Route path="/my-deals"      element={<MyDeals />} />

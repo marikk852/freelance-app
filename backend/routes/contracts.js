@@ -26,6 +26,8 @@ const createContractSchema = Joi.object({
   criteria   : Joi.array().items(
     Joi.object({ text: Joi.string().required(), required: Joi.boolean() })
   ).min(3).required(),
+  // Опц.: telegram_id фрилансера, которому сразу отправить инвайт (сделка из принятого отклика)
+  invite_freelancer_tg: Joi.number().integer().optional(),
 });
 
 /**
@@ -103,6 +105,18 @@ router.post('/', async (req, res) => {
     const inviteUrl = botUsername
       ? `https://t.me/${botUsername}?start=room_${room.invite_link}`
       : `${process.env.WEBAPP_URL}?room=${room.invite_link}`;
+
+    // Бесшовно: сделка создана из принятого отклика на бирже — сразу шлём
+    // фрилансеру уведомление с прямой ссылкой на присоединение (вручную инвайт
+    // отправлять не нужно). Не критично к ошибке — сделка уже создана.
+    if (value.invite_freelancer_tg && Number(value.invite_freelancer_tg) !== Number(telegramId)) {
+      notificationService.notify(
+        value.invite_freelancer_tg,
+        'deal_invite',
+        `🤝 You've been invited to a deal: *${value.title}*\nTap below to review and join.`,
+        { inlineKeyboard: [[{ text: '⚔ Open deal', url: inviteUrl }]], contractId: contract.id }
+      ).catch(() => {});
+    }
 
     res.status(201).json({
       contractId : contract.id,

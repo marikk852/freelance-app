@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { PixelScene } from '../components/PixelScene';
 import { contracts, ai } from '../utils/api';
 import { useTelegram } from '../hooks/useTelegram';
@@ -14,14 +14,21 @@ const STEPS = ['TITLE', 'DESCRIPTION', 'AMOUNT', 'DEADLINE', 'CRITERIA'];
 
 export function NewDeal() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { tg } = useTelegram();
+  // Предзаполнение из принятого отклика на бирже (JobDetail → «Create deal»)
+  const prefill = (location.state as any)?.prefill as
+    | { title?: string; description?: string; amount?: number | string; currency?: 'TON'|'USDT'; freelancerTg?: number | string; freelancerName?: string; freelancerUsername?: string }
+    | undefined;
   const [step,    setStep]    = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const [title,       setTitle]       = useState('');
-  const [description, setDescription] = useState('');
-  const [amountUsd,   setAmountUsd]   = useState('');
-  const [currency,    setCurrency]    = useState<'TON'|'USDT'>('USDT');
+  const [title,       setTitle]       = useState(prefill?.title ?? '');
+  const [description, setDescription] = useState(prefill?.description ?? '');
+  const [amountUsd,   setAmountUsd]   = useState(
+    prefill?.amount != null && prefill.amount !== '' ? String(Math.min(Number(prefill.amount), 10000)) : ''
+  );
+  const [currency,    setCurrency]    = useState<'TON'|'USDT'>(prefill?.currency === 'TON' ? 'TON' : 'USDT');
   const [deadline,    setDeadline]    = useState('');
   const [criteria,    setCriteria]    = useState<Criterion[]>([
     { text: '', required: true },
@@ -100,6 +107,8 @@ export function NewDeal() {
         amount_usd: Number(amountUsd),
         currency, deadline,
         criteria: criteria.filter(c => c.text.trim()),
+        // Из принятого отклика: backend сразу уведомит фрилансера инвайтом
+        ...(prefill?.freelancerTg ? { invite_freelancer_tg: Number(prefill.freelancerTg) } : {}),
       });
       tg?.HapticFeedback?.notificationOccurred('success');
       toast.success('Deal created!');
@@ -117,6 +126,23 @@ export function NewDeal() {
       <PixelScene scene="new_deal" width={252} height={56} />
 
       <div className="sec card-stagger-1">⚔ NEW QUEST</div>
+
+      {/* Сделка для конкретного фрилансера (пришли из принятого отклика) */}
+      {prefill?.freelancerName && (
+        <div className="gl card-stagger-1" style={{ marginBottom: '8px', borderColor: 'rgba(0,255,136,0.3)' }}>
+          <div className="pxgrid" /><div className="sh" />
+          <div style={{ position: 'relative', zIndex: 2 }}>
+            <div className="px" style={{ fontSize: '7px', color: '#00ff88', marginBottom: '6px' }}>
+              🤝 DEAL FOR {prefill.freelancerUsername ? `@${prefill.freelancerUsername}` : prefill.freelancerName.toUpperCase()}
+            </div>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6 }}>
+              Prefilled from your job. {prefill.freelancerTg
+                ? 'We\'ll send this freelancer a join link automatically once you create the deal.'
+                : 'After creating, send them the invite link to join.'}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* AI помощник по заказу (PRO) */}
       <button className="btn card-stagger-1" style={{
