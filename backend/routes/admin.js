@@ -568,6 +568,25 @@ router.post('/api/settings', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Текущий белый список техработ с данными юзеров (для отображения в админке).
+// Сохраняет порядок; id, которых нет в users, отдаёт как «голые».
+router.get('/api/maintenance/allowlist', async (req, res) => {
+  try {
+    const cfg = await maintenanceService.getConfig();
+    if (!cfg.allowlist.length) return res.json([]);
+    const { rows } = await query(
+      `SELECT telegram_id, username, first_name, last_name
+       FROM users WHERE telegram_id = ANY($1::bigint[])`,
+      [cfg.allowlist]
+    );
+    const found = new Map(rows.map(r => [String(r.telegram_id), r]));
+    const result = cfg.allowlist.map(id =>
+      found.get(String(id)) || { telegram_id: id, username: null, first_name: null, last_name: null }
+    );
+    res.json(result);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 /**
  * Преобразует ввод белого списка (строка или массив; элементы — telegram_id
  * или @username) в массив строковых telegram_id. @username резолвится через users.
