@@ -405,7 +405,7 @@ export function Board() {
   );
 
   return (
-    <div className="page fade-in">
+    <div className="page fade-in board-page">
 
       {/* Header */}
       <div className="gl hud card-stagger-1" style={{ borderColor: 'rgba(255,170,0,0.3)' }}>
@@ -482,7 +482,7 @@ export function Board() {
             <div className="gl" style={{ textAlign: 'center', padding: '32px' }}>
               <div className="pxgrid" /><div className="sh" />
               <div style={{ fontSize: '28px', marginBottom: '10px' }}>📭</div>
-              <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.35)', lineHeight: 2 }}>NO JOBS FOUND</div>
+              <div style={{ fontSize: '8px', color: 'var(--t-2)', lineHeight: 2 }}>NO JOBS FOUND</div>
             </div>
           ) : (
             <>
@@ -522,7 +522,7 @@ export function Board() {
             <div className="gl" style={{ textAlign: 'center', padding: '32px' }}>
               <div className="pxgrid" /><div className="sh" />
               <div style={{ fontSize: '28px', marginBottom: '10px' }}>🔍</div>
-              <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.35)', lineHeight: 2 }}>NO FREELANCERS FOUND</div>
+              <div style={{ fontSize: '8px', color: 'var(--t-2)', lineHeight: 2 }}>NO FREELANCERS FOUND</div>
             </div>
           ) : (
             <>
