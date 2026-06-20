@@ -1,12 +1,61 @@
 /* Fonts loaded via index.html preconnect for better perf */
 
+/* ============================================================
+   DESIGN TOKENS — единый источник правды (см. 20_DESIGN_SYSTEM)
+   Меняй здесь, а не инлайн. Цвета бренда фиксированы (тёмная система).
+   ============================================================ */
+:root{
+  /* Brand palette (canon) */
+  --c-green:#00ff88;  --c-gold:#ffaa00;  --c-blue:#0088ff;
+  --c-purple:#cc44ff; --c-red:#ff4466;   --c-orange:#ff8800;
+
+  /* Background (строго чёрный фон бренда) */
+  --bg:#000000;
+  --bg-elev:#0b0c10;          /* приподнятые поверхности (шторки, модалки) */
+
+  /* Текст — пороги контраста на чёрном (≥4.5:1 до t-3 включительно) */
+  --t-1:rgba(255,255,255,0.96);   /* заголовки / основной */
+  --t-2:rgba(255,255,255,0.72);   /* вторичный текст */
+  --t-3:rgba(255,255,255,0.52);   /* приглушённый, но читаемый */
+  --t-4:rgba(255,255,255,0.38);   /* подписи/лейблы (только крупный кегль) */
+
+  /* Glass-поверхности и обводки */
+  --glass-1:rgba(255,255,255,0.055);
+  --glass-2:rgba(255,255,255,0.038);
+  --glass-hi:rgba(255,255,255,0.11);   /* верхний блик карточки */
+  --stroke-1:rgba(255,255,255,0.13);
+  --stroke-2:rgba(255,255,255,0.08);
+
+  /* Радиусы (liquid glass — мягкие) */
+  --r-sm:11px; --r-md:16px; --r-lg:22px; --r-pill:100px;
+
+  /* Шкала отступов (база 4px) */
+  --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-5:20px; --s-6:24px; --s-8:32px;
+
+  /* Глубина */
+  --shadow-1:0 2px 10px rgba(0,0,0,0.45);
+  --shadow-2:0 12px 34px rgba(0,0,0,0.55);
+  --glow-soft:0 0 0 1px var(--stroke-2);
+
+  /* Типографика: pixel (Press Start 2P) — для акцентов; Inter — для текста */
+  --fz-px-2xs:7px; --fz-px-xs:8px; --fz-px-sm:9px; --fz-px-md:11px; --fz-px-lg:14px;
+  --fz-1:11px; --fz-2:13px; --fz-3:15px; --fz-4:18px; --fz-5:22px;
+
+  /* Движение */
+  --mo-fast:0.15s; --mo-mid:0.28s; --mo-slow:0.45s;
+  --ease:cubic-bezier(0.22,1,0.36,1);
+
+  /* Telegram viewport (перезаписывается из JS на viewportStableHeight) */
+  --app-h:100vh;
+}
+
 *{box-sizing:border-box;margin:0;padding:0;}
 
 html,body,#root{
   width:100%;min-height:100vh;
-  background:#000;
+  background:var(--bg);
   font-family:'Inter',sans-serif;
-  color:#fff;
+  color:var(--t-1);
   -webkit-font-smoothing:antialiased;
   -webkit-text-size-adjust:100%;
   overflow-x:hidden;
@@ -30,33 +79,34 @@ html,body,#root{
 
 /* ---- GLASS ---- */
 .gl{
-  background:rgba(255,255,255,0.045);
-  border:1px solid rgba(255,255,255,0.13);
-  border-radius:7px;
+  background:var(--glass-1);
+  border:1px solid var(--stroke-1);
+  border-radius:var(--r-md);
+  box-shadow:var(--shadow-1);
   position:relative;overflow:hidden;
-  margin-bottom:6px;
+  margin-bottom:var(--s-2);
 }
 .gl::before{
   content:'';position:absolute;top:0;left:0;right:0;height:45%;
-  background:linear-gradient(180deg,rgba(255,255,255,0.09),transparent);
-  border-radius:7px 7px 0 0;pointer-events:none;z-index:1;
+  background:linear-gradient(180deg,var(--glass-hi),transparent);
+  border-radius:var(--r-md) var(--r-md) 0 0;pointer-events:none;z-index:1;
 }
 .gl-sm{
-  background:rgba(255,255,255,0.04);
-  border:1px solid rgba(255,255,255,0.1);
-  border-radius:5px;
+  background:var(--glass-2);
+  border:1px solid var(--stroke-2);
+  border-radius:var(--r-sm);
   position:relative;overflow:hidden;
-  margin-bottom:6px;
+  margin-bottom:var(--s-2);
 }
 .gl-sm::before{
   content:'';position:absolute;top:0;left:0;right:0;height:40%;
   background:linear-gradient(180deg,rgba(255,255,255,0.07),transparent);
-  border-radius:5px 5px 0 0;pointer-events:none;z-index:1;
+  border-radius:var(--r-sm) var(--r-sm) 0 0;pointer-events:none;z-index:1;
 }
 .gl-pill{
   background:rgba(255,255,255,0.06);
-  border:1px solid rgba(255,255,255,0.15);
-  border-radius:34px;
+  border:1px solid var(--stroke-1);
+  border-radius:var(--r-pill);
   position:relative;overflow:hidden;
 }
 
@@ -81,9 +131,9 @@ html,body,#root{
 /* ---- PAGE ---- */
 .page{
   position:relative;z-index:1;
-  min-height:100vh;
-  padding:10px 10px 80px;
-  max-width:390px;
+  min-height:var(--app-h);
+  padding:10px 12px 88px;
+  max-width:412px;
   margin:0 auto;
   animation:slide-up 0.4s ease-out;
 }
@@ -124,20 +174,20 @@ html,body,#root{
 .stats{display:flex;gap:5px;margin-bottom:8px;}
 .stat{flex:1;padding:10px 4px;text-align:center;position:relative;}
 .stat-n{font-family:'Press Start 2P',monospace;font-size:14px;display:block;margin-bottom:5px;}
-.stat-l{font-size:10px;font-weight:500;color:rgba(255,255,255,0.4);letter-spacing:0.3px;}
+.stat-l{font-size:10px;font-weight:600;color:var(--t-3);letter-spacing:0.4px;text-transform:uppercase;}
 
 /* ---- DEAL CARD ---- */
 .dc{padding:10px 12px;margin-bottom:6px;position:relative;}
 .dc-top{display:flex;justify-content:space-between;margin-bottom:5px;position:relative;z-index:2;}
 .dc-title{font-family:'Press Start 2P',monospace;font-size:9px;color:#fff;}
 .dc-amt{font-family:'Press Start 2P',monospace;font-size:8px;}
-.dc-desc{font-size:12px;color:rgba(255,255,255,0.45);margin-bottom:5px;line-height:1.6;position:relative;z-index:2;}
+.dc-desc{font-size:12px;color:var(--t-3);margin-bottom:5px;line-height:1.6;position:relative;z-index:2;}
 .badge{font-family:'Press Start 2P',monospace;display:inline-block;font-size:7px;padding:3px 8px;border-radius:34px;margin-bottom:4px;position:relative;z-index:2;}
 .hp-t{height:5px;border-radius:34px;background:rgba(255,255,255,0.05);overflow:hidden;position:relative;z-index:2;}
 .hp-b{height:100%;border-radius:34px;animation:xpfill 1.2s ease-out forwards;}
 
 /* ---- SECTION LABEL ---- */
-.sec{font-size:11px;font-weight:600;color:rgba(255,255,255,0.25);letter-spacing:1px;margin:8px 0 5px;padding:0 1px;}
+.sec{font-size:11px;font-weight:600;color:var(--t-4);letter-spacing:1px;margin:10px 0 6px;padding:0 1px;text-transform:uppercase;}
 
 /* ---- DIVIDER ---- */
 .div{height:1px;background:rgba(255,255,255,0.06);margin:7px 0;position:relative;}
@@ -324,7 +374,7 @@ canvas{image-rendering:pixelated;}
 @keyframes particle-float{0%{transform:translateY(0) translateX(0);opacity:0.6}50%{transform:translateY(-20px) translateX(10px);opacity:1}100%{transform:translateY(-40px) translateX(-5px);opacity:0}}
 
 /* Button sizes fix */
-.btn{font-size:8px !important;}
+.btn{font-size:9px !important;}
 .fb{font-size:7px !important;}
 .nav-item span:last-child{font-size:6px !important;}
 
@@ -369,10 +419,15 @@ canvas{image-rendering:pixelated;}
 /* Home action row — flex-wrap on mobile */
 .home-action-row { display: flex; flex-wrap: wrap; gap: 10px; }
 
+/* Home hero scene card — native 252×56 canvas scaled up crisply (pixelated),
+   aspect ratio preserved so it fills the card without empty space */
+.home-scene-card { padding: 8px; margin-bottom: var(--s-3); display: flex; align-items: center; justify-content: center; }
+.home-scene-card canvas { width: 100% !important; height: auto !important; display: block; margin: 0 !important; }
+
 /* ---------- 600px: wider, slightly larger ---------- */
 @media (min-width: 600px) {
   .page { max-width: 560px; padding: 16px 20px 100px; }
-  .gl, .gl-sm { border-radius: 12px; margin-bottom: 10px; }
+  .gl, .gl-sm { border-radius: 18px; margin-bottom: 10px; }
   .btn { font-size: 9px !important; padding: 15px; }
   .logo { font-size: 14px; }
   .input { font-size: 15px; padding: 14px 16px; }
@@ -502,19 +557,20 @@ canvas{image-rendering:pixelated;}
   .home-hero-scene {
     margin-bottom: 0;
     min-height: 170px;
-    padding: 0;
+    padding: 12px;
     overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
   }
-  .home-hero-scene canvas { width: 100% !important; height: 170px !important; display: block; }
+  .home-hero-scene canvas { width: 100% !important; height: auto !important; display: block; margin: 0 !important; }
   .home-hero-stat {
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-    text-align: center; gap: 8px;
+    text-align: center; gap: 9px;
     margin-bottom: 0; min-height: 170px;
   }
-  .home-hero-stat .stat-icon { font-size: 22px; }
-  .home-hero-stat .stat-n   { font-size: 22px !important; line-height: 1; }
-  .home-hero-stat .stat-l   { font-size: 5.5px !important; color: rgba(255,255,255,0.32); letter-spacing: 0.5px; }
+  .home-hero-stat .stat-icon { font-size: 24px; }
+  .home-hero-stat .stat-n   { font-size: 26px !important; line-height: 1; }
+  .home-hero-stat .stat-l   { font-size: 8px !important; color: var(--t-3); letter-spacing: 0.6px; }
 
   /* ── Home action row (5 columns) ── */
   .home-action-row {
@@ -536,12 +592,12 @@ canvas{image-rendering:pixelated;}
     display: flex; align-items: center; justify-content: space-between;
     margin-bottom: 12px;
   }
-  .home-list-title { font-size: 7px; color: rgba(255,255,255,0.45); font-family: 'Press Start 2P', monospace; }
+  .home-list-title { font-size: 8px; color: var(--t-2); font-family: 'Press Start 2P', monospace; letter-spacing: 0.5px; }
   .home-list-badge {
-    font-size: 5px; padding: 3px 8px; border-radius: 100px;
+    font-size: 6px; padding: 4px 9px; border-radius: 100px;
     background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
-    color: rgba(255,255,255,0.3);
+    border: 1px solid var(--stroke-2);
+    color: var(--t-3);
     font-family: 'Press Start 2P', monospace;
   }
   .home-deal-item {
@@ -555,9 +611,9 @@ canvas{image-rendering:pixelated;}
   .home-deal-item:hover { background: rgba(255,255,255,0.05); }
   .home-deal-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
   .home-deal-info { flex: 1; min-width: 0; }
-  .home-deal-name { font-size: 5.5px; color: rgba(255,255,255,0.7); margin-bottom: 3px; font-family: 'Press Start 2P', monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .home-deal-meta { font-size: 4.5px; color: rgba(255,255,255,0.3); font-family: 'Press Start 2P', monospace; }
-  .home-deal-amt  { font-size: 6px; color: #ffaa00; flex-shrink: 0; font-family: 'Press Start 2P', monospace; }
+  .home-deal-name { font-size: 13px; font-weight: 600; color: var(--t-1); margin-bottom: 3px; font-family: 'Inter', sans-serif; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .home-deal-meta { font-size: 11px; color: var(--t-3); font-family: 'Inter', sans-serif; text-transform: capitalize; }
+  .home-deal-amt  { font-size: 9px; color: var(--c-gold); flex-shrink: 0; font-family: 'Press Start 2P', monospace; }
   .home-live-item {
     display: flex; align-items: flex-start; gap: 8px;
     padding: 8px 10px; border-radius: 9px;
@@ -565,9 +621,9 @@ canvas{image-rendering:pixelated;}
     border: 1px solid rgba(255,255,255,0.05);
     margin-bottom: 6px;
   }
-  .home-live-emoji { font-size: 14px; flex-shrink: 0; line-height: 1.4; }
-  .home-live-text  { font-size: 5px; color: rgba(255,255,255,0.4); line-height: 2; font-family: 'Press Start 2P', monospace; }
-  .home-live-time  { font-size: 4px; color: rgba(255,255,255,0.2); font-family: 'Press Start 2P', monospace; margin-top: 2px; }
+  .home-live-emoji { font-size: 16px; flex-shrink: 0; line-height: 1.4; }
+  .home-live-text  { font-size: 12px; color: var(--t-2); line-height: 1.5; font-family: 'Inter', sans-serif; }
+  .home-live-time  { font-size: 10px; color: var(--t-4); font-family: 'Inter', sans-serif; margin-top: 3px; }
 
   /* Page inner padding (all pages except Home which handles its own) */
   .page-inner { padding: 24px 28px 40px; flex: 1; }
@@ -619,7 +675,7 @@ canvas{image-rendering:pixelated;}
   .profile-edit-grid .gl { margin-bottom: 0; }
 
   /* General desktop upscales */
-  .gl, .gl-sm { border-radius: 14px; margin-bottom: 12px; }
+  .gl, .gl-sm { border-radius: 20px; margin-bottom: 12px; }
   .logo { font-size: 16px; }
   .btn { font-size: 10px !important; padding: 16px 20px; border-radius: 10px; }
   .input { font-size: 15px; padding: 15px 18px; }

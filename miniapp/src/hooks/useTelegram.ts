@@ -31,6 +31,9 @@ interface TelegramWebApp {
   themeParams: Record<string, string>;
   isExpanded: boolean;
   viewportHeight: number;
+  viewportStableHeight?: number;
+  onEvent?: (event: string, fn: () => void) => void;
+  offEvent?: (event: string, fn: () => void) => void;
   MainButton: {
     text: string;
     color: string;
@@ -70,6 +73,16 @@ export function useTelegram() {
       tg.ready();
       tg.expand();
       setUser(tg.initDataUnsafe?.user || null);
+
+      // Реальная высота вьюпорта Telegram → CSS-переменная --app-h
+      // (vh ломается на iOS при клавиатуре/сворачивании; см. дизайн-скил)
+      const applyViewport = () => {
+        const h = tg.viewportStableHeight || tg.viewportHeight;
+        if (h) document.documentElement.style.setProperty('--app-h', `${h}px`);
+      };
+      applyViewport();
+      tg.onEvent?.('viewportChanged', applyViewport);
+      return () => tg.offEvent?.('viewportChanged', applyViewport);
     }
   }, []);
 
