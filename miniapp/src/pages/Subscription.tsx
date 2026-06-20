@@ -271,7 +271,8 @@ export function Subscription() {
                   className="gl card-stagger-2"
                   style={{
                     marginBottom: '10px',
-                    paddingTop  : plan.popular ? '26px' : undefined,
+                    padding     : '18px 18px 20px',
+                    paddingTop  : plan.popular ? '32px' : '18px',
                     borderColor : isSelected ? plan.color : 'var(--stroke-2)',
                     boxShadow   : isSelected ? `0 0 18px ${plan.color}33, inset 0 0 24px ${plan.color}0a` : 'none',
                     cursor      : 'pointer',
@@ -293,7 +294,7 @@ export function Subscription() {
                   )}
 
                   {/* Plan header */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', position: 'relative', zIndex: 2 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', position: 'relative', zIndex: 2 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <div style={{
                         width: '40px', height: '40px', borderRadius: '8px',
@@ -342,29 +343,29 @@ export function Subscription() {
                   </div>
 
                   {/* Features */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', position: 'relative', zIndex: 2 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '11px', position: 'relative', zIndex: 2 }}>
                     {plan.features.map((f: string, i: number) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
                         <div style={{
-                          width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0,
+                          width: '17px', height: '17px', borderRadius: '5px', flexShrink: 0, marginTop: '1px',
                           background: `${plan.color}22`, border: `1px solid ${plan.color}44`,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           fontSize: '8px', color: plan.color,
                         }}>✓</div>
-                        <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}>
+                        <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', lineHeight: 1.45, color: 'var(--t-2)' }}>
                           {f}
                         </span>
                       </div>
                     ))}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                      <div style={{
-                        width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0,
-                        background: 'rgba(255,170,0,0.15)', border: '1px solid rgba(255,170,0,0.4)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '8px',
-                      }}>💎</div>
-                      <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: '#ffaa00', fontWeight: 600 }}>
-                        +{plan.crystals.toLocaleString()} Safe Crystals on purchase
+                    {/* Crystal bonus — выделенный «чип», а не строка списка */}
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: '9px', marginTop: '5px',
+                      padding: '9px 11px', borderRadius: '11px',
+                      background: 'rgba(255,170,0,0.09)', border: '1px solid rgba(255,170,0,0.24)',
+                    }}>
+                      <span style={{ fontSize: '15px', flexShrink: 0, lineHeight: 1 }}>💎</span>
+                      <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', lineHeight: 1.35, color: '#ffaa00', fontWeight: 600 }}>
+                        +{plan.crystals.toLocaleString()} Safe Crystals <span style={{ color: 'var(--t-3)', fontWeight: 500 }}>on purchase</span>
                       </span>
                     </div>
                   </div>
