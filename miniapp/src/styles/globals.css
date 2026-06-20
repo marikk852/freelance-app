@@ -639,6 +639,14 @@ canvas{image-rendering:pixelated;}
   .live-stats-desktop { display: flex; gap: 12px; margin-bottom: 14px; }
   .live-stats-desktop .stat { flex: 1; padding: 12px 8px; }
 
+  /* ── Board (Jobs/Freelancers): constrain width, не растягивать на всю ширину ── */
+  .board-page { align-items: center; padding: 24px 28px 44px; }
+  .board-page > * { width: 100%; max-width: 900px; }
+
+  /* ── Detail/reading views (JobDetail и т.п.): узкая колонка ── */
+  .detail-page { align-items: center; padding: 24px 28px 44px; }
+  .detail-page > * { width: 100%; max-width: 720px; }
+
   /* ── Jobs 2-col grid ── */
   .jobs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .jobs-grid > * { margin-bottom: 0 !important; }

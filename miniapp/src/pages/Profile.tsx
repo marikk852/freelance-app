@@ -54,7 +54,7 @@ const defaultEdit: EditForm = {
 
 function SectionLabel({ label }: { label: string }) {
   return (
-    <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.35)', marginBottom: '10px', letterSpacing: '1px' }}>
+    <div style={{ fontSize: '8px', color: 'var(--t-3)', marginBottom: '10px', letterSpacing: '1px' }}>
       -- {label} --
     </div>
   );
@@ -345,7 +345,7 @@ export function Profile() {
       ) : (
         <>
           {profile?.ton_wallet_address && (
-            <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.4)', marginBottom: '8px', wordBreak: 'break-all' }}>
+            <div style={{ fontSize: '6px', color: 'var(--t-3)', marginBottom: '8px', wordBreak: 'break-all' }}>
               Saved: {profile.ton_wallet_address.slice(0, 8)}...{profile.ton_wallet_address.slice(-6)}
             </div>
           )}
@@ -354,7 +354,7 @@ export function Profile() {
           </button>
           {!compact && (
             <div style={{ marginTop: '10px' }}>
-              <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.3)', marginBottom: '5px' }}>OR PASTE MANUALLY</div>
+              <div style={{ fontSize: '6px', color: 'var(--t-3)', marginBottom: '5px' }}>OR PASTE MANUALLY</div>
               <input type="text" placeholder="UQ..." value={wallet} onChange={e => setWallet(e.target.value)}
                 style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', padding: '9px 12px', color: '#fff', fontSize: '7px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: '7px' }} />
               <button className="btn btn-full" onClick={handleSaveWallet} disabled={!wallet.trim() || loading}
@@ -374,7 +374,7 @@ export function Profile() {
       {/* ── Desktop topbar ── */}
       <div className="desktop-topbar desktop-only">
         <div className="desktop-topbar-title">DASHBOARD / <span>PROFILE</span></div>
-        {user?.username && <span style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', fontFamily: '"Press Start 2P", monospace' }}>@{user.username}</span>}
+        {user?.username && <span style={{ fontSize: '7px', color: 'var(--t-3)', fontFamily: '"Press Start 2P", monospace' }}>@{user.username}</span>}
         {profile && <span style={{ fontSize: '7px', color: '#ffaa00', fontFamily: '"Press Start 2P", monospace' }}>LVL {profile.level} · {profile.deals_completed} DEALS</span>}
       </div>
 
@@ -405,7 +405,7 @@ export function Profile() {
                   )}
                 </div>
                 <div className="logo" style={{ fontSize: '12px' }}>{(profile?.display_name || user?.first_name)?.toUpperCase() || 'GUEST'}</div>
-                {user?.username && <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.35)', marginTop: '5px' }}>@{user.username}</div>}
+                {user?.username && <div style={{ fontSize: '8px', color: 'var(--t-3)', marginTop: '5px' }}>@{user.username}</div>}
                 {profile && (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
                     <div className="gl-pill lvl" style={{ padding: '4px 10px' }}>⚔ LVL {profile.level}</div>
@@ -519,7 +519,7 @@ export function Profile() {
                       <div style={{ fontSize: '9px', color: '#ffaa00', marginBottom: '12px', letterSpacing: '1px' }}>👥 REFERRAL PROGRAM</div>
 
                       {/* Referral link */}
-                      <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.4)', marginBottom: '5px' }}>YOUR INVITE LINK</div>
+                      <div style={{ fontSize: '6px', color: 'var(--t-3)', marginBottom: '5px' }}>YOUR INVITE LINK</div>
                       <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
                         <div style={{
                           flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
@@ -550,7 +550,7 @@ export function Profile() {
                               <div style={{ fontSize: '7px', color: '#fff' }}>Invite {tier1.required} users</div>
                               <div style={{ fontSize: '6px', color: TIER_COLORS[0], marginTop: '2px' }}>+{tier1.crystals.toLocaleString()} Safe Crystals</div>
                             </div>
-                            <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)' }}>
+                            <div style={{ fontSize: '7px', color: 'var(--t-3)' }}>
                               {Math.min(tier1.progress, tier1.required)}/{tier1.required}
                             </div>
                           </div>
@@ -579,14 +579,14 @@ export function Profile() {
                               <div style={{ fontSize: '7px', color: '#fff' }}>{tier2.required} active users</div>
                               <div style={{ fontSize: '6px', color: TIER_COLORS[1], marginTop: '2px' }}>+{tier2.crystals.toLocaleString()} Safe Crystals</div>
                             </div>
-                            <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)' }}>
+                            <div style={{ fontSize: '7px', color: 'var(--t-3)' }}>
                               {Math.min(tier2.progress, tier2.required)}/{tier2.required}
                             </div>
                           </div>
                           <div style={{ height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', marginBottom: '6px' }}>
                             <div style={{ height: '100%', borderRadius: '2px', background: 'linear-gradient(90deg,#cc44ff,#8822cc)', width: `${Math.min(100, (tier2.progress / tier2.required) * 100)}%`, transition: 'width 0.6s ease' }} />
                           </div>
-                          <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.3)', lineHeight: 1.6, marginBottom: '4px' }}>
+                          <div style={{ fontSize: '6px', color: 'var(--t-3)', lineHeight: 1.6, marginBottom: '4px' }}>
                             Active = 5+ visits in last 30 days
                           </div>
                           {tier2.progress >= tier2.required && (
@@ -616,7 +616,7 @@ export function Profile() {
               <div className="gl" style={{ padding: '14px' }}>
                 <div className="pxgrid" />
                 {!analytics ? (
-                  <div className="px" style={{ fontSize: '7px', color: 'rgba(255,255,255,0.4)', textAlign: 'center', padding: '20px' }}>LOADING…</div>
+                  <div className="px" style={{ fontSize: '7px', color: 'var(--t-3)', textAlign: 'center', padding: '20px' }}>LOADING…</div>
                 ) : analytics.error ? (
                   <div className="px" style={{ fontSize: '7px', color: '#ff4466', textAlign: 'center', padding: '20px' }}>FAILED TO LOAD</div>
                 ) : analytics.locked ? (
@@ -646,7 +646,7 @@ export function Profile() {
                         <DataRow label="Application → hire"   value={`${analytics.application_conversion}% (${analytics.applications_total})`} color="#cc44ff" />
                         {analytics.earnings_by_month?.length > 0 && (
                           <div style={{ marginTop: '10px' }}>
-                            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginBottom: '8px' }}>EARNINGS BY MONTH</div>
+                            <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', color: 'var(--t-3)', marginBottom: '8px' }}>EARNINGS BY MONTH</div>
                             {(() => {
                               const max = Math.max(...analytics.earnings_by_month.map((m: any) => m.earned), 1);
                               return analytics.earnings_by_month.map((m: any) => (
@@ -674,7 +674,7 @@ export function Profile() {
                 <div className="gl dc card-stagger-4" style={{ textAlign: 'center', padding: '32px 10px' }}>
                   <div className="pxgrid" /><div className="sh" />
                   <div style={{ fontSize: '28px', marginBottom: '8px', animation: 'float 3s ease-in-out infinite' }}>📁</div>
-                  <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.35)', lineHeight: '2.2' }}>PORTFOLIO EMPTY<br/>COMPLETE DEALS!</div>
+                  <div style={{ fontSize: '8px', color: 'var(--t-3)', lineHeight: '2.2' }}>PORTFOLIO EMPTY<br/>COMPLETE DEALS!</div>
                 </div>
               ) : (
                 <div className="profile-portfolio-grid">
@@ -702,7 +702,7 @@ export function Profile() {
                 <div className="gl dc card-stagger-4" style={{ textAlign: 'center', padding: '32px 10px' }}>
                   <div className="pxgrid" /><div className="sh" />
                   <div style={{ fontSize: '28px', marginBottom: '8px', animation: 'float 3s ease-in-out infinite' }}>⭐</div>
-                  <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.35)' }}>NO REVIEWS YET</div>
+                  <div style={{ fontSize: '8px', color: 'var(--t-3)' }}>NO REVIEWS YET</div>
                 </div>
               ) : reviews.map((r, i) => (
                 <div key={i} className={`gl card-stagger-${Math.min(i + 4, 5)}`}>
@@ -771,31 +771,31 @@ export function Profile() {
 
                   <SectionLabel label="ABOUT" />
                   <div style={{ marginBottom: '10px' }}>
-                    <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px' }}>NICKNAME</div>
+                    <div style={{ fontSize: '6px', color: 'var(--t-3)', marginBottom: '4px' }}>NICKNAME</div>
                     <input className="input" value={edit.display_name} maxLength={32} onChange={e => setE('display_name', e.target.value)}
                       placeholder={user?.first_name || 'Your nickname'} style={{ width: '100%' }} />
-                    <div style={{ fontSize: '5px', color: 'rgba(255,255,255,0.2)', marginTop: '3px' }}>Shown instead of your Telegram name · leave empty to use it</div>
+                    <div style={{ fontSize: '5px', color: 'var(--t-4)', marginTop: '3px' }}>Shown instead of your Telegram name · leave empty to use it</div>
                   </div>
                   <div style={{ marginBottom: '10px' }}>
-                    <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px' }}>TELEGRAM @TAG</div>
+                    <div style={{ fontSize: '6px', color: 'var(--t-3)', marginBottom: '4px' }}>TELEGRAM @TAG</div>
                     <div style={{ display: 'flex', gap: '4px' }}>
                       {toggleBtn('SHOW', edit.show_telegram_tag,  () => setE('show_telegram_tag', true))}
                       {toggleBtn('HIDE', !edit.show_telegram_tag, () => setE('show_telegram_tag', false))}
                     </div>
-                    <div style={{ fontSize: '5px', color: 'rgba(255,255,255,0.2)', marginTop: '3px' }}>
+                    <div style={{ fontSize: '5px', color: 'var(--t-4)', marginTop: '3px' }}>
                       {edit.show_telegram_tag
                         ? user?.username ? `Others can see @${user.username}` : 'Others can see your @tag'
                         : 'Your @tag is hidden from other users'}
                     </div>
                   </div>
                   <div style={{ marginBottom: '10px' }}>
-                    <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px' }}>BIO</div>
+                    <div style={{ fontSize: '6px', color: 'var(--t-3)', marginBottom: '4px' }}>BIO</div>
                     <textarea className="input" value={edit.bio} maxLength={300} rows={3} onChange={e => setE('bio', e.target.value)} placeholder="Tell about yourself..."
                       style={{ resize: 'none', width: '100%', fontFamily: '"Press Start 2P", monospace', fontSize: '7px', lineHeight: '1.8' }} />
-                    <div style={{ fontSize: '5px', color: 'rgba(255,255,255,0.2)', textAlign: 'right' }}>{edit.bio.length}/300</div>
+                    <div style={{ fontSize: '5px', color: 'var(--t-4)', textAlign: 'right' }}>{edit.bio.length}/300</div>
                   </div>
                   <div style={{ marginBottom: '10px' }}>
-                    <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px' }}>COUNTRY</div>
+                    <div style={{ fontSize: '6px', color: 'var(--t-3)', marginBottom: '4px' }}>COUNTRY</div>
                     <input className="input" value={edit.country} onChange={e => setE('country', e.target.value)} placeholder="e.g. Ukraine" style={{ width: '100%' }} />
                   </div>
 
@@ -826,7 +826,7 @@ export function Profile() {
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' }}>
                           {edit.skills.map(skill => (
                             <span key={skill} className="gl-pill" style={{ fontSize: '6px', padding: '3px 7px', color: '#cc44ff', border: '1px solid rgba(204,68,255,0.4)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              {skill}<span onClick={() => removeSkill(skill)} style={{ cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: '8px' }}>×</span>
+                              {skill}<span onClick={() => removeSkill(skill)} style={{ cursor: 'pointer', color: 'var(--t-3)', fontSize: '8px' }}>×</span>
                             </span>
                           ))}
                         </div>
@@ -836,11 +836,11 @@ export function Profile() {
 
                   <SectionLabel label="LINKS" />
                   <div style={{ marginBottom: '7px' }}>
-                    <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px' }}>PORTFOLIO URL</div>
+                    <div style={{ fontSize: '6px', color: 'var(--t-3)', marginBottom: '4px' }}>PORTFOLIO URL</div>
                     <input className="input" value={edit.portfolio_url} onChange={e => setE('portfolio_url', e.target.value)} placeholder="https://..." style={{ width: '100%' }} />
                   </div>
                   <div style={{ marginBottom: '14px' }}>
-                    <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px' }}>GITHUB / BEHANCE</div>
+                    <div style={{ fontSize: '6px', color: 'var(--t-3)', marginBottom: '4px' }}>GITHUB / BEHANCE</div>
                     <input className="input" value={edit.github_url} onChange={e => setE('github_url', e.target.value)} placeholder="https://github.com/..." style={{ width: '100%' }} />
                   </div>
 

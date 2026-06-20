@@ -146,7 +146,7 @@ export function JobDetail() {
   // ---- Loading ----
   if (!loaded) {
     return (
-      <div className="page fade-in">
+      <div className="page fade-in detail-page">
         <div className="gl hud" style={{ borderColor: 'rgba(255,170,0,0.3)', justifyContent: 'center' }}>
           <div className="pxgrid" /><div className="sh" />
           <div className="logo" style={{ fontSize: '10px', color: '#ffaa00' }}>JOB</div>
@@ -167,11 +167,11 @@ export function JobDetail() {
   // ---- Error / not found ----
   if (error || !job) {
     return (
-      <div className="page fade-in">
+      <div className="page fade-in detail-page">
         <div className="gl" style={{ textAlign: 'center', padding: '32px', marginTop: '12px' }}>
           <div className="pxgrid" /><div className="sh" />
           <div style={{ fontSize: '28px', marginBottom: '10px' }}>📭</div>
-          <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.4)', lineHeight: 2, marginBottom: '14px' }}>
+          <div style={{ fontSize: '8px', color: 'var(--t-2)', lineHeight: 2, marginBottom: '14px' }}>
             JOB NOT FOUND OR REMOVED
           </div>
           <button className="btn btn-y btn-full" style={{ fontSize: '8px' }} onClick={() => navigate('/jobs')}>
@@ -188,7 +188,7 @@ export function JobDetail() {
   const myApp     = job.my_application;
 
   return (
-    <div className="page fade-in">
+    <div className="page fade-in detail-page">
 
       {/* Header */}
       <div className="gl hud card-stagger-1" style={{ borderColor: 'rgba(255,170,0,0.3)' }}>
@@ -236,7 +236,7 @@ export function JobDetail() {
               : job.budget_min != null ? `from $${job.budget_min}`
               : 'Negotiable'}
           </span>
-          <span style={{ fontSize: '7px', color: 'rgba(255,255,255,0.35)' }}>{job.currency || 'USDT'}</span>
+          <span style={{ fontSize: '7px', color: 'var(--t-3)' }}>{job.currency || 'USDT'}</span>
         </div>
 
         {/* Meta chips */}
@@ -314,7 +314,7 @@ export function JobDetail() {
                 <span style={{ fontSize: '8px', color: verifColor(job.client_verification) }}>✓</span>
               )}
             </div>
-            {job.client_username && <div style={{ fontSize: '7px', color: 'rgba(255,255,255,0.3)' }}>@{job.client_username}</div>}
+            {job.client_username && <div style={{ fontSize: '7px', color: 'var(--t-3)' }}>@{job.client_username}</div>}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
             {job.client_rating > 0 && <span style={{ fontSize: '8px', color: '#ffaa00' }}>⭐ {Number(job.client_rating).toFixed(1)}</span>}
@@ -340,7 +340,7 @@ export function JobDetail() {
               {appsLoading ? '[ ⏳ LOADING... ]' : '[ ▾ VIEW APPLICANTS ]'}
             </button>
           ) : applicants.length === 0 ? (
-            <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.35)', textAlign: 'center', padding: '10px 0', position: 'relative', zIndex: 2 }}>
+            <div style={{ fontSize: '8px', color: 'var(--t-3)', textAlign: 'center', padding: '10px 0', position: 'relative', zIndex: 2 }}>
               NO APPLICANTS YET
             </div>
           ) : (
@@ -372,7 +372,7 @@ export function JobDetail() {
                     </div>
                   )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
-                    <span style={{ fontSize: '7px', color: 'rgba(255,255,255,0.3)' }}>
+                    <span style={{ fontSize: '7px', color: 'var(--t-3)' }}>
                       {a.freelancer_rating > 0 ? `⭐ ${Number(a.freelancer_rating).toFixed(1)}  ` : ''}
                       {a.freelancer_deals_completed > 0 ? `✅ ${a.freelancer_deals_completed}` : ''}
                     </span>
@@ -471,7 +471,7 @@ export function JobDetail() {
         <div className="gl card-stagger-3" style={{ marginBottom: '8px', textAlign: 'center', padding: '24px' }}>
           <div className="pxgrid" /><div className="sh" />
           <div style={{ fontSize: '22px', marginBottom: '8px' }}>🔒</div>
-          <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.4)', lineHeight: 2 }}>
+          <div style={{ fontSize: '8px', color: 'var(--t-2)', lineHeight: 2 }}>
             THIS JOB IS NO LONGER ACCEPTING APPLICATIONS
           </div>
         </div>

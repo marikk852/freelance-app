@@ -184,7 +184,7 @@ export function LiveDeals() {
           <span className="badge gl-pill" style={{ color: meta.color, border: `1px solid ${meta.border}`, background: `${meta.border.replace('0.25', '0.08')}`, fontSize: '6px' }}>
             {meta.label}
           </span>
-          <span style={{ fontSize: '7px', color: 'rgba(255,255,255,0.25)' }}>
+          <span style={{ fontSize: '7px', color: 'var(--t-4)' }}>
             {typeof e.time === 'string' ? e.time : relativeTime(e.time)}
           </span>
         </div>
@@ -209,7 +209,10 @@ export function LiveDeals() {
       <div className="page-inner">
         {/* Mobile-only: scene + HUD */}
         <div className="mobile-only">
-          <PixelScene scene="live_deals" width={252} height={56} />
+          <div className="gl home-scene-card card-stagger-1">
+            <div className="pxgrid" /><div className="sh" />
+            <PixelScene scene="live_deals" />
+          </div>
           <div className="gl hud card-stagger-1">
             <div className="pxgrid" /><div className="sh" />
             <div className="logo" style={{ color: '#00ff88' }}>
@@ -274,9 +277,18 @@ export function LiveDeals() {
 
         {/* Feed */}
         {!loaded ? (
-          <div style={{ textAlign: 'center', padding: '40px 0', fontSize: '7px', color: 'rgba(255,255,255,0.25)' }}>LOADING...</div>
+          <div className="gl" style={{ textAlign: 'center', padding: 'var(--s-8) var(--s-4)', marginTop: 'var(--s-2)' }}>
+            <div className="pxgrid" />
+            <div style={{ fontSize: '28px', marginBottom: 'var(--s-3)', animation: 'pulse 1.2s ease-in-out infinite' }}>📡</div>
+            <div style={{ fontFamily: '"Press Start 2P", monospace', fontSize: '9px', color: 'var(--t-2)' }}>SCANNING…</div>
+          </div>
         ) : filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px 0', fontSize: '7px', color: 'rgba(255,255,255,0.25)' }}>NO EVENTS</div>
+          <div className="gl" style={{ textAlign: 'center', padding: 'var(--s-8) var(--s-4)', marginTop: 'var(--s-2)' }}>
+            <div className="pxgrid" />
+            <div style={{ fontSize: '30px', marginBottom: 'var(--s-3)', opacity: 0.85 }}>📡</div>
+            <div style={{ fontFamily: '"Press Start 2P", monospace', fontSize: '9px', color: 'var(--t-2)', marginBottom: '7px', lineHeight: 1.5 }}>NO LIVE DEALS</div>
+            <div style={{ fontSize: '12px', color: 'var(--t-3)' }}>New deals will appear here in real time</div>
+          </div>
         ) : (
           <>
             {/* Desktop: 2-col grid */}

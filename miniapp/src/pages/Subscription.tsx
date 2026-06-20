@@ -272,7 +272,7 @@ export function Subscription() {
                   style={{
                     marginBottom: '10px',
                     paddingTop  : plan.popular ? '26px' : undefined,
-                    borderColor : isSelected ? plan.color : 'rgba(255,255,255,0.1)',
+                    borderColor : isSelected ? plan.color : 'var(--stroke-2)',
                     boxShadow   : isSelected ? `0 0 18px ${plan.color}33, inset 0 0 24px ${plan.color}0a` : 'none',
                     cursor      : 'pointer',
                     background  : isSelected ? `${plan.color}0d` : 'rgba(255,255,255,0.03)',
@@ -308,7 +308,7 @@ export function Subscription() {
                         <div className="px" style={{ fontSize: '10px', color: isSelected ? plan.color : '#fff', marginBottom: '5px' }}>
                           {plan.name}
                         </div>
-                        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>
+                        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: 'var(--t-3)' }}>
                           monthly subscription
                         </div>
                       </div>
@@ -319,7 +319,7 @@ export function Subscription() {
                           <div className="px" style={{ fontSize: '9px', color: '#ff8800' }}>
                             🔒 LVL {q?.required_level}
                           </div>
-                          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '4px' }}>
+                          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', color: 'var(--t-3)', marginTop: '4px' }}>
                             your LVL {q?.your_level}
                           </div>
                         </>
@@ -328,7 +328,7 @@ export function Subscription() {
                           <div className="px" style={{ fontSize: '12px', color: plan.color }}>
                             ${q?.price_usd ?? plan.price}
                           </div>
-                          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '4px' }}>
+                          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', color: 'var(--t-3)', marginTop: '4px' }}>
                             {q?.ton_amount ? `≈ ${q.ton_amount} TON / mo` : '/ month'}
                           </div>
                           {q?.is_early && (
@@ -404,7 +404,7 @@ export function Subscription() {
 
         <div style={{
           fontFamily: 'Inter, sans-serif', fontSize: '10px',
-          color: 'rgba(255,255,255,0.25)', textAlign: 'center', padding: '8px 0 20px',
+          color: 'var(--t-4)', textAlign: 'center', padding: '8px 0 20px',
         }}>
           Payment in TON · converted from USD at live rate · Cancel anytime
         </div>
