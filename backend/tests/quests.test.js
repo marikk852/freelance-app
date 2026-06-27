@@ -29,7 +29,7 @@ const DB_USER_ID = 99;
 
 const questRow = {
   id: 1, key: 'link_wallet', title: 'Link TON Wallet',
-  description: 'Connect your TON wallet', coins: 100,
+  description: 'Connect your TON wallet', crystals: 100,
   icon: '💎', category: 'general', is_repeatable: false, is_active: true, sort_order: 1,
 };
 
@@ -77,7 +77,7 @@ describe('GET /api/quests', () => {
     expect(res.status).toBe(200);
     expect(res.body.newlyCompleted).toHaveLength(1);
     expect(res.body.newlyCompleted[0].key).toBe('link_wallet');
-    expect(res.body.newlyCompleted[0].coins).toBe(100);
+    expect(res.body.newlyCompleted[0].crystals).toBe(100);
   });
 });
 
@@ -103,8 +103,8 @@ describe('POST /api/quests/:key/claim', () => {
     const res = await request(app).post('/api/quests/link_wallet/claim');
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-    expect(res.body.coins).toBe(100);
-    expect(res.body.totalCoins).toBe(100);
+    expect(res.body.crystals).toBe(100);
+    expect(res.body.totalCrystals).toBe(100);
   });
 
   it('должен вернуть 400 если квест уже выполнен', async () => {

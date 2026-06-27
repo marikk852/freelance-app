@@ -44,7 +44,6 @@ async function deployContract({
   currency,
   deadlineDate,
 }) {
-  // Проверяем лимит $500
   // Платформенный потолок $10k (тарифный лимит проверяется при создании сделки)
   const maxAmount = 10000;
   if (amountUsd > maxAmount) {

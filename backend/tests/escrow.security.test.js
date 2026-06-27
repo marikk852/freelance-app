@@ -146,42 +146,38 @@ describe('↩️ Refund — граничные случаи', () => {
 });
 
 // ============================================================
-// Лимит суммы $500
+// Потолок суммы сделки $10,000
 // ============================================================
 describe('💰 Лимит суммы сделки', () => {
-  const originalEnv = process.env;
-  beforeAll(() => { process.env.MAX_DEAL_AMOUNT_USD = '500'; });
-  afterAll(() => { process.env = originalEnv; });
-
-  it('должен ОТКАЗАТЬ при сумме > $500', async () => {
+  // Флэтовый лимит $500 заменён потолком платформы $10,000
+  // (per-tier лимиты проверяются при создании сделки, не здесь).
+  it('должен ОТКАЗАТЬ при сумме > потолка ($10,000)', async () => {
     await expect(
       escrowService.deployContract({
         contractId       : 'c1',
         clientAddress    : 'UQClient',
         freelancerAddress: 'UQFreelancer',
-        amountUsd        : 501,
+        amountUsd        : 10001,
         currency         : 'USDT',
         deadlineDate     : new Date(Date.now() + 86400000),
       })
-    ).rejects.toThrow('превышает лимит');
+    ).rejects.toThrow('превышает потолок');
   });
 
-  it('должен РАЗРЕШИТЬ при сумме = $500 (граница)', async () => {
-    // Мокаем нужные зависимости
-    jest.mock('fs', () => ({ existsSync: () => true, readFileSync: () => Buffer.from('') }));
-    // Проверяем только что сумма прошла проверку (fs.existsSync упадёт дальше — это OK)
+  it('должен ПРОПУСТИТЬ проверку потолка при сумме = $10,000 (граница)', async () => {
+    // Проверяем только что сумма прошла проверку потолка (дальше упадёт на
+    // незамоканном query/fs — это OK, главное что ошибка НЕ про потолок).
     try {
       await escrowService.deployContract({
         contractId       : 'c2',
         clientAddress    : 'UQClient',
         freelancerAddress: 'UQFreelancer',
-        amountUsd        : 500,
+        amountUsd        : 10000,
         currency         : 'USDT',
         deadlineDate     : new Date(Date.now() + 86400000),
       });
     } catch (e) {
-      // Ожидаем ошибку НЕ про лимит — значит лимит прошёл
-      expect(e.message).not.toContain('превышает лимит');
+      expect(e.message).not.toContain('превышает потолок');
     }
   });
 });
