@@ -237,8 +237,53 @@ async function runMigrations() {
   }
 }
 
+// ---------- Проверка окружения ----------
+// Не роняет сервер: документированная боль — фичи молча отваливаются без env.
+// Поэтому громко логируем, что именно деградирует, а не падаем без объяснений.
+function checkEnv() {
+  // Без этих переменных сервер бессмысленен — это hard stop.
+  const required = {
+    DATABASE_URL: 'подключение к PostgreSQL',
+    ENCRYPTION_KEY: 'шифрование файлов (AES-256-CBC)',
+  };
+  // Без этих — работает, но конкретная фича отключена.
+  const featureVars = {
+    BOT_TOKEN: 'Telegram-бот и webhook',
+    WEBAPP_URL: 'CORS в production и webhook Mini App',
+    ARBITRATOR_TELEGRAM_ID: 'разрешение споров и байпас maintenance арбитром',
+    ARBITRATOR_WALLET_SEED: 'release/refund/split эскроу (выплаты)',
+    ARBITRATOR_ADDRESS: 'адрес арбитра в контрактах эскроу',
+    ANTHROPIC_API_KEY: 'AI-маркетолог',
+    TON_API_KEY: 'on-chain верификация платежей (toncenter)',
+  };
+
+  const missingRequired = Object.keys(required).filter(k => !process.env[k]);
+  const missingFeatures = Object.keys(featureVars).filter(k => !process.env[k]);
+
+  if (missingFeatures.length) {
+    console.warn('[Server] ⚠️  Отсутствуют env-переменные — часть функций отключена:');
+    for (const k of missingFeatures) {
+      console.warn(`[Server]    • ${k} — ${featureVars[k]}`);
+    }
+  }
+
+  if (missingRequired.length) {
+    console.error('[Server] ❌ Отсутствуют ОБЯЗАТЕЛЬНЫЕ env-переменные:');
+    for (const k of missingRequired) {
+      console.error(`[Server]    • ${k} — ${required[k]}`);
+    }
+    // В production это фатально, в dev — даём шанс поднять без полного .env.
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[Server] Остановка: production требует все обязательные переменные.');
+      process.exit(1);
+    }
+  }
+}
+
 // ---------- Запуск ----------
 async function start() {
+  checkEnv();
+
   // Проверяем БД
   const dbOk = await healthCheck();
   if (!dbOk) {
