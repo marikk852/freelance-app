@@ -26,7 +26,7 @@ const int OP_SPLIT   = 4;   ;; арбитр: разделить при спор�
 ;; ---------- Ошибки ----------
 const int ERR_NOT_ARBITRATOR   = 401;  ;; вызывающий не арбитр
 const int ERR_WRONG_STATUS     = 402;  ;; неверный статус для операции
-const int ERR_WRONG_AMOUNT     = 403;  ;; сумма не совпадает
+const int ERR_WRONG_AMOUNT     = 403;  ;; депозит меньше суммы сделки
 const int ERR_DEADLINE_NOT_MET = 404;  ;; дедлайн ещё не прошёл
 const int ERR_EXPIRED          = 405;  ;; контракт просрочен
 const int ERR_INVALID_SPLIT    = 406;  ;; неверный процент split (0-100)
@@ -69,7 +69,10 @@ const int ERR_INVALID_SPLIT    = 406;  ;; неверный процент split 
 
 ;; ============================================================
 ;; Отправка TON на адрес
-;; mode 1 = sender pays fees, mode 128 = весь баланс контракта
+;; mode 1        = комиссия пересылки за счёт баланса контракта
+;; mode 128 + 32 = отправить ВЕСЬ остаток баланса и УНИЧТОЖИТЬ контракт
+;;                 (финальное сообщение release/refund/split — остатки
+;;                 газа не застревают, аккаунт удаляется из блокчейна)
 ;; ============================================================
 () send_ton(slice to_addr, int amount, int mode) impure inline {
     var msg = begin_cell()
@@ -123,7 +126,10 @@ int is_arbitrator(slice sender, slice arbitrator_addr) inline {
         ;; Дедлайн не должен быть просрочен
         throw_if(ERR_EXPIRED, now() > deadline);
 
-        ;; Принимаем любую сумму >= ожидаемой (газ учтён отдельно)
+        ;; Депозит не может быть меньше суммы сделки (недоплата отбивается on-chain)
+        throw_unless(ERR_WRONG_AMOUNT, msg_value >= expected_amount);
+
+        ;; Принимаем сумму >= ожидаемой (излишек — запас на газ выплат)
         ;; Фиксируем статус FROZEN
         save_data(STATUS_FROZEN, client_addr, freelancer_addr,
                   arbitrator_addr, msg_value, fee_percent, deadline);
@@ -138,20 +144,17 @@ int is_arbitrator(slice sender, slice arbitrator_addr) inline {
         ;; Средства должны быть заморожены
         throw_unless(ERR_WRONG_STATUS, status == STATUS_FROZEN);
 
-        ;; Вычисляем комиссию платформы
-        int total     = my_balance - 50000000;  ;; оставляем 0.05 TON на газ
-        int fee       = (total * fee_percent) / 100;
-        int to_freelancer = total - fee;
+        ;; Комиссия считается от зафиксированного депозита (expected_amount
+        ;; после FROZEN = фактически внесённая сумма), а не от my_balance
+        int fee           = (expected_amount * fee_percent) / 100;
+        int to_freelancer = expected_amount - fee;
 
-        ;; Отправляем фрилансеру
+        ;; Отправляем фрилансеру его долю
         send_ton(freelancer_addr, to_freelancer, 1);
 
-        ;; Отправляем комиссию арбитру (= кошельку платформы)
-        send_ton(arbitrator_addr, fee, 1);
-
-        ;; Уничтожаем контракт — остатки газа вернутся отправителю
-        save_data(STATUS_RELEASED, client_addr, freelancer_addr,
-                  arbitrator_addr, total, fee_percent, deadline);
+        ;; Финальное сообщение: комиссия + ВСЕ остатки газа арбитру
+        ;; (= кошельку платформы), контракт уничтожается — ничего не застревает
+        send_ton(arbitrator_addr, 0, 128 + 32);
         return ();
     }
 
@@ -165,12 +168,9 @@ int is_arbitrator(slice sender, slice arbitrator_addr) inline {
                          ((status == STATUS_WAITING) & (now() > deadline));
         throw_unless(ERR_WRONG_STATUS, can_refund);
 
-        ;; Возвращаем весь баланс клиенту (за вычетом газа)
-        int total = my_balance - 50000000;
-        send_ton(client_addr, total, 1);
-
-        save_data(STATUS_REFUNDED, client_addr, freelancer_addr,
-                  arbitrator_addr, total, fee_percent, deadline);
+        ;; Возвращаем клиенту ВЕСЬ баланс (депозит + остатки газа),
+        ;; контракт уничтожается
+        send_ton(client_addr, 0, 128 + 32);
         return ();
     }
 
@@ -186,9 +186,9 @@ int is_arbitrator(slice sender, slice arbitrator_addr) inline {
         int freelancer_percent = in_msg_body~load_uint(8);
         throw_unless(ERR_INVALID_SPLIT, (freelancer_percent >= 0) & (freelancer_percent <= 100));
 
-        int total           = my_balance - 50000000;
-        int fee             = (total * fee_percent) / 100;
-        int distributable   = total - fee;
+        ;; Доли считаются от зафиксированного депозита, а не от my_balance
+        int fee             = (expected_amount * fee_percent) / 100;
+        int distributable   = expected_amount - fee;
         int to_freelancer   = (distributable * freelancer_percent) / 100;
         int to_client       = distributable - to_freelancer;
 
@@ -200,11 +200,9 @@ int is_arbitrator(slice sender, slice arbitrator_addr) inline {
             send_ton(client_addr, to_client, 1);
         }
 
-        ;; Комиссия платформе
-        send_ton(arbitrator_addr, fee, 1);
-
-        save_data(STATUS_REFUNDED, client_addr, freelancer_addr,
-                  arbitrator_addr, total, fee_percent, deadline);
+        ;; Финальное сообщение: комиссия + остатки газа платформе,
+        ;; контракт уничтожается
+        send_ton(arbitrator_addr, 0, 128 + 32);
         return ();
     }
 
