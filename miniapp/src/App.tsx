@@ -13,7 +13,6 @@ import { Review }      from './pages/Review';
 import { Dispute }     from './pages/Dispute';
 import { LiveDeals }   from './pages/LiveDeals';
 import { Profile }     from './pages/Profile';
-import { JobBoard }    from './pages/JobBoard';
 import { JoinDeal }    from './pages/JoinDeal';
 import { MyDeals }        from './pages/MyDeals';
 import { PublicProfile }   from './pages/PublicProfile';
@@ -21,6 +20,7 @@ import { FreelancerList }  from './pages/FreelancerList';
 import { Notifications }   from './pages/Notifications';
 import { Quests }          from './pages/Quests';
 import { Board }           from './pages/Board';
+import { JobDetail }       from './pages/JobDetail';
 import { Subscription }    from './pages/Subscription';
 import { Crystals }        from './pages/Crystals';
 import { MilestoneDeal }   from './pages/MilestoneDeal';
@@ -187,7 +187,8 @@ export default function App() {
   const [maintenance, setMaintenance] = useState<{ active: boolean; message: string } | null>(null);
 
   useEffect(() => {
-    fetch('/admark/status')
+    const initData = window.Telegram?.WebApp?.initData;
+    fetch('/admark/status', initData ? { headers: { 'X-Telegram-Init-Data': initData } } : undefined)
       .then(r => r.json())
       .then(data => {
         if (data.maintenance) {
@@ -242,6 +243,7 @@ export default function App() {
         <Route path="/live"        element={<LiveDeals />} />
         <Route path="/profile"     element={<Profile />} />
         <Route path="/profile/:telegramId" element={<PublicProfile />} />
+        <Route path="/jobs/:id"      element={<JobDetail />} />
         <Route path="/jobs"          element={<Board />} />
         <Route path="/board"         element={<Board />} />
         <Route path="/my-deals"      element={<MyDeals />} />

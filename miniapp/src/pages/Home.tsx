@@ -369,6 +369,19 @@ export function Home() {
 
       {/* ── Desktop topbar (hidden on mobile) ── */}
       <div className="desktop-topbar desktop-only">
+        {/* Avatar + total balance (synced with mobile HUD) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '9px', marginRight: '20px' }}>
+          <div style={{
+            width: '34px', height: '34px', borderRadius: '50%', background: avatarColor,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            fontSize: '12px', fontWeight: 700, color: '#fff', fontFamily: 'Inter, sans-serif',
+            boxShadow: `0 0 12px ${avatarColor}55`,
+          }}>{initials}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <span style={{ fontSize: '9px', color: 'var(--t-3)', fontFamily: 'Inter, sans-serif', lineHeight: 1 }}>TOTAL BALANCE</span>
+            <span style={{ fontSize: '16px', color: 'var(--t-1)', fontFamily: 'Inter, sans-serif', fontWeight: 700, lineHeight: 1 }}>${totalBalanceUsd.toFixed(2)}</span>
+          </div>
+        </div>
         <div className="desktop-topbar-title">DASHBOARD / <span>HOME</span></div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span className="desktop-xp-label">XP {xp}/{xpMax}</span>
@@ -424,7 +437,7 @@ export function Home() {
               <span style={{
                 fontSize: '11px', color: 'rgba(255,255,255,0.45)',
                 fontFamily: 'Inter, sans-serif', fontWeight: 400, lineHeight: 1,
-              }}>Общий баланс</span>
+              }}>TOTAL BALANCE</span>
               <span style={{
                 fontSize: '17px', color: '#fff',
                 fontFamily: 'Inter, sans-serif', fontWeight: 600, lineHeight: 1,
@@ -477,7 +490,11 @@ export function Home() {
         </div>
         {/* ── Rating block with bottom sheet trigger ── */}
         <RatingBlock xp={xp} xpMax={xpMax} xpPct={xpPct} onNavigate={go} />
-        <PixelScene scene="home" width={252} height={56} />
+        {/* Hero scene — native canvas scaled to full width (crisp pixel art) */}
+        <div className="gl home-scene-card card-stagger-3">
+          <div className="pxgrid" /><div className="sh" />
+          <PixelScene scene="home" />
+        </div>
       </div>
 
       {/* ── Desktop hero grid: scene + 4 stat cards ── */}
@@ -485,7 +502,7 @@ export function Home() {
         <div className="home-hero-grid desktop-only">
           <div className="gl home-hero-scene">
             <div className="pxgrid" /><div className="sh" />
-            <PixelScene scene="home" width={480} height={170} />
+            <PixelScene scene="home" />
           </div>
           <div className="gl home-hero-stat" style={{ borderColor: 'rgba(0,136,255,0.2)' }}>
             <div className="pxgrid" />

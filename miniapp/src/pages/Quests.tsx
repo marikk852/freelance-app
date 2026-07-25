@@ -12,7 +12,7 @@ interface Quest {
   key         : string;
   title       : string;
   description : string;
-  coins       : number;
+  crystals    : number;
   icon        : string;
   category    : string;
   completed   : boolean;
@@ -49,7 +49,7 @@ export function Quests() {
         const keys = res.data.newlyCompleted.map((q: any) => q.key);
         setNewlyDone(keys);
         res.data.newlyCompleted.forEach((q: any) => {
-          toast.success(`+${q.coins} coins — ${q.title}`, { duration: 3000 });
+          toast.success(`+${q.crystals} crystals — ${q.title}`, { duration: 3000 });
         });
       }
     } catch {
@@ -67,7 +67,7 @@ export function Quests() {
       const res = await questsApi.claim(quest.key);
       setQuests(prev => prev.map(q => q.key === quest.key ? { ...q, completed: true } : q));
       setNewlyDone(prev => [...prev, quest.key]);
-      toast.success(`+${res.data.coins} Safe Crystals earned!`, { duration: 3000 });
+      toast.success(`+${res.data.crystals} Safe Crystals earned!`, { duration: 3000 });
     } catch (err: any) {
       const msg = err?.response?.data?.error || 'Requirements not met yet';
       toast.error(msg, { duration: 2500 });
@@ -78,8 +78,8 @@ export function Quests() {
 
   const filtered       = filter === 'all' ? quests : quests.filter(q => q.category === filter);
   const completedCount = quests.filter(q => q.completed).length;
-  const totalCoins     = quests.filter(q => q.completed).reduce((s, q) => s + q.coins, 0);
-  const maxCoins       = quests.reduce((s, q) => s + q.coins, 0);
+  const totalCoins     = quests.filter(q => q.completed).reduce((s, q) => s + q.crystals, 0);
+  const maxCoins       = quests.reduce((s, q) => s + q.crystals, 0);
   const progressPct    = quests.length > 0 ? (completedCount / quests.length) * 100 : 0;
 
   return (
@@ -246,7 +246,7 @@ function QuestCard({
           {quest.description}
         </div>
         <div style={{ fontSize: '7px', color: '#FFAA00', fontFamily: '"Press Start 2P", monospace' }}>
-          🪙 +{quest.coins} coins
+          🪙 +{quest.crystals} crystals
         </div>
       </div>
 

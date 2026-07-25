@@ -99,13 +99,14 @@ describe('📋 POST /api/contracts — валидация', () => {
     expect(res.status).toBe(401);
   });
 
-  it('должен ОТКЛОНИТЬ сумму > $500 → 400', async () => {
+  it('должен ОТКЛОНИТЬ сумму выше потолка платформы ($10,000) → 400', async () => {
+    // Флэтовый лимит $500 заменён на потолок $10,000 (Joi) + per-tier лимиты (403).
     const res = await request(app)
       .post('/api/contracts')
       .set('X-Telegram-Init-Data', makeInitData())
-      .send({ ...validData, amount_usd: 501 });
+      .send({ ...validData, amount_usd: 10001 });
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/500/);
+    expect(res.body.error).toMatch(/10000/);
   });
 
   it('должен ОТКЛОНИТЬ менее 3 критериев → 400', async () => {

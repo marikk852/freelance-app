@@ -38,8 +38,9 @@ export function FreelancerList() {
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(f =>
-        (f.first_name || '').toLowerCase().includes(q) ||
-        (f.username   || '').toLowerCase().includes(q) ||
+        (f.first_name   || '').toLowerCase().includes(q) ||
+        (f.display_name || '').toLowerCase().includes(q) ||
+        (f.username     || '').toLowerCase().includes(q) ||
         (f.bio        || '').toLowerCase().includes(q) ||
         (f.skills     || []).some((s: string) => s.toLowerCase().includes(q))
       );
@@ -122,7 +123,7 @@ export function FreelancerList() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px', position: 'relative', zIndex: 2 }}>
               <div>
                 <div style={{ fontSize: '8px', color: '#fff', marginBottom: '2px' }}>
-                  {f.first_name?.toUpperCase() || 'FREELANCER'}
+                  {(f.display_name || f.first_name)?.toUpperCase() || 'FREELANCER'}
                 </div>
                 {f.username && (
                   <div style={{ fontSize: '6px', color: 'rgba(255,255,255,0.3)' }}>@{f.username}</div>

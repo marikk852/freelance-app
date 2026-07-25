@@ -97,6 +97,8 @@ router.get('/me', async (req, res) => {
       `SELECT
          u.telegram_id,
          u.username,
+         u.display_name,
+         u.show_telegram_tag,
          u.first_name,
          u.last_name,
          u.ton_wallet_address,
@@ -172,6 +174,8 @@ router.patch('/me/profile', async (req, res) => {
       country,
       portfolio_url,
       github_url,
+      display_name,
+      show_telegram_tag,
     } = req.body;
 
     const errors = [];
@@ -179,6 +183,15 @@ router.patch('/me/profile', async (req, res) => {
     if (bio !== undefined) {
       if (typeof bio !== 'string') errors.push('bio must be a string');
       else if (bio.length > 300) errors.push('bio must be at most 300 characters');
+    }
+
+    if (display_name !== undefined && display_name !== null) {
+      if (typeof display_name !== 'string') errors.push('display_name must be a string');
+      else if (display_name.trim().length > 32) errors.push('display_name must be at most 32 characters');
+    }
+
+    if (show_telegram_tag !== undefined && typeof show_telegram_tag !== 'boolean') {
+      errors.push('show_telegram_tag must be a boolean');
     }
 
     if (role !== undefined && !VALID_ROLES.includes(role)) {
@@ -259,6 +272,7 @@ router.patch('/me/profile', async (req, res) => {
       experience, account_type,
       company_name, company_url, country,
       portfolio_url, github_url,
+      show_telegram_tag,
     };
 
     for (const [col, val] of Object.entries(fieldMap)) {
@@ -266,6 +280,13 @@ router.patch('/me/profile', async (req, res) => {
         setClauses.push(`${col} = $${idx++}`);
         params.push(val);
       }
+    }
+
+    // display_name: пустая строка → NULL (никнейм сброшен)
+    if (display_name !== undefined) {
+      const trimmed = typeof display_name === 'string' ? display_name.trim() : '';
+      setClauses.push(`display_name = $${idx++}`);
+      params.push(trimmed === '' ? null : trimmed);
     }
 
     // skills is JSONB — stringify explicitly
@@ -281,7 +302,8 @@ router.patch('/me/profile', async (req, res) => {
        SET ${setClauses.join(', ')}
        WHERE telegram_id = $${idx}
        RETURNING
-         telegram_id, username, first_name, last_name,
+         telegram_id, username, display_name, show_telegram_tag,
+         first_name, last_name,
          bio, role, category, skills, experience,
          account_type, company_name, company_url, country,
          portfolio_url, github_url, profile_completed`,
@@ -491,10 +513,30 @@ router.delete('/me/slides/:index', async (req, res) => {
  */
 router.get('/freelancers', async (req, res) => {
   try {
+    const { category, search } = req.query;
+    const limit  = Math.min(Number(req.query.limit) || 20, 50);
+    const offset = Number(req.query.offset) || 0;
+
+    let where = `WHERE u.profile_completed = TRUE AND u.role IN ('freelancer', 'both')`;
+    const params = [];
+    let i = 1;
+    if (category) {
+      where += ` AND u.category = $${i++}`;
+      params.push(category);
+    }
+    if (search) {
+      // имя/никнейм/био + skills; по @username — только если тег не скрыт
+      where += ` AND (u.first_name ILIKE $${i} OR u.display_name ILIKE $${i} OR (u.show_telegram_tag AND u.username ILIKE $${i}) OR u.bio ILIKE $${i} OR u.skills::text ILIKE $${i})`;
+      params.push(`%${search}%`);
+      i++;
+    }
+    params.push(limit, offset);
+
     const { rows } = await query(
       `SELECT
          u.telegram_id,
-         u.username,
+         CASE WHEN u.show_telegram_tag THEN u.username ELSE NULL END AS username,
+         u.display_name,
          u.first_name,
          u.bio,
          u.role,
@@ -506,10 +548,10 @@ router.get('/freelancers', async (req, res) => {
          u.deals_count AS deals_completed,
          u.level
        FROM users u
-       WHERE u.profile_completed = TRUE
-         AND u.role IN ('freelancer', 'both')
+       ${where}
        ORDER BY u.rating DESC, u.deals_count DESC
-       LIMIT 50`
+       LIMIT $${i++} OFFSET $${i}`,
+      params
     );
     res.json(rows);
   } catch (err) {
@@ -618,7 +660,8 @@ router.get('/:telegramId', async (req, res) => {
     const { rows } = await query(
       `SELECT
          u.telegram_id,
-         u.username,
+         CASE WHEN u.show_telegram_tag THEN u.username ELSE NULL END AS username,
+         u.display_name,
          u.first_name,
          u.bio,
          u.role,
