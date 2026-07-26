@@ -1,6 +1,7 @@
 const { Address, beginCell, toNano, fromNano, Cell } = require('@ton/core');
 const { TonClient } = require('@ton/ton');
 const tonService = require('./tonService');
+const notificationService = require('./notificationService');
 const { query, transaction } = require('../../database/db');
 const { Contract, Escrow, AuditLog } = require('../../database/models');
 
@@ -261,6 +262,62 @@ async function monitorContract(contractId) {
 
   // Если статус изменился — обновляем БД
   if (newStatus === 'frozen' && escrowRow.status === 'waiting_payment') {
+    // USD₮: контракт замораживает ЛЮБУЮ присланную сумму (jetton нельзя
+    // отбить через throw — он уже у нас). Поэтому сверяем фактически
+    // замороженную сумму с ожидаемой ЗДЕСЬ, на backend. Недоплату не
+    // проводим в in_progress — ждём доплаты (контракт аккумулирует депозиты).
+    if (escrowRow.currency === 'USDT') {
+      let frozenUnits;
+      try {
+        const stateRes = await tonService.runGetMethod(tonAddress, 'get_state');
+        const st = stateRes.stack;
+        st.readNumber();   // status
+        st.skip(3);        // client, freelancer, arbitrator
+        frozenUnits = st.readBigNumber();   // amount (jetton-единицы, 6 знаков)
+      } catch {
+        // состояние не прочиталось — не форсируем in_progress, ждём следующего тика
+        return newStatus;
+      }
+
+      const expectedUnits = BigInt(Math.round(Number(escrowRow.amount_usd) * USDT_DECIMALS_FACTOR));
+      if (frozenUnits < expectedUnits) {
+        const frozenUsd = Number(frozenUnits) / USDT_DECIMALS_FACTOR;
+        const shortUsd  = Number(escrowRow.amount_usd) - frozenUsd;
+
+        // Уведомляем клиента ОДИН раз (маркер в audit_log защищает от спама на каждом тике)
+        const { rows: already } = await query(
+          `SELECT 1 FROM audit_log WHERE contract_id = $1 AND action = 'deposit_underpaid' LIMIT 1`,
+          [contractId]
+        );
+        if (already.length === 0) {
+          await query(
+            `INSERT INTO audit_log (contract_id, action, details)
+             VALUES ($1, 'deposit_underpaid', $2)`,
+            [contractId, JSON.stringify({ frozen_usdt: frozenUsd, expected_usdt: Number(escrowRow.amount_usd) })]
+          );
+          const { rows: cli } = await query(
+            `SELECT u.telegram_id FROM contracts c
+             JOIN rooms r ON r.id = c.room_id
+             JOIN users u ON u.id = r.client_id
+             WHERE c.id = $1`,
+            [contractId]
+          );
+          const clientTg = cli[0]?.telegram_id;
+          if (clientTg) {
+            await notificationService.notify(
+              clientTg,
+              'deposit_underpaid',
+              `⚠️ Оплата USD₮ неполная: получено ${frozenUsd.toFixed(2)} из ${Number(escrowRow.amount_usd).toFixed(2)}. ` +
+              `Доплатите ${shortUsd.toFixed(2)} USD₮ на тот же адрес — сделка начнётся автоматически.`,
+              { contractId }
+            );
+          }
+        }
+        console.log(`[Escrow] USD₮ недоплата по сделке ${contractId}: ${frozenUsd}/${escrowRow.amount_usd} — жду доплаты`);
+        return 'waiting';
+      }
+    }
+
     // Получаем хэш последней транзакции (депозит)
     const txs = await tonService.getTransactions(tonAddress, 1);
     const txHash = txs[0]?.hash().toString('hex') || null;
