@@ -37,8 +37,8 @@ export async function run(provider: NetworkProvider) {
     ui.write('ℹ️  Минтер уже задеплоен — пропускаю деплой');
   }
 
-  // 2. Mint себе
-  const amountStr = await ui.input('\nСколько тестовых USD₮ намайнить себе (напр. 1000):');
+  // 2. Mint себе (сумма из env MINT_AMOUNT для неинтерактивного прогона, иначе спросить)
+  const amountStr = process.env.MINT_AMOUNT ?? await ui.input('\nСколько тестовых USD₮ намайнить себе (напр. 1000):');
   const amountUsd = Number(amountStr);
   if (!Number.isFinite(amountUsd) || amountUsd <= 0) throw new Error('Некорректная сумма');
   const jettonAmount = BigInt(Math.round(amountUsd * 1e6)); // 6 знаков

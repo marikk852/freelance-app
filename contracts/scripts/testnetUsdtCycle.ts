@@ -34,10 +34,10 @@ export async function run(provider: NetworkProvider) {
   const masterStr = process.env.TESTNET_USDT_MASTER || await ui.input('Адрес тестового USD₮-мастера:');
   const master = provider.open(JettonMinter.createFromAddress(Address.parse(masterStr)));
 
-  const freelancerStr = await ui.input('Адрес фрилансера (любой testnet-адрес):');
+  const freelancerStr = process.env.FREELANCER_ADDR || await ui.input('Адрес фрилансера (любой testnet-адрес):');
   const freelancer = Address.parse(freelancerStr);
 
-  const amountUsd = Number(await ui.input('Сумма сделки в USD₮ (напр. 100):'));
+  const amountUsd = Number(process.env.DEAL_AMOUNT || await ui.input('Сумма сделки в USD₮ (напр. 100):'));
   if (!Number.isFinite(amountUsd) || amountUsd <= 0) throw new Error('Некорректная сумма');
   const feePercent = Number(process.env.PLATFORM_FEE_PERCENT) || 2;
   const jettonAmount = BigInt(Math.round(amountUsd * 1e6));
@@ -101,7 +101,7 @@ export async function run(provider: NetworkProvider) {
   ui.write(`✅ FROZEN, зафиксированная сумма: ${fmt(stFrozen.amount)} USD₮`);
 
   // ---- Развязка: release / refund / split ----
-  const action = (await ui.input('\nДействие — release / refund / split:')).trim().toLowerCase();
+  const action = (process.env.ACTION || await ui.input('\nДействие — release / refund / split:')).trim().toLowerCase();
   const escrowJw = provider.open(JettonWallet.createFromAddress(escrowJwAddr));
   const freelancerJw = provider.open(JettonWallet.createFromAddress(await master.getWalletAddress(freelancer)));
   const arbJw = myJw; // арбитр = я
@@ -116,7 +116,7 @@ export async function run(provider: NetworkProvider) {
     ui.write('⏳ REFUND (арбитр)...');
     await escrow.sendRefund(provider.sender());
   } else if (action === 'split') {
-    const pct = Number(await ui.input('Процент фрилансеру (0-100):'));
+    const pct = Number(process.env.SPLIT_PCT || await ui.input('Процент фрилансеру (0-100):'));
     ui.write(`⏳ SPLIT ${pct}% (арбитр)...`);
     await escrow.sendSplit(provider.sender(), pct);
   } else {
