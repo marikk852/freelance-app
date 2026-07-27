@@ -2,8 +2,15 @@ const { Address, beginCell, toNano, fromNano, Cell } = require('@ton/core');
 const { TonClient } = require('@ton/ton');
 const tonService = require('./tonService');
 const notificationService = require('./notificationService');
+const evmEscrowService = require('./evmEscrowService');
 const { query, transaction } = require('../../database/db');
 const { Contract, Escrow, AuditLog } = require('../../database/models');
+
+// Сделка может быть на TON (этот сервис) или на EVM-сети (ETH/TRON —
+// evmEscrowService, Solidity SafeDealEscrow). Диспетчер ниже читает
+// escrow.chain и делегирует, чтобы вызывающие роуты не менялись.
+const EVM_CHAINS = new Set(['ETH', 'TRON']);
+const isEvmChain = (chain) => EVM_CHAINS.has(chain);
 
 // ============================================================
 // Escrow Service — управление смарт-контрактами SafeDeal
@@ -70,11 +77,21 @@ async function deployContract({
   amountUsd,
   currency,
   deadlineDate,
+  chain = 'TON',
 }) {
   // Платформенный потолок $10k (тарифный лимит проверяется при создании сделки)
   const maxAmount = 10000;
   if (amountUsd > maxAmount) {
     throw new Error(`Сумма сделки $${amountUsd} превышает потолок платформы $${maxAmount}`);
+  }
+
+  // Диспетчер: USDT на EVM-сети (ETH/TRON) деплоит Solidity-эскроу.
+  // clientAddress/freelancerAddress здесь должны быть адресами этой сети
+  // (0x… для ETH / T… для Tron) — их отдаёт роут по выбранной сети (Фаза 4).
+  if (isEvmChain(chain)) {
+    return evmEscrowService.deployEvmContract({
+      contractId, chain, clientAddress, freelancerAddress, amountUsd, deadlineDate,
+    });
   }
 
   // Ставка комиссии — зафиксированная на сделке при создании (fallback на env/free)
@@ -238,6 +255,7 @@ async function deployContract({
 async function monitorContract(contractId) {
   const escrowRow = await Escrow.findByContractId(contractId);
   if (!escrowRow) throw new Error(`[Escrow] Эскроу не найден для контракта ${contractId}`);
+  if (isEvmChain(escrowRow.chain)) return evmEscrowService.monitorEvmContract(contractId);
 
   // Уже завершён — не мониторим
   if (['released', 'refunded'].includes(escrowRow.status)) {
@@ -355,7 +373,7 @@ async function monitorContract(contractId) {
  * @returns {string} хэш транзакции
  */
 async function releaseEscrow(contractId, approvedBy) {
-  // Двойная проверка: delivery должен быть approved
+  // Двойная проверка: delivery должен быть approved (та же проверка нужна и для EVM)
   const { rows: deliveries } = await query(
     `SELECT id FROM deliveries
      WHERE contract_id = $1 AND status = 'approved'
@@ -368,6 +386,8 @@ async function releaseEscrow(contractId, approvedBy) {
 
   const escrowRow = await Escrow.findByContractId(contractId);
   if (!escrowRow) throw new Error(`[Escrow] Эскроу не найден: ${contractId}`);
+  // Диспетчер: EVM-сделки уходят в evmEscrowService
+  if (isEvmChain(escrowRow.chain)) return evmEscrowService.releaseEvmEscrow(contractId, approvedBy);
   if (escrowRow.status !== 'frozen') {
     throw new Error(`[Escrow] Неверный статус для release: ${escrowRow.status}`);
   }
@@ -449,6 +469,7 @@ async function releaseEscrow(contractId, approvedBy) {
 async function refundEscrow(contractId, requestedBy) {
   const escrowRow = await Escrow.findByContractId(contractId);
   if (!escrowRow) throw new Error(`[Escrow] Эскроу не найден: ${contractId}`);
+  if (isEvmChain(escrowRow.chain)) return evmEscrowService.refundEvmEscrow(contractId, requestedBy);
 
   const allowedStatuses = ['waiting_payment', 'frozen'];
   if (!allowedStatuses.includes(escrowRow.status)) {
@@ -530,6 +551,9 @@ async function splitEscrow(contractId, freelancerPercent, resolvedBy) {
   }
 
   const escrowRow = await Escrow.findByContractId(contractId);
+  if (escrowRow && isEvmChain(escrowRow.chain)) {
+    return evmEscrowService.splitEvmEscrow(contractId, freelancerPercent, resolvedBy);
+  }
   if (!escrowRow) throw new Error(`[Escrow] Эскроу не найден: ${contractId}`);
   if (escrowRow.status !== 'frozen') {
     throw new Error(`[Escrow] Неверный статус для split: ${escrowRow.status}`);

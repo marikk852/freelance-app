@@ -451,6 +451,7 @@ router.post('/:id/deploy', async (req, res) => {
       amountUsd        : Number(contract.amount_usd),
       currency         : contract.currency,
       deadlineDate     : new Date(contract.deadline),
+      chain            : contract.chain || 'TON',   // TON по умолчанию; ETH/TRON → evmEscrowService
     });
 
     res.json(result);
