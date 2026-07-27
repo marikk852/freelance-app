@@ -255,6 +255,9 @@ function checkEnv() {
     ARBITRATOR_ADDRESS: 'адрес арбитра в контрактах эскроу',
     ANTHROPIC_API_KEY: 'AI-маркетолог',
     TON_API_KEY: 'on-chain верификация платежей (toncenter)',
+    ETH_RPC_URL: 'USDT-эскроу на Ethereum (ERC-20) — деплой/мониторинг',
+    EVM_ARBITRATOR_PRIVATE_KEY: 'подпись выплат арбитром на Ethereum',
+    TRON_ARBITRATOR_PRIVATE_KEY: 'подпись выплат арбитром на Tron (TRC-20)',
   };
 
   const missingRequired = Object.keys(required).filter(k => !process.env[k]);

@@ -5,3 +5,8 @@ typechain-types/
 .env
 coverage/
 coverage.json
+
+# build/ содержит ABI+bytecode, который backend читает в рантайме — коммитим.
+# (перекрывает глобальный build/ из корневого .gitignore)
+!build/
+!build/SafeDealEscrow.json
