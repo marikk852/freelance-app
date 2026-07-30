@@ -36,6 +36,10 @@ const ESCROW_BYTECODE = artifact.bytecode;
 const CHAINS = {
   ETH: {
     kind      : 'evm',
+    name      : 'Ethereum',
+    // chainId нужен фронту, чтобы попросить MetaMask переключить сеть
+    // (1 = mainnet, 11155111 = Sepolia — на время тестнета задаётся в env)
+    chainId   : Number(process.env.ETH_CHAIN_ID || 1),
     rpc       : process.env.ETH_RPC_URL,
     usdt      : process.env.ETH_USDT_ADDRESS || '0xdAC17F958D2ee523a2206206994597C13D831ec7',
     arbiterKey: process.env.EVM_ARBITRATOR_PRIVATE_KEY,
@@ -43,12 +47,31 @@ const CHAINS = {
   },
   TRON: {
     kind      : 'tron',
+    name      : 'Tron',
+    chainId   : null,             // у Tron нет EIP-155 chainId — сеть выбирает TronLink
     rpc       : process.env.TRON_FULL_HOST || 'https://api.trongrid.io',
     usdt      : process.env.TRON_USDT_ADDRESS || 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
     arbiterKey: process.env.TRON_ARBITRATOR_PRIVATE_KEY,
     explorer  : 'https://tronscan.org/#/transaction/',
   },
 };
+
+/**
+ * Готова ли сеть принимать сделки. Требуется И RPC, И ключ арбитра: без ключа
+ * платформа не сможет сделать release/refund, и деньги клиента застрянут
+ * в контракте. Пока сеть не настроена в env — она не предлагается в UI
+ * и отбивается на создании сделки.
+ * @param {'ETH'|'TRON'} chain
+ */
+function isChainAvailable(chain) {
+  const cfg = CHAINS[chain];
+  return !!(cfg && cfg.rpc && cfg.arbiterKey);
+}
+
+/** Сети, в которых сейчас можно создать сделку. TON доступен всегда. */
+function availableChains() {
+  return ['TON', ...Object.keys(CHAINS).filter(isChainAvailable)];
+}
 
 function chainConfig(chain) {
   const cfg = CHAINS[chain];
@@ -175,6 +198,60 @@ async function deployEvmContract({
 }
 
 // ============================================================
+// Параметры оплаты для кошелька клиента (MetaMask / TronLink).
+//
+// Депозит в EVM — ДВА шага: approve(escrow, amount) в контракте USDT,
+// затем deposit() в эскроу. Calldata собираем здесь, чтобы фронт не тянул
+// ethers в бандл Mini App и не знал деталей ABI.
+//
+// ⚠️ Про USDT-квирк «approve только с нуля»: настоящий Tether требует, чтобы
+// текущий allowance был 0 перед новым ненулевым approve. Нам это не грозит —
+// эскроу деплоится персонально под сделку, у него allowance всегда 0.
+// ============================================================
+const ERC20_APPROVE_IFACE = new ethers.Interface([
+  'function approve(address spender, uint256 amount) returns (bool)',
+  'function allowance(address owner, address spender) view returns (uint256)',
+  'function balanceOf(address owner) view returns (uint256)',
+]);
+const ESCROW_DEPOSIT_IFACE = new ethers.Interface(['function deposit()']);
+
+function buildEvmPaymentParams({ chain, escrowAddress, amountUsd, clientAddress }) {
+  const cfg = CHAINS[chain];
+  if (!cfg) throw new Error(`[EVM] Неизвестная сеть: ${chain}`);
+
+  const amountUnits = toUnits(amountUsd);
+
+  // Calldata собираем ТОЛЬКО для EVM: адреса Tron — base58, ethers их не кодирует,
+  // да и TronLink подписывает через собственный contract API, а не сырой data.
+  const calldata = cfg.kind === 'evm'
+    ? {
+        approveData  : ERC20_APPROVE_IFACE.encodeFunctionData('approve', [escrowAddress, amountUnits]),
+        depositData  : ESCROW_DEPOSIT_IFACE.encodeFunctionData('deposit', []),
+        // eth_call для проверок ДО подписи: хватает ли USDT и не одобрено ли уже
+        // (повторный approve на Ethereum — выброшенные на газ деньги)
+        balanceOfData: ERC20_APPROVE_IFACE.encodeFunctionData('balanceOf', [clientAddress]),
+        allowanceData: ERC20_APPROVE_IFACE.encodeFunctionData('allowance', [clientAddress, escrowAddress]),
+      }
+    : { approveData: null, depositData: null, balanceOfData: null, allowanceData: null };
+
+  return {
+    chain,
+    kind         : cfg.kind,                 // 'evm' → MetaMask, 'tron' → TronLink
+    chainName    : cfg.name,
+    chainId      : cfg.chainId,
+    chainIdHex   : cfg.chainId ? '0x' + cfg.chainId.toString(16) : null,
+    escrowAddress,
+    tokenAddress : cfg.usdt,
+    clientAddress,
+    decimals     : USDT_DECIMALS,
+    amountUnits  : amountUnits.toString(),
+    amountUsd    : Number(amountUsd),
+    ...calldata,
+    explorerTx   : cfg.explorer,
+  };
+}
+
+// ============================================================
 // Мониторинг: читаем on-chain статус, при заморозке двигаем сделку.
 // (USDT на EVM отбивает недоплату в самом контракте — Underfunded,
 //  поэтому Frozen гарантирует полную сумму, доп. сверки не нужно.)
@@ -269,6 +346,9 @@ async function splitEvmEscrow(contractId, freelancerPercent, resolvedBy) {
 
 module.exports = {
   deployEvmContract,
+  buildEvmPaymentParams,
+  isChainAvailable,
+  availableChains,
   monitorEvmContract,
   releaseEvmEscrow,
   refundEvmEscrow,

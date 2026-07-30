@@ -114,6 +114,21 @@ export function JoinDeal() {
         </div>
       </div>
 
+      {/* Сеть расчёта: без кошелька в ней сделку нельзя будет задеплоить,
+          поэтому фрилансер должен узнать об этом ДО принятия */}
+      {deal.chain && deal.chain !== 'TON' && (
+        <div className="gl" style={{ padding: '10px 14px', marginBottom: '8px', borderColor: 'rgba(0,136,255,0.3)', background: 'rgba(0,136,255,0.05)' }}>
+          <div className="pxgrid" />
+          <div className="px" style={{ fontSize: '7px', color: '#0088ff', marginBottom: '6px' }}>
+            🌐 PAID IN USDT ON {deal.chain === 'ETH' ? 'ETHEREUM' : 'TRON'}
+          </div>
+          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: 'rgba(255,255,255,0.55)', lineHeight: 1.5 }}>
+            Link your {deal.chain === 'ETH' ? 'Ethereum (MetaMask)' : 'Tron (TronLink)'} wallet
+            in your profile — the payout goes to that address.
+          </div>
+        </div>
+      )}
+
       {/* Milestone-сделка: подсказка */}
       {deal.deal_group_id && (
         <div className="gl" style={{ padding: '10px 14px', marginBottom: '8px', borderColor: 'rgba(204,68,255,0.3)', background: 'rgba(204,68,255,0.05)' }}>

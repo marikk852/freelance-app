@@ -42,6 +42,9 @@ COPY --from=builder /app/backend ./backend
 COPY --from=builder /app/bot ./bot
 COPY --from=builder /app/database ./database
 COPY --from=builder /app/contracts/build ./contracts/build
+# ABI+bytecode Solidity-эскроу (Ethereum/Tron). Лежит в репозитории готовым —
+# Solidity в образе не компилируется, но evmEscrowService читает файл при старте.
+COPY --from=builder /app/contracts-evm/build ./contracts-evm/build
 COPY --from=builder /app/miniapp/dist ./miniapp/dist
 
 RUN mkdir -p storage/encrypted storage/previews storage/released

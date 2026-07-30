@@ -9,6 +9,7 @@ const { query } = require('../../database/db');
 const { User } = require('../../database/models');
 const crystalService = require('../services/crystalService');
 const tierService = require('../services/tierService');
+const chainAddress = require('../services/chainAddress');
 
 const BANNERS_DIR = path.join(__dirname, '../../storage/banners');
 const AVATARS_DIR = path.join(__dirname, '../../storage/avatars');
@@ -102,6 +103,8 @@ router.get('/me', async (req, res) => {
          u.first_name,
          u.last_name,
          u.ton_wallet_address,
+         u.eth_wallet_address,
+         u.tron_wallet_address,
          u.rating,
          u.deals_count        AS deals_completed,
          u.level,
@@ -320,22 +323,30 @@ router.patch('/me/profile', async (req, res) => {
 
 /**
  * PATCH /api/users/me/wallet
- * Save user's TON wallet.
+ * Привязать кошелёк. По умолчанию TON (обратная совместимость со старым
+ * клиентом, который шлёт только walletAddress); chain=ETH|TRON сохраняет
+ * адрес для мультичейн-USDT эскроу.
  */
 router.patch('/me/wallet', async (req, res) => {
   try {
     const { walletAddress } = req.body;
-    if (!walletAddress) return res.status(400).json({ error: 'walletAddress is required' });
+    const chain = (req.body.chain || 'TON').toUpperCase();
 
-    // Validate TON address format
-    const TON_ADDRESS_RE = /^(UQ|EQ|kQ|0Q)[A-Za-z0-9_-]{46}$/;
-    if (!TON_ADDRESS_RE.test(walletAddress)) {
-      return res.status(400).json({ error: 'Invalid TON address format (expected UQ.../EQ.../kQ.../0Q...)' });
+    if (!walletAddress) return res.status(400).json({ error: 'walletAddress is required' });
+    if (!chainAddress.SUPPORTED_CHAINS.includes(chain)) {
+      return res.status(400).json({ error: `Unsupported chain: ${chain}` });
+    }
+    if (!chainAddress.isValidAddress(chain, walletAddress)) {
+      return res.status(400).json({
+        error: `Invalid ${chain} address format (expected ${chainAddress.FORMAT_HINT[chain]})`,
+      });
     }
 
-    const user = await User.setWallet(req.user.telegramId, walletAddress);
-    // Привязка кошелька могла открыть критерий заработанной верификации
-    if (user) {
+    const address = chainAddress.normalizeAddress(chain, walletAddress);
+    const user = await User.setChainWallet(req.user.telegramId, chain, address);
+
+    // Только TON-кошелёк участвует в критерии заработанной верификации
+    if (user && chain === 'TON') {
       User.checkEarnedVerification(user.id)
         .then(granted => { if (granted) crystalService.award(user.id, 'account_verified').catch(() => {}); })
         .catch(() => {});

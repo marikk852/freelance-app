@@ -6,11 +6,18 @@ import { users as usersApi } from '../utils/api';
 import { useTelegram } from '../hooks/useTelegram';
 import { useCountUp } from '../hooks/useCountUp';
 import { useTonWalletConnect } from '../hooks/useTonWallet';
+import { detectWalletAddress } from '../utils/chainPay';
 import toast from 'react-hot-toast';
 
 // ============================================================
 // Screen 08: PROFILE — avatar, stats, wallet, portfolio, edit
 // ============================================================
+
+// Сети, где эскроу — Solidity-контракт; адреса хранятся отдельно от TON-кошелька
+const EVM_CHAINS = [
+  { key: 'ETH'  as const, label: 'ETHEREUM', wallet: 'MetaMask', field: 'eth_wallet_address',  placeholder: '0x...' },
+  { key: 'TRON' as const, label: 'TRON',     wallet: 'TronLink', field: 'tron_wallet_address', placeholder: 'T...'  },
+];
 
 const SKILL_CATEGORIES = ['design', 'dev', 'writing', 'video', 'marketing', 'other'] as const;
 type SkillCategory = typeof SKILL_CATEGORIES[number];
@@ -68,6 +75,7 @@ export function Profile() {
   const [portfolio, setPortfolio] = useState<any[]>([]);
   const [reviews,   setReviews]   = useState<any[]>([]);
   const [wallet,    setWallet]    = useState('');
+  const [chainWallets, setChainWallets] = useState<Record<'ETH' | 'TRON', string>>({ ETH: '', TRON: '' });
   const [tab,       setTab]       = useState<Tab>('stats');
   const [analytics, setAnalytics] = useState<any>(null);
   const [loading,   setLoading]   = useState(false);
@@ -92,6 +100,10 @@ export function Profile() {
         setPortfolio(port.data);
         setReviews(rev.data);
         setWallet(p.data.ton_wallet_address || '');
+        setChainWallets({
+          ETH : p.data.eth_wallet_address  || '',
+          TRON: p.data.tron_wallet_address || '',
+        });
 
         // Pre-fill edit form from loaded profile
         const d = p.data;
@@ -180,6 +192,33 @@ export function Profile() {
       tg?.HapticFeedback?.notificationOccurred('success');
       toast.success('Wallet saved!');
     } catch { toast.error('Error'); } finally { setLoading(false); }
+  };
+
+  // Подтянуть адрес из установленного кошелька — руками адрес легко ошибиться
+  const handleDetectChainWallet = async (chain: 'ETH' | 'TRON') => {
+    tg?.HapticFeedback?.impactOccurred('light');
+    try {
+      const addr = await detectWalletAddress(chain);
+      setChainWallets(w => ({ ...w, [chain]: addr }));
+      toast.success('Address detected — press save');
+    } catch (e: any) {
+      toast.error(e?.message || 'Wallet not found');
+    }
+  };
+
+  const handleSaveChainWallet = async (chain: 'ETH' | 'TRON') => {
+    const addr = chainWallets[chain].trim();
+    if (!addr) return;
+    tg?.HapticFeedback?.impactOccurred('medium');
+    setLoading(true);
+    try {
+      const { data } = await usersApi.setWallet(addr, chain);
+      setProfile(data);
+      tg?.HapticFeedback?.notificationOccurred('success');
+      toast.success(`${chain} wallet saved!`);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || 'Error');
+    } finally { setLoading(false); }
   };
 
   const handleSaveProfile = async () => {
@@ -328,6 +367,49 @@ export function Profile() {
     </div>
   ) : null;
 
+  // Кошельки других сетей — нужны для USDT-сделок на Ethereum/Tron.
+  // Адрес можно подтянуть из установленного кошелька или вставить вручную.
+  const ChainWalletPanel = ({ compact }: { compact?: boolean }) => (
+    <div className="gl" style={{ padding: compact ? '12px 14px' : undefined, marginTop: '12px' }}>
+      <div className="pxgrid" />{!compact && <div className="sh" />}
+      <div style={{ fontSize: compact ? '7px' : '10px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>
+        🌐 USDT WALLETS
+      </div>
+      <div style={{ fontSize: '11px', fontFamily: 'Inter, sans-serif', color: 'var(--t-3)', marginBottom: '10px', lineHeight: 1.6 }}>
+        Only needed for USDT deals on Ethereum or Tron. Payouts and refunds go to these addresses.
+      </div>
+
+      {EVM_CHAINS.map(c => (
+        <div key={c.key} style={{ marginBottom: '10px' }}>
+          <div style={{ fontSize: '6px', color: 'var(--t-3)', marginBottom: '5px' }}>
+            {c.label} · {c.wallet}
+          </div>
+          {profile?.[c.field] && (
+            <div style={{ fontSize: '6px', color: '#00FF88', marginBottom: '6px', wordBreak: 'break-all' }}>
+              ✅ {profile[c.field].slice(0, 10)}...{profile[c.field].slice(-6)}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <input type="text" placeholder={c.placeholder}
+              value={chainWallets[c.key]}
+              onChange={e => setChainWallets(w => ({ ...w, [c.key]: e.target.value }))}
+              style={{ flex: 1, minWidth: 0, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', padding: '9px 12px', color: '#fff', fontSize: '7px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+            <button className="btn" onClick={() => handleDetectChainWallet(c.key)}
+              title={`Read address from ${c.wallet}`}
+              style={{ fontSize: '7px', padding: '9px 10px', whiteSpace: 'nowrap' }}>
+              [ 🔍 ]
+            </button>
+          </div>
+          <button className="btn btn-full" onClick={() => handleSaveChainWallet(c.key)}
+            disabled={!chainWallets[c.key].trim() || loading}
+            style={{ fontSize: '7px', marginTop: '6px', opacity: chainWallets[c.key].trim() ? 1 : 0.4 }}>
+            [ 💾 SAVE {c.label} ]
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+
   const WalletPanel = ({ compact }: { compact?: boolean }) => (
     <div className="gl" style={{ padding: compact ? '12px 14px' : undefined }}>
       <div className="pxgrid" />{!compact && <div className="sh" />}
@@ -464,7 +546,7 @@ export function Profile() {
             </div>
 
             {/* Desktop: compact wallet */}
-            <div className="desktop-only"><WalletPanel compact /></div>
+            <div className="desktop-only"><WalletPanel compact /><ChainWalletPanel compact /></div>
 
             {/* Desktop: slide carousel */}
             <div className="desktop-only"><SlideCarousel /></div>
@@ -607,7 +689,7 @@ export function Profile() {
                 })()}
 
                 {/* Mobile: full wallet UI */}
-                <div className="mobile-only"><WalletPanel /></div>
+                <div className="mobile-only"><WalletPanel /><ChainWalletPanel /></div>
               </>
             )}
 
