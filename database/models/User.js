@@ -101,6 +101,29 @@ const User = {
   },
 
   /**
+   * Сохранить адрес кошелька в конкретной сети (мультичейн-USDT).
+   * TON идёт через setWallet (он же двигает wallet_linked_at — критерий
+   * заработанной верификации); ETH/TRON — отдельные колонки, на верификацию
+   * не влияют.
+   * @param {number} telegramId
+   * @param {'TON'|'ETH'|'TRON'} chain
+   * @param {string} walletAddress
+   */
+  async setChainWallet(telegramId, chain, walletAddress) {
+    if (chain === 'TON') return this.setWallet(telegramId, walletAddress);
+
+    const column = { ETH: 'eth_wallet_address', TRON: 'tron_wallet_address' }[chain];
+    if (!column) throw new Error(`Unknown chain: ${chain}`);
+
+    const { rows } = await query(
+      `UPDATE users SET ${column} = $2, updated_at = NOW()
+       WHERE telegram_id = $1 RETURNING *`,
+      [telegramId, walletAddress]
+    );
+    return rows[0] || null;
+  },
+
+  /**
    * Проверить и выдать заработанную верификацию (FREE).
    * Критерии: тариф free + deals_completed ≥ 3 + кошелёк привязан ≥ 14 дней.
    * У подписчиков верификация идёт от тарифа (basic/pro) — здесь не трогаем.

@@ -21,6 +21,7 @@ router.get('/join/:inviteLink', async (req, res) => {
          c.description,
          c.amount_usd,
          c.currency,
+         c.chain,
          c.deadline,
          c.criteria,
          c.status,

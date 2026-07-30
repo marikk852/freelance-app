@@ -6,7 +6,9 @@
     "build": "blueprint build escrow",
     "test": "NODE_OPTIONS='--max-old-space-size=4096' npx jest --runInBand --forceExit",
     "deploy": "blueprint run scripts/deploy.ts",
-    "deploy:testnet": "blueprint run scripts/deploy.ts --testnet"
+    "deploy:testnet": "blueprint run scripts/deploy.ts --testnet",
+    "testnet:usdt-setup": "blueprint run testnetUsdtSetup --testnet",
+    "testnet:usdt-cycle": "blueprint run testnetUsdtCycle --testnet"
   },
   "dependencies": {
     "@ton/core": "^0.56.3",

@@ -4,9 +4,11 @@ const Joi     = require('joi');
 const { query, transaction } = require('../../database/db');
 const { Room, Contract, AuditLog } = require('../../database/models');
 const escrowService = require('../services/escrowService');
+const evmEscrowService = require('../services/evmEscrowService');
 const notificationService = require('../services/notificationService');
 const tierService = require('../services/tierService');
 const crystalService = require('../services/crystalService');
+const chainAddress = require('../services/chainAddress');
 const { getBotUsername } = require('../services/botInfo');
 
 // ============================================================
@@ -22,6 +24,10 @@ const createContractSchema = Joi.object({
   description: Joi.string().min(10).required(),
   amount_usd : Joi.number().positive().max(10000).required(), // потолок платформы; тарифный лимит ниже
   currency   : Joi.string().valid('TON', 'USDT').required(),
+  // Сеть эскроу. TON — родная (escrow.fc); ETH/TRON — Solidity SafeDealEscrow,
+  // только для USDT (нативной валюты этих сетей у нас нет).
+  chain      : Joi.string().valid('TON', 'ETH', 'TRON').default('TON')
+    .when('currency', { is: 'TON', then: Joi.valid('TON') }),
   deadline   : Joi.date().greater('now').required(),
   criteria   : Joi.array().items(
     Joi.object({ text: Joi.string().required(), required: Joi.boolean() })
@@ -38,6 +44,14 @@ router.post('/', async (req, res) => {
   try {
     const { error, value } = createContractSchema.validate(req.body);
     if (error) return res.status(400).json({ error: error.details[0].message });
+
+    // Сеть должна быть реально настроена: без ключа арбитра платформа не сможет
+    // сделать release/refund, и деньги клиента застрянут в контракте навсегда
+    if (value.chain !== 'TON' && !evmEscrowService.isChainAvailable(value.chain)) {
+      return res.status(400).json({
+        error: `USDT on ${value.chain} is not available yet. Choose the TON network.`,
+      });
+    }
 
     const { telegramId } = req.user;
 
@@ -82,6 +96,7 @@ router.post('/', async (req, res) => {
       currency   : value.currency,
       deadline   : value.deadline,
       criteria   : value.criteria,
+      chain      : value.chain,
       // Фиксируем ставку комиссии тарифа на сделке (смена тарифа не затронет её)
       commission_percent: tier.commission_percent,
     });
@@ -128,6 +143,16 @@ router.post('/', async (req, res) => {
     console.error('[API] POST /contracts error:', err.message);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+/**
+ * GET /api/contracts/chains
+ * Сети, в которых сейчас можно создать сделку. Фронт рисует пикер по этому
+ * списку, чтобы не предлагать сеть, где платформа не сможет провести выплату.
+ * ВАЖНО: объявлено ДО /:id, иначе param-роут перехватит 'chains'.
+ */
+router.get('/chains', (req, res) => {
+  res.json({ chains: evmEscrowService.availableChains() });
 });
 
 /**
@@ -425,11 +450,16 @@ router.post('/:id/deploy', async (req, res) => {
       return res.status(400).json({ error: 'Contract must be signed by both parties' });
     }
 
-    // Получаем кошельки из профилей участников (через rooms)
+    // Кошельки участников берём из колонки ТОЙ сети, где будет стоять эскроу:
+    // выплата уходит on-chain, TON-адрес в Ethereum-контракте бесполезен.
+    const chain  = contract.chain || 'TON';
+    const column = chainAddress.WALLET_COLUMN[chain];
+    if (!column) return res.status(400).json({ error: `Unsupported chain: ${chain}` });
+
     const { rows: roomRows } = await query(
       `SELECT r.client_id, r.freelancer_id,
-              uc.ton_wallet_address AS client_wallet,
-              uf.ton_wallet_address AS freelancer_wallet
+              uc.${column} AS client_wallet,
+              uf.${column} AS freelancer_wallet
        FROM rooms r
        JOIN users uc ON uc.id = r.client_id
        JOIN users uf ON uf.id = r.freelancer_id
@@ -441,8 +471,12 @@ router.post('/:id/deploy', async (req, res) => {
     const clientWallet     = roomRows[0].client_wallet;
     const freelancerWallet = roomRows[0].freelancer_wallet;
 
-    if (!clientWallet)     return res.status(400).json({ error: 'Клиент не привязал TON кошелёк. Добавьте кошелёк в профиле.' });
-    if (!freelancerWallet) return res.status(400).json({ error: 'Фрилансер не привязал TON кошелёк. Попросите его добавить кошелёк в профиле.' });
+    if (!clientWallet) {
+      return res.status(400).json({ error: `Клиент не привязал ${chain} кошелёк. Добавьте кошелёк в профиле.` });
+    }
+    if (!freelancerWallet) {
+      return res.status(400).json({ error: `Фрилансер не привязал ${chain} кошелёк. Попросите его добавить кошелёк в профиле.` });
+    }
 
     const result = await escrowService.deployContract({
       contractId       : contract.id,
@@ -451,6 +485,7 @@ router.post('/:id/deploy', async (req, res) => {
       amountUsd        : Number(contract.amount_usd),
       currency         : contract.currency,
       deadlineDate     : new Date(contract.deadline),
+      chain,   // TON по умолчанию; ETH/TRON → evmEscrowService
     });
 
     res.json(result);
@@ -458,6 +493,85 @@ router.post('/:id/deploy', async (req, res) => {
     const detail = err.response?.data ?? err.stack ?? err.message;
     console.error('[API] POST /contracts/:id/deploy error:', JSON.stringify(detail));
     res.status(500).json({ error: err.message, detail });
+  }
+});
+
+/**
+ * GET /api/contracts/:id/usdt-payment
+ * Параметры TonConnect-сообщения для оплаты USD₮-сделки (jetton transfer).
+ * Возвращает адрес jetton-wallet клиента, payload и сумму TON на газ.
+ * Только для currency=USDT и уже задеплоенного контракта.
+ */
+router.get('/:id/usdt-payment', async (req, res) => {
+  try {
+    const contract = await Contract.findById(req.params.id);
+    if (!contract) return res.status(404).json({ error: 'Contract not found' });
+    if (contract.currency !== 'USDT') {
+      return res.status(400).json({ error: 'Not a USDT deal' });
+    }
+    if (!contract.ton_contract_address) {
+      return res.status(400).json({ error: 'Contract not deployed yet' });
+    }
+
+    // Кошелёк клиента — отправитель jetton
+    const { rows } = await query(
+      `SELECT uc.ton_wallet_address AS client_wallet
+       FROM rooms r JOIN users uc ON uc.id = r.client_id
+       WHERE r.id = $1`,
+      [contract.room_id]
+    );
+    const clientWallet = rows[0]?.client_wallet;
+    if (!clientWallet) return res.status(400).json({ error: 'Client wallet not linked' });
+
+    const params = await escrowService.buildUsdtPaymentParams({
+      escrowAddress: contract.ton_contract_address,
+      clientAddress: clientWallet,
+      amountUsd    : Number(contract.amount_usd),
+    });
+    res.json(params);
+  } catch (err) {
+    console.error('[API] GET /contracts/:id/usdt-payment error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /api/contracts/:id/evm-payment
+ * Параметры оплаты USDT-сделки на Ethereum/Tron: адрес эскроу и токена,
+ * сумма в единицах токена и готовая calldata approve/deposit.
+ * Только для chain=ETH|TRON и уже задеплоенного контракта.
+ */
+router.get('/:id/evm-payment', async (req, res) => {
+  try {
+    const contract = await Contract.findById(req.params.id);
+    if (!contract) return res.status(404).json({ error: 'Contract not found' });
+
+    const chain = contract.chain || 'TON';
+    if (chain === 'TON') return res.status(400).json({ error: 'Not an EVM/Tron deal' });
+    if (!contract.ton_contract_address) {
+      return res.status(400).json({ error: 'Contract not deployed yet' });
+    }
+
+    // Адрес клиента в этой сети — от него пойдёт approve + deposit
+    const column = chainAddress.WALLET_COLUMN[chain];
+    const { rows } = await query(
+      `SELECT uc.${column} AS client_wallet
+       FROM rooms r JOIN users uc ON uc.id = r.client_id
+       WHERE r.id = $1`,
+      [contract.room_id]
+    );
+    const clientWallet = rows[0]?.client_wallet;
+    if (!clientWallet) return res.status(400).json({ error: `Client ${chain} wallet not linked` });
+
+    res.json(evmEscrowService.buildEvmPaymentParams({
+      chain,
+      escrowAddress: contract.ton_contract_address,
+      amountUsd    : Number(contract.amount_usd),
+      clientAddress: clientWallet,
+    }));
+  } catch (err) {
+    console.error('[API] GET /contracts/:id/evm-payment error:', err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 

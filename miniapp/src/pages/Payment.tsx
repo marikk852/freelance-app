@@ -5,13 +5,22 @@ import { DataRow } from '../components/GlassCard';
 import { contracts as contractsApi, users as usersApi } from '../utils/api';
 import { useTelegram } from '../hooks/useTelegram';
 import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
+import {
+  payWithExternalWallet, isUserRejection, PAY_STEP_LABEL,
+  type EvmPaymentParams, type PayStep,
+} from '../utils/chainPay';
 import toast from 'react-hot-toast';
 
 // ============================================================
-// Screen 04: PAYMENT — deploy contract + pay via TonConnect
+// Screen 04: PAYMENT — deploy contract + pay
 // Флоу: STEP 1/2 deploy эскроу-контракта → STEP 2/2 депозит.
-// Оплата ТОЛЬКО через TonConnect: ручной перевод без OP_DEPOSIT
-// payload не активирует эскроу (контракт примет деньги молча).
+//
+// Сеть решает, каким кошельком платит клиент:
+//   TON  → TonConnect (нативный TON или USD₮-jetton)
+//   ETH  → MetaMask, TRON → TronLink (approve + deposit, две подписи)
+//
+// Оплата ТОЛЬКО через кнопку: на TON ручной перевод без OP_DEPOSIT payload
+// не активирует эскроу, на EVM — deposit() вызывает сам контракт.
 // ============================================================
 
 type PayStage = 'idle' | 'wallet' | 'freezing';
@@ -28,6 +37,7 @@ export function Payment() {
   const [estimate,   setEstimate]   = useState<{ ton_amount: string } | null>(null);
   const [loading,    setLoading]    = useState(false);
   const [stage,      setStage]      = useState<PayStage>('idle');
+  const [evmStep,    setEvmStep]    = useState<PayStep | null>(null);
   const [simulating, setSimulating] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -72,9 +82,11 @@ export function Payment() {
     }
   }, [deal]);
 
-  // Оценка в TON до деплоя — юзер видит сумму до необратимого шага
+  // Оценка в TON до деплоя — юзер видит сумму до необратимого шага.
+  // Для ETH/TRON не нужна: сумма сделки в USDT равна долларовой, курс не участвует.
   useEffect(() => {
     if (!id || !deal || deal.ton_contract_address) return;
+    if ((deal.chain || 'TON') !== 'TON') return;
     contractsApi.estimate(id)
       .then(r => setEstimate(r.data))
       .catch(() => {});
@@ -146,8 +158,33 @@ export function Payment() {
     }
   };
 
+  // Оплата из внешнего кошелька (MetaMask / TronLink): approve → deposit.
+  // Backend отдаёт готовую calldata, кошелёк ставит две подписи подряд.
+  const handlePayEvm = async () => {
+    tg?.HapticFeedback?.impactOccurred('heavy');
+    setStage('wallet');
+    try {
+      const { data } = await contractsApi.evmPayment(id!);
+      await payWithExternalWallet(data as EvmPaymentParams, { onStep: setEvmStep });
+      tg?.HapticFeedback?.notificationOccurred('success');
+      setEvmStep(null);
+      waitForFrozen();
+    } catch (e: any) {
+      setStage('idle');
+      setEvmStep(null);
+      tg?.HapticFeedback?.notificationOccurred('error');
+      if (isUserRejection(e)) {
+        toast.error('Payment cancelled');
+      } else {
+        toast.error(e?.response?.data?.error || e?.message || 'Payment failed. Try again.');
+      }
+    }
+  };
+
   const handlePay = async () => {
     if (!deployed?.tonContractAddress || !deployed?.cryptoAmount) return;
+
+    if (isEvm) return handlePayEvm();
 
     if (!wallet) {
       toast('Connect your wallet to send payment', { icon: '💎' });
@@ -158,20 +195,33 @@ export function Payment() {
     tg?.HapticFeedback?.impactOccurred('heavy');
     setStage('wallet');
     try {
-      // Gas buffer: 0.15 TON covers arbitrator costs (0.05 deploy + 0.05 release + 0.05 reserve)
-      const GAS_BUFFER_NANO = BigInt(150_000_000); // 0.15 TON
-      const nanotons = (BigInt(Math.round(deployed.cryptoAmount * 1e9)) + GAS_BUFFER_NANO).toString();
-
-      // OP_DEPOSIT = 1, pre-encoded BOC: beginCell().storeUint(1,32).endCell().toBoc().toString('base64')
-      const payload = 'te6cckEBAQEABgAACAAAAAHgg8T9';
-
-      await tonConnectUI.sendTransaction({
-        validUntil: Math.floor(Date.now() / 1000) + 600,
-        messages: [{
+      let message;
+      if (deal?.currency === 'USDT') {
+        // USD₮ — jetton: backend строит payload и адрес jetton-wallet клиента.
+        // Клиент шлёт jetton transfer на СВОЙ jetton-wallet (не на эскроу).
+        const { data } = await contractsApi.usdtPayment(id!);
+        message = {
+          address: data.jettonWalletAddress,
+          amount : data.amountTon,
+          payload: data.payloadBoc,
+        };
+      } else {
+        // TON — прямой депозит на эскроу с OP_DEPOSIT payload.
+        // Gas buffer: 0.15 TON покрывает расходы арбитра (deploy + release + резерв).
+        const GAS_BUFFER_NANO = BigInt(150_000_000); // 0.15 TON
+        const nanotons = (BigInt(Math.round(deployed.cryptoAmount * 1e9)) + GAS_BUFFER_NANO).toString();
+        // OP_DEPOSIT = 1, pre-encoded BOC: beginCell().storeUint(1,32).endCell().toBoc().toString('base64')
+        const payload = 'te6cckEBAQEABgAACAAAAAHgg8T9';
+        message = {
           address: deployed.tonContractAddress,
           amount : nanotons,
           payload,
-        }],
+        };
+      }
+
+      await tonConnectUI.sendTransaction({
+        validUntil: Math.floor(Date.now() / 1000) + 600,
+        messages: [message],
       });
       tg?.HapticFeedback?.notificationOccurred('success');
       waitForFrozen();
@@ -187,9 +237,23 @@ export function Payment() {
   };
 
   const dataLoaded = deal !== null && profile !== null;
-  const hasWallet  = dataLoaded && !!profile?.ton_wallet_address;
+  const chain      = (deal?.chain || 'TON') as 'TON' | 'ETH' | 'TRON';
+  const isEvm      = chain !== 'TON';
+  // Кошелёк нужен в ТОЙ сети, где стоит эскроу: refund придёт именно на него
+  const chainMeta = {
+    TON : { label: 'TON',      walletField: 'ton_wallet_address',  wallet: 'Tonkeeper / @wallet', gas: 'TON' },
+    ETH : { label: 'Ethereum', walletField: 'eth_wallet_address',  wallet: 'MetaMask',            gas: 'ETH' },
+    TRON: { label: 'Tron',     walletField: 'tron_wallet_address', wallet: 'TronLink',            gas: 'TRX' },
+  }[chain];
+  const linkedAddress = dataLoaded ? profile?.[chainMeta.walletField] : null;
+  const hasWallet     = dataLoaded && !!linkedAddress;
   const busy       = stage !== 'idle';
-  const totalTon   = deployed ? (deployed.cryptoAmount + 0.15).toFixed(4) : null;
+  const isUsdt     = deal?.currency === 'USDT';
+  // USD₮ — jetton: сумма уходит в USDT, газ платится отдельно в TON (~0.3).
+  const USDT_GAS_TON = 0.3;
+  const totalTon   = deployed
+    ? (isUsdt ? deployed.cryptoAmount.toFixed(2) : (deployed.cryptoAmount + 0.15).toFixed(4))
+    : null;
 
   const stepLabel = deployed ? 'STEP 2/2 · FUND ESCROW' : 'STEP 1/2 · CREATE ESCROW';
 
@@ -258,11 +322,21 @@ export function Payment() {
                 value={`${deployed ? deployed.cryptoAmount.toFixed(4) : `≈ ${estimate?.ton_amount}`} ${deal.currency}`}
                 color="#0088ff"
               />
-              <DataRow label="Network fees (incl.)" value={`+0.15 ${deal.currency}`} color="rgba(255,255,255,0.3)" />
+              <DataRow
+                label="Network fees"
+                value={isEvm
+                  ? `paid in ${chainMeta.gas} (gas)`
+                  : isUsdt ? `+~${USDT_GAS_TON} TON (gas)` : `+0.15 ${deal.currency}`}
+                color="rgba(255,255,255,0.3)"
+              />
               <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', margin: '8px 0' }} />
               <DataRow
                 label="TOTAL TO SEND"
-                value={`${deployed ? totalTon : `≈ ${(Number(estimate?.ton_amount) + 0.15).toFixed(4)}`} ${deal.currency}`}
+                value={isEvm
+                  ? `${Number(deal.amount_usd).toFixed(2)} USDT + ${chainMeta.gas} gas`
+                  : isUsdt
+                    ? `${deployed ? totalTon : Number(deal.amount_usd).toFixed(2)} USDT + ~${USDT_GAS_TON} TON`
+                    : `${deployed ? totalTon : `≈ ${(Number(estimate?.ton_amount) + 0.15).toFixed(4)}`} ${deal.currency}`}
                 color="#ffaa00"
               />
             </>
@@ -283,10 +357,11 @@ export function Payment() {
         <div className="gl card-stagger-3" style={{ borderColor: 'rgba(255,68,102,0.3)', background: 'rgba(255,68,102,0.05)' }}>
           <div className="pxgrid" /><div className="sh" />
           <div className="px" style={{ fontSize: '8px', color: '#FF4466', textAlign: 'center' }}>
-            ⚠️ NO WALLET LINKED
+            ⚠️ NO {chainMeta.label.toUpperCase()} WALLET LINKED
           </div>
           <div style={{ fontSize: '12px', fontFamily: 'Inter, sans-serif', color: 'rgba(255,255,255,0.45)', marginTop: '8px', textAlign: 'center', lineHeight: 1.6 }}>
-            Link your TON wallet first — it's where funds return if the deal is refunded.
+            This deal settles on {chainMeta.label}. Link your {chainMeta.label} wallet
+            ({chainMeta.wallet}) first — it's where funds return if the deal is refunded.
           </div>
           <button className="btn btn-full" style={{ marginTop: '10px', fontSize: '8px' }}
             onClick={() => navigate('/profile')}>
@@ -336,20 +411,34 @@ export function Payment() {
                 onClick={handlePay}
                 disabled={busy}
                 style={{ marginBottom: '8px', fontSize: '8px', opacity: busy ? 0.75 : 1 }}>
-                {stage === 'wallet'
-                  ? '[ 👛 CONFIRM IN WALLET ↗ ]'
-                  : stage === 'freezing'
-                    ? '[ ⏳ FREEZING FUNDS... ]'
-                    : wallet
-                      ? `[ 💎 PAY ${totalTon} ${deal?.currency || 'TON'} ]`
-                      : `[ 💎 CONNECT WALLET & PAY ]`}
+                {evmStep
+                  ? `[ ${PAY_STEP_LABEL[evmStep]} ]`
+                  : stage === 'wallet'
+                    ? '[ 👛 CONFIRM IN WALLET ↗ ]'
+                    : stage === 'freezing'
+                      ? '[ ⏳ FREEZING FUNDS... ]'
+                      : isEvm
+                        ? `[ 💵 PAY ${Number(deal.amount_usd).toFixed(2)} USDT VIA ${chainMeta.wallet.toUpperCase()} ]`
+                        : wallet
+                          ? `[ 💎 PAY ${totalTon} ${deal?.currency || 'TON'} ]`
+                          : isUsdt
+                            ? `[ 💎 CONNECT WALLET & PAY USDT ]`
+                            : `[ 💎 CONNECT WALLET & PAY ]`}
               </button>
+              {/* На EVM депозит — две подписи подряд; без предупреждения вторая выглядит как сбой */}
+              {isEvm && !evmStep && stage === 'idle' && (
+                <div style={{ fontSize: '12px', fontFamily: 'Inter, sans-serif', color: 'rgba(255,255,255,0.45)', textAlign: 'center', marginBottom: '8px', lineHeight: 1.6 }}>
+                  {chainMeta.wallet} will ask for <b>two</b> signatures: first approve USDT,
+                  then the deposit itself. Keep the wallet open until both are confirmed.
+                </div>
+              )}
               {stage === 'freezing' && (
                 <div style={{ fontSize: '12px', fontFamily: 'Inter, sans-serif', color: 'rgba(0,255,136,0.7)', textAlign: 'center', marginBottom: '8px', lineHeight: 1.6 }}>
                   Payment sent — waiting for the blockchain to freeze funds in escrow (~1 min)…
                 </div>
               )}
-              {/* Ручной перевод НЕ работает: без OP_DEPOSIT payload эскроу не активируется */}
+              {/* Ручной перевод НЕ работает: эскроу активирует только вызов контракта
+                  (OP_DEPOSIT на TON / deposit() на EVM), а не перевод на его адрес */}
               <div className="px" style={{
                 fontSize: '6px', color: 'rgba(255,170,0,0.6)', textAlign: 'center',
                 lineHeight: 2, marginBottom: '8px', letterSpacing: '0.5px',
@@ -370,13 +459,15 @@ export function Payment() {
         /* STEP 1/2 — deploy escrow contract */
         <div className="gl card-stagger-3">
           <div className="pxgrid" /><div className="sh" />
-          <div className="px" style={{ fontSize: '6px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px' }}>YOUR WALLET</div>
+          <div className="px" style={{ fontSize: '6px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px' }}>
+            YOUR {chainMeta.label.toUpperCase()} WALLET
+          </div>
           <div style={{
             fontSize: '8px', fontFamily: '"Press Start 2P", monospace', color: '#00ff88', wordBreak: 'break-all',
             padding: '8px 10px', background: 'rgba(0,255,136,0.06)',
             border: '1px solid rgba(0,255,136,0.15)', borderRadius: '8px', lineHeight: 1.8,
           }}>
-            ✅ {profile?.ton_wallet_address?.slice(0, 10)}...{profile?.ton_wallet_address?.slice(-6)}
+            ✅ {linkedAddress?.slice(0, 10)}...{linkedAddress?.slice(-6)}
           </div>
 
           <button className="btn btn-y btn-full"
@@ -386,7 +477,7 @@ export function Payment() {
             {loading ? '[ ⏳ DEPLOYING... ]' : isExpired ? '[ ⛔ DEADLINE PASSED ]' : '[ 🚀 DEPLOY CONTRACT ]'}
           </button>
           <div className="px" style={{ fontSize: '6px', color: 'rgba(255,255,255,0.25)', textAlign: 'center', marginTop: '8px', lineHeight: 2 }}>
-            CREATES YOUR PERSONAL ESCROW CONTRACT ON TON.
+            CREATES YOUR PERSONAL ESCROW CONTRACT ON {chainMeta.label.toUpperCase()}.
             NEXT STEP — FUND IT FROM YOUR WALLET
           </div>
         </div>

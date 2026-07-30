@@ -87,6 +87,7 @@ describe('SafeDeal Escrow Contract', () => {
 
       // Шаг 3: арбитр освобождает средства фрилансеру
       const freelancerBalanceBefore = await freelancer.getBalance();
+      const arbitratorBalanceBefore = await arbitrator.getBalance();
       const releaseResult = await escrow.sendRelease(arbitrator.getSender());
       expect(releaseResult.transactions).toHaveTransaction({
         from   : arbitrator.address,
@@ -100,7 +101,14 @@ describe('SafeDeal Escrow Contract', () => {
       const expectedMin = DEAL_AMOUNT * 97n / 100n; // с учётом газа >= 97%
       expect(received).toBeGreaterThan(expectedMin);
 
-      expect(await escrow.getStatus()).toBe(EscrowStatus.RELEASED);
+      // Комиссия + остатки газа ушли арбитру (за вычетом газа release)
+      expect(await arbitrator.getBalance()).toBeGreaterThan(
+        arbitratorBalanceBefore - toNano('0.05')
+      );
+
+      // Контракт уничтожен — остатки газа НЕ застряли на нём
+      const contractAfter = await blockchain.getContract(escrow.address);
+      expect(contractAfter.balance).toBe(0n);
     });
   });
 
@@ -124,7 +132,9 @@ describe('SafeDeal Escrow Contract', () => {
         success: true,
       });
 
-      expect(await escrow.getStatus()).toBe(EscrowStatus.REFUNDED);
+      // Контракт уничтожен, весь баланс ушёл клиенту
+      const contractAfter = await blockchain.getContract(escrow.address);
+      expect(contractAfter.balance).toBe(0n);
     });
 
     it('should allow refund of frozen funds after deadline', async () => {
@@ -140,8 +150,10 @@ describe('SafeDeal Escrow Contract', () => {
       await escrow.sendRefund(arbitrator.getSender());
 
       const clientBalanceAfter = await client.getBalance();
-      expect(clientBalanceAfter).toBeGreaterThan(clientBalanceBefore);
-      expect(await escrow.getStatus()).toBe(EscrowStatus.REFUNDED);
+      // Клиент получил обратно ~весь депозит (раньше 0.05 TON застревало)
+      expect(clientBalanceAfter - clientBalanceBefore).toBeGreaterThan(DEAL_AMOUNT);
+      const contractAfter = await blockchain.getContract(escrow.address);
+      expect(contractAfter.balance).toBe(0n);
     });
   });
 
@@ -173,7 +185,9 @@ describe('SafeDeal Escrow Contract', () => {
         clientAfter - clientBefore
       );
 
-      expect(await escrow.getStatus()).toBe(EscrowStatus.REFUNDED);
+      // Контракт уничтожен после split
+      const contractAfter = await blockchain.getContract(escrow.address);
+      expect(contractAfter.balance).toBe(0n);
     });
 
     it('should split 0/100 (full refund via split)', async () => {
@@ -261,15 +275,18 @@ describe('SafeDeal Escrow Contract', () => {
       await escrow.sendDeposit(client.getSender(), DEAL_AMOUNT + toNano('0.1'));
       await escrow.sendRelease(arbitrator.getSender());
 
-      expect(await escrow.getStatus()).toBe(EscrowStatus.RELEASED);
+      // Контракт уничтожен после первого release
+      const contractAfter = await blockchain.getContract(escrow.address);
+      expect(contractAfter.balance).toBe(0n);
 
-      // Второй release — должен провалиться
+      // Второй release — контракта больше нет, повторная выплата невозможна
+      const freelancerBefore = await freelancer.getBalance();
       const secondRelease = await escrow.sendRelease(arbitrator.getSender());
-      expect(secondRelease.transactions).toHaveTransaction({
-        to     : escrow.address,
-        success: false,
-        exitCode: 402, // ERR_WRONG_STATUS
+      expect(secondRelease.transactions).not.toHaveTransaction({
+        from: escrow.address,
+        to  : freelancer.address,
       });
+      expect(await freelancer.getBalance()).toBe(freelancerBefore);
     });
 
     it('should REJECT release before deposit', async () => {
@@ -295,6 +312,19 @@ describe('SafeDeal Escrow Contract', () => {
         success: false,
         exitCode: 405, // ERR_EXPIRED
       });
+    });
+
+    it('should REJECT underfunded deposit (less than deal amount)', async () => {
+      // Клиент пытается внести половину суммы сделки
+      const result = await escrow.sendDeposit(client.getSender(), toNano('5'));
+      expect(result.transactions).toHaveTransaction({
+        to     : escrow.address,
+        success: false,
+        exitCode: 403, // ERR_WRONG_AMOUNT
+      });
+
+      // Статус не изменился — депозит не зафиксирован
+      expect(await escrow.getStatus()).toBe(EscrowStatus.WAITING);
     });
   });
 

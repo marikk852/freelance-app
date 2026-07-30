@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { PixelScene } from '../components/PixelScene';
@@ -11,6 +11,15 @@ type ChatMsg = { role: 'user' | 'assistant'; content: string };
 interface Criterion { text: string; required: boolean; }
 
 const STEPS = ['TITLE', 'DESCRIPTION', 'AMOUNT', 'DEADLINE', 'CRITERIA'];
+
+// Сети, в которых доступен USDT-эскроу. TON — родной контракт (escrow.fc),
+// Ethereum/Tron — Solidity SafeDealEscrow. Подсказка помогает выбрать по комиссии сети.
+export type Chain = 'TON' | 'ETH' | 'TRON';
+const CHAIN_OPTIONS: { key: Chain; label: string; hint: string }[] = [
+  { key: 'TON',  label: '💎 TON',  hint: 'USD₮ on TON — cheapest fees, pay from Tonkeeper or @wallet.' },
+  { key: 'ETH',  label: 'Ⓔ ETH',  hint: 'USDT (ERC-20) — pay from MetaMask. Ethereum gas can cost $5–50 per transaction.' },
+  { key: 'TRON', label: '🅣 TRON', hint: 'USDT (TRC-20) — pay from TronLink. Low fees, popular for transfers.' },
+];
 
 export function NewDeal() {
   const navigate = useNavigate();
@@ -29,6 +38,17 @@ export function NewDeal() {
     prefill?.amount != null && prefill.amount !== '' ? String(Math.min(Number(prefill.amount), 10000)) : ''
   );
   const [currency,    setCurrency]    = useState<'TON'|'USDT'>(prefill?.currency === 'TON' ? 'TON' : 'USDT');
+  // Сеть эскроу: для TON-валюты всегда TON, для USDT — выбор клиента.
+  // Список сетей приходит с backend: предлагать сеть, где платформа не сможет
+  // провести выплату, нельзя — деньги застряли бы в контракте.
+  const [chain,       setChain]       = useState<Chain>('TON');
+  const [chains,      setChains]      = useState<Chain[]>(['TON']);
+
+  useEffect(() => {
+    contracts.chains()
+      .then(r => setChains(r.data.chains))
+      .catch(() => {});   // молча остаёмся на TON — он доступен всегда
+  }, []);
   const [deadline,    setDeadline]    = useState('');
   const [criteria,    setCriteria]    = useState<Criterion[]>([
     { text: '', required: true },
@@ -105,7 +125,7 @@ export function NewDeal() {
       const res = await contracts.create({
         title, description,
         amount_usd: Number(amountUsd),
-        currency, deadline,
+        currency, chain, deadline,
         criteria: criteria.filter(c => c.text.trim()),
         // Из принятого отклика: backend сразу уведомит фрилансера инвайтом
         ...(prefill?.freelancerTg ? { invite_freelancer_tg: Number(prefill.freelancerTg) } : {}),
@@ -226,19 +246,47 @@ export function NewDeal() {
         {step === 2 && (
           <div>
             <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>
-              AMOUNT (MAX. $500)
+              AMOUNT (MAX. $10,000)
             </div>
             <input className="input" type="number" placeholder="100" value={amountUsd}
-              onChange={e => setAmountUsd(e.target.value)} min="1" max="500"
+              onChange={e => setAmountUsd(e.target.value)} min="1" max="10000"
               style={{ marginBottom: '12px' }} />
             <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
               {(['TON', 'USDT'] as const).map(c => (
-                <button key={c} onClick={() => setCurrency(c)}
+                <button key={c} onClick={() => {
+                  setCurrency(c);
+                  if (c === 'TON') setChain('TON');   // нативный TON живёт только в своей сети
+                }}
                   className={`btn btn-full ${currency === c ? 'btn-b' : 'btn-gr'}`}>
                   {c === 'TON' ? '💎 TON' : '💵 USDT'}
                 </button>
               ))}
             </div>
+
+            {/* Выбор сети — только для USDT: один и тот же доллар живёт в трёх сетях,
+                и от выбора зависит, каким кошельком платит клиент и куда придут деньги */}
+            {currency === 'USDT' && chains.length > 1 && (
+              <div style={{ marginBottom: '12px' }}>
+                <div className="px" style={{ fontSize: '6px', color: 'var(--t-3)', marginBottom: '6px', letterSpacing: '0.5px' }}>
+                  NETWORK
+                </div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {CHAIN_OPTIONS.filter(o => chains.includes(o.key)).map(opt => (
+                    <button key={opt.key} onClick={() => { tg?.HapticFeedback?.selectionChanged(); setChain(opt.key); }}
+                      className={`btn btn-full ${chain === opt.key ? 'btn-b' : 'btn-gr'}`}
+                      style={{ fontSize: '7px', padding: '10px 4px' }}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <div style={{
+                  fontSize: '11px', fontFamily: 'Inter, sans-serif', color: 'var(--t-3)',
+                  marginTop: '8px', lineHeight: 1.6,
+                }}>
+                  {CHAIN_OPTIONS.find(o => o.key === chain)?.hint}
+                </div>
+              </div>
+            )}
             {Number(amountUsd) > 0 && (
               <div className="fee">
                 <span style={{ color: 'rgba(255,255,255,0.4)' }}>Fee 2%</span>

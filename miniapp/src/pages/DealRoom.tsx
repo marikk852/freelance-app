@@ -148,6 +148,10 @@ export function DealRoom() {
           -- QUEST DETAILS --
         </div>
         <DataRow label="Amount"   value={`$${deal.amount_usd} ${deal.currency}`} color="#ffaa00" />
+        {/* Сеть показываем только когда она не TON: иначе это лишний шум */}
+        {deal.chain && deal.chain !== 'TON' && (
+          <DataRow label="Network" value={deal.chain === 'ETH' ? 'Ethereum' : 'Tron'} color="#0088ff" />
+        )}
         <DataRow label="Deadline" value={deadline} />
         <DataRow label="Escrow"   value={deal.escrow_status || '—'} color="#0088ff" />
         {deal.ton_contract_address && (
